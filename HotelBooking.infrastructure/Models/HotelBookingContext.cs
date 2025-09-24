@@ -517,6 +517,8 @@ public partial class HotelBookingContext : DbContext
 
             entity.HasIndex(e => e.HotelId, "IX_Wishlists_HotelId");
 
+            entity.HasIndex(e => new { e.UserId, e.HotelId }, "UQ_UserHotel").IsUnique();
+
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");

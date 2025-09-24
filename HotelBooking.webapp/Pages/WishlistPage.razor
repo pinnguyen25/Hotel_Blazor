@@ -58,5 +58,27 @@
         }
     }
 
-    
+    private async Task ToggleWishlist(int hotelId)
+    {
+        var hotel = SavedHotels.FirstOrDefault(h => h.HotelId == hotelId);
+        if (hotel != null)
+        {
+            var prevState = hotel.IsWishlist;
+            hotel.IsWishlist = !hotel.IsWishlist;
+
+            var res = await Http.PostAsJsonAsync($"api/wishlist/toggle/{hotelId}", new { });
+            if (res.IsSuccessStatusCode)
+            {
+                if (!hotel.IsWishlist)
+                {
+                    SavedHotels.Remove(hotel); // unlike thì xóa khỏi list
+                }
+            }
+            else
+            {
+                // rollback nếu API fail
+                hotel.IsWishlist = prevState;
+            }
+        }
+    }
 }

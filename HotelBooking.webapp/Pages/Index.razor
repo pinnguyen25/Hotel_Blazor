@@ -226,7 +226,7 @@
 
 @code {
   private List<HotelCardVM> hotels = null!;
-  private HashSet<int> loadingHotels = new HashSet<int>(); 
+  private HashSet<int> loadingHotels = new HashSet<int>();
   private string? errorMessage;
   private int? userId; // Giả sử userId là 1 cho ví dụ này
 
@@ -258,39 +258,45 @@
 
   // Hàm tải danh sách khách sạn từ API
   private async Task LoadHotels()
+  {
+    try
     {
-        try
-        {
-            var httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");
-            var query = userId.HasValue ? $"?userId={userId}" : "";
-            hotels = await httpClient.GetFromJsonAsync<List<HotelCardVM>>($"api/hotels/highly-rated{query}");
-        }
-        catch (Exception ex)
-        {
-            errorMessage = "Lỗi khi tải danh sách khách sạn.";
-            Console.WriteLine($"Error loading hotels: {ex.Message}");
-            hotels = new List<HotelCardVM>();
-        }
+      var httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");
+      var query = userId.HasValue ? $"?userId={userId}" : "";
+      hotels = await httpClient.GetFromJsonAsync<List<HotelCardVM>>($"api/hotels/highly-rated{query}");
     }
+    catch (Exception ex)
+    {
+      errorMessage = "Lỗi khi tải danh sách khách sạn.";
+      Console.WriteLine($"Error loading hotels: {ex.Message}");
+      hotels = new List<HotelCardVM>();
+    }
+  }
   private async Task ToggleWishlist(int hotelId)
   {
-    if(loadingHotels.Contains(hotelId)) return; // chặn double click
+    if (loadingHotels.Contains(hotelId)) return; // chặn double click
     loadingHotels.Add(hotelId);
-    
-    var hotel = hotels.FirstOrDefault(h => h.HotelId == hotelId);
-    if (hotel != null)
+
+    try
     {
-      hotel.IsWishlist = !hotel.IsWishlist;
-      try
+      var hotel = hotels.FirstOrDefault(h => h.HotelId == hotelId);
+      if (hotel != null)
       {
+        hotel.IsWishlist = !hotel.IsWishlist;
+
         var httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");
-        await httpClient.PostAsJsonAsync($"api/wishlist/toggle/{hotelId}", new { IsWishlist = hotel.IsWishlist });
+        await httpClient.PostAsJsonAsync($"api/wishlist/toggle/{hotelId}", new { });
+
+        StateHasChanged();
       }
-      catch (Exception ex)
-      {
-        Console.WriteLine($"Error toggling wishlist: {ex.Message}");
-      }
-      StateHasChanged();
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine($"Error toggling wishlist: {ex.Message}");
+    }
+    finally
+    {
+      loadingHotels.Remove(hotelId); //Luôn cho phép click lại
     }
   }
 
