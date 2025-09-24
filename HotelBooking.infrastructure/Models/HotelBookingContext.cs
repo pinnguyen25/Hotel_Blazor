@@ -29,6 +29,8 @@ public partial class HotelBookingContext : DbContext
 
     public virtual DbSet<HotelAmenity> HotelAmenities { get; set; }
 
+    public virtual DbSet<HotelImage> HotelImages { get; set; }
+
     public virtual DbSet<HotelPolicy> HotelPolicies { get; set; }
 
     public virtual DbSet<Message> Messages { get; set; }
@@ -60,6 +62,8 @@ public partial class HotelBookingContext : DbContext
     public virtual DbSet<User> Users { get; set; }
 
     public virtual DbSet<UserRole> UserRoles { get; set; }
+
+    public virtual DbSet<Wishlist> Wishlists { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         => optionsBuilder.UseSqlServer("Name=connectionStringHotelBooking");
@@ -197,6 +201,20 @@ public partial class HotelBookingContext : DbContext
             entity.HasOne(d => d.Hotel).WithMany(p => p.HotelAmenities)
                 .HasForeignKey(d => d.HotelId)
                 .HasConstraintName("FK_HotelAmenities_Hotels");
+        });
+
+        modelBuilder.Entity<HotelImage>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__HotelIma__3214EC07FD33319C");
+
+            entity.HasIndex(e => e.HotelId, "IX_HotelImages_HotelId");
+
+            entity.Property(e => e.ImageUrl).HasMaxLength(500);
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+
+            entity.HasOne(d => d.Hotel).WithMany(p => p.HotelImages)
+                .HasForeignKey(d => d.HotelId)
+                .HasConstraintName("FK_HotelImages_Hotels");
         });
 
         modelBuilder.Entity<HotelPolicy>(entity =>
@@ -491,6 +509,25 @@ public partial class HotelBookingContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.UserRoles)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK_UserRoles_Users");
+        });
+
+        modelBuilder.Entity<Wishlist>(entity =>
+        {
+            entity.HasKey(e => new { e.UserId, e.HotelId }).HasName("PK__Wishlist__F3E8EFF1B66A3214");
+
+            entity.HasIndex(e => e.HotelId, "IX_Wishlists_HotelId");
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.Hotel).WithMany(p => p.Wishlists)
+                .HasForeignKey(d => d.HotelId)
+                .HasConstraintName("FK_Wishlists_Hotels");
+
+            entity.HasOne(d => d.User).WithMany(p => p.Wishlists)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK_Wishlists_Users");
         });
 
         OnModelCreatingPartial(modelBuilder);

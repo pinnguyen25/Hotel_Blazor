@@ -50,4 +50,6 @@ public partial class User
     public virtual ICollection<UpgradeRequest> UpgradeRequestUsers { get; set; } = new List<UpgradeRequest>();
 
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
+
+    public virtual ICollection<Wishlist> Wishlists { get; set; } = new List<Wishlist>();
 }

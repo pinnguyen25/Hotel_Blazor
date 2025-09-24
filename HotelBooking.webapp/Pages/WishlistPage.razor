@@ -1,0 +1,62 @@
+@page "/wishlist-page"
+@inject HttpClient Http
+
+<h2 class="mb-4">Khách sạn đã lưu</h2>
+
+<div class="row">
+    @if (SavedHotels == null)
+    {
+        <p>Đang tải...</p>
+    }
+    else if (!SavedHotels.Any())
+    {
+        <p>Bạn chưa lưu khách sạn nào.</p>
+    }
+    else
+    {
+        @foreach (var hotel in SavedHotels)
+        {
+            <div class="col-sm-6 col-md-3 mb-4">
+                <HotelCard Hotel="hotel" OnWishlistToggle="ToggleWishlist" />
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<HotelCardVM> SavedHotels = new List<HotelCardVM>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Gọi API để lấy danh sách wishlist (trả về List<HotelCardDTO>)
+        var res = await Http.GetFromJsonAsync<List<HotelCardVM>>("api/wishlist/GetUserWishlist");
+
+        if (res != null)
+        {
+            SavedHotels = res.Select(h => new HotelCardVM
+            {
+                HotelId = h.HotelId,
+                HotelName = h.HotelName,
+                Address = h.Address,
+                Description = h.Description,
+                CoverImageUrl = string.IsNullOrEmpty(h.CoverImageUrl)
+            ? "/images/default-hotel.jpg"
+            : h.CoverImageUrl,
+                ImageUrls = h.ImageUrls ?? new List<string>(),
+                MinPricePerNight = h.MinPricePerNight,
+                City = h.City,
+                Country = h.Country,
+                AverageRating = h.AverageRating,
+                ReviewCount = h.ReviewCount,
+                IsWishlist = h.IsWishlist,
+                Amenities = h.Amenities ?? new List<string>(),
+                RoomTypes = h.RoomTypes ?? new List<string>(),
+                IsAvailable = h.IsAvailable,
+                IsVerified = h.IsVerified,
+                Status = h.Status
+            }).ToList();
+        }
+    }
+
+    
+}

@@ -49,6 +49,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IHotelService, HotelService>();
 builder.Services.AddScoped<IUpgradeRequestService, UpgradeRequestService>();
+builder.Services.AddScoped<IWishlistService, WishlistService>();
 
 //Use map controller
 builder.Services.AddControllers();

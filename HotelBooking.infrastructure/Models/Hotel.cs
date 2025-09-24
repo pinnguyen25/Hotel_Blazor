@@ -35,6 +35,8 @@ public partial class Hotel
 
     public virtual ICollection<HotelAmenity> HotelAmenities { get; set; } = new List<HotelAmenity>();
 
+    public virtual ICollection<HotelImage> HotelImages { get; set; } = new List<HotelImage>();
+
     public virtual ICollection<HotelPolicy> HotelPolicies { get; set; } = new List<HotelPolicy>();
 
     public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
@@ -44,4 +46,6 @@ public partial class Hotel
     public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
 
     public virtual ICollection<RoomType> RoomTypes { get; set; } = new List<RoomType>();
+
+    public virtual ICollection<Wishlist> Wishlists { get; set; } = new List<Wishlist>();
 }
