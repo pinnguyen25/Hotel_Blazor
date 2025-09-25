@@ -1,63 +1,75 @@
-<div class="card h-100 shadow-sm position-relative">
-    <!-- Carousel -->
-    <div id="@($"hotelCarousel{Hotel.HotelId}")" class="carousel slide" data-bs-ride="carousel">
-        <div class="carousel-inner">
-            @for (int i = 0; i < Hotel.ImageUrls.Count; i++)
-            {
-                <div class="carousel-item @(i == 0 ? "active" : "")">
-                    <img src="@Hotel.ImageUrls[i]" class="d-block w-100" style="height: 200px; object-fit: cover;"
-                        alt="Hotel Image" />
-                </div>
-            }
+@using HotelBooking.webapp.ViewModels.Hotel
+@using MudBlazor
+
+<MudPaper Class="d-flex p-3 mb-3 rounded shadow-sm position-relative" Style="align-items: stretch;">
+
+    <!-- Carousel / Ảnh khách sạn -->
+    <div class="me-3" style="width: 220px;">
+        <div id="@($"hotelCarousel{Hotel.HotelId}")" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-inner rounded">
+                @for (int i = 0; i < Hotel.ImageUrls.Count; i++)
+                {
+                    <div class="carousel-item @(i == 0 ? "active" : "")">
+                        <img src="@Hotel.ImageUrls[i]" class="d-block w-100 rounded"
+                             style="height: 150px; object-fit: cover;" alt="Hotel Image" />
+                    </div>
+                }
+            </div>
+            <button class="carousel-control-prev" type="button"
+                    data-bs-target="@($"#hotelCarousel{Hotel.HotelId}")" data-bs-slide="prev"
+                    @onclick:stopPropagation="true">
+                <span class="carousel-control-prev-icon"></span>
+            </button>
+            <button class="carousel-control-next" type="button"
+                    data-bs-target="@($"#hotelCarousel{Hotel.HotelId}")" data-bs-slide="next"
+                    @onclick:stopPropagation="true">
+                <span class="carousel-control-next-icon"></span>
+            </button>
         </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="@($"#hotelCarousel{Hotel.HotelId}")"
-            data-bs-slide="prev" @onclick:stopPropagation="true"
-            style="position: absolute; top: 50%; transform: translateY(-50%);">
-            <span class="carousel-control-prev-icon"></span>
-        </button>
-        <button class="carousel-control-next" type="button" data-bs-target="@($"#hotelCarousel{Hotel.HotelId}")"
-            data-bs-slide="next" @onclick:stopPropagation="true"
-            style="position: absolute; top: 50%; transform: translateY(-50%);">
-            <span class="carousel-control-next-icon"></span>
-        </button>
     </div>
+
     <!-- Wishlist Button -->
-    <button class="wishlist-btn position-absolute top-0 end-0 m-2 btn btn-sm" style="z-index: 5;"
-        @onclick:stopPropagation="true" @onclick="HandleWishlistToggle">
+    <button class="wishlist-btn position-absolute top-0 end-0 m-2 btn btn-sm"
+            style="z-index: 5;" @onclick:stopPropagation="true" @onclick="HandleWishlistToggle">
         <i class="bi @(Hotel.IsWishlist ? "bi-heart-fill text-danger" : "bi-heart text-dark")"></i>
     </button>
-    <!-- Card body -->
-    <div class="card-body d-flex flex-column justify-content-between">
+
+    <!-- Nội dung chính -->
+    <div class="flex-grow-1 d-flex flex-column justify-content-between">
         <div>
-            <h5 class="card-title">@Hotel.HotelName</h5>
-            <small class="text-muted">Địa điểm: @Hotel.City, @Hotel.Country</small>
-            <p class="card-text">
-                @if (Hotel.ReviewCount > 0)
-                {
-                    <span>@Hotel.ReviewCount đánh giá, <span class="text-success">@Hotel.AverageRating</span></span>
-                }
-                else
-                {
-                    <span>Chưa có đánh giá</span>
-                }
-            </p>
+            <MudText Typo="Typo.h6" Class="fw-bold">@Hotel.HotelName</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@Hotel.City, @Hotel.Country</MudText>
+
+            @if (Hotel.ReviewCount > 0)
+            {
+                <MudText Typo="Typo.body2">
+                    @Hotel.ReviewCount đánh giá, <span class="text-success">@Hotel.AverageRating</span>
+                </MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2">Chưa có đánh giá</MudText>
+            }
         </div>
-        <div class="mt-2 d-flex justify-content-end">
-            Giá từ:
-            <span class="text-warning">
+
+        <div class="mt-2 d-flex justify-content-between align-items-center">
+            <MudText Typo="Typo.subtitle2">Giá từ:</MudText>
+            <MudText Typo="Typo.h6" Color="Color.Warning" Class="fw-bold">
                 @string.Format(new System.Globalization.CultureInfo("vi-VN"), "{0:C0}", Hotel.MinPricePerNight)
-            </span>
+            </MudText>
         </div>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2 w-100"
+                   Href="@($"/hotels/{Hotel.HotelId}")">
+            Xem chi tiết
+        </MudButton>
     </div>
-    <a href="/hotels/@Hotel.HotelId" class="btn btn-primary w-100 mt-2">Xem chi tiết</a>
-</div>
+</MudPaper>
 
 @code {
-    [Parameter]
-    public HotelCardVM Hotel { get; set; } = null!;
+    [Parameter] public HotelCardVM Hotel { get; set; } = null!;
 
-    [Parameter]
-    public EventCallback<int> OnWishlistToggle { get; set; }
+    [Parameter] public EventCallback<int> OnWishlistToggle { get; set; }
 
     private async Task HandleWishlistToggle()
     {

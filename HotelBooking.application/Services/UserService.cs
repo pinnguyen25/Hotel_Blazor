@@ -70,7 +70,7 @@ public class UserService : IUserService
 
             // Thêm newUser vào User
             await _userRepository.AddAsync(user);
-             // Lưu thay đổi vào database
+            // Lưu thay đổi vào database
             await _dbu.SaveChangesAsync(); // Save to generate user.Id
             // Thêm Role vào bảng UserRoles
             var userRole = new UserRole

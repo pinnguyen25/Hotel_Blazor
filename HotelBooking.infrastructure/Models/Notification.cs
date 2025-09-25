@@ -17,5 +17,7 @@ public partial class Notification
 
     public bool? IsDeleted { get; set; }
 
+    public string? Additional { get; set; }
+
     public virtual User User { get; set; } = null!;
 }

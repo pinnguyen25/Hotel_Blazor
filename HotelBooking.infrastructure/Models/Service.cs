@@ -13,5 +13,7 @@ public partial class Service
 
     public bool? IsDeleted { get; set; }
 
+    public string? Additional { get; set; }
+
     public virtual ICollection<RoomService> RoomServices { get; set; } = new List<RoomService>();
 }
