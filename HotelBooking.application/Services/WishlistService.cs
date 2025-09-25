@@ -5,7 +5,7 @@ public interface IWishlistService
 {
     public Task<bool> ToggleWishlistAsync(int userId, int hotelId);
     public Task<bool> IsInWishlistAsync(int userId, int hotelId);
-    public Task<List<HotelCardDTO>> GetUserWishlistAsync(int userId); // lấy danh sách hotel đã lưu
+    public Task<List<HotelListItemDTO>> GetUserWishlistAsync(int userId); // lấy danh sách hotel đã lưu
 }
 
 public class WishlistService : IWishlistService
@@ -37,57 +37,50 @@ public class WishlistService : IWishlistService
         return await _context.Wishlists.AnyAsync(w => w.UserId == userId && w.HotelId == hotelId);
     }
 
-    public async Task<List<HotelCardDTO>> GetUserWishlistAsync(int userId)
+    public async Task<List<HotelListItemDTO>> GetUserWishlistAsync(int userId)
     {
-        return await _context.Wishlists.Where(w => w.UserId == userId).Select(w => new HotelCardDTO
+        return await _context.Wishlists.Where(w => w.UserId == userId).Select(w => new HotelListItemDTO
         {
             HotelId = w.Hotel.Id,
-            HotelName = w.Hotel.Name,
+            Name = w.Hotel.Name,
             Address = w.Hotel.Address,
-            Description = !string.IsNullOrEmpty(w.Hotel.Description)
-                ? w.Hotel.Description.Substring(0, Math.Min(150, w.Hotel.Description.Length))
-                : string.Empty,
+            City = w.Hotel.City != null ? w.Hotel.City.Name : string.Empty,
+            Country = w.Hotel.City != null && w.Hotel.City.Country != null ? w.Hotel.City.Country.Name : string.Empty,
+            ShortDescription = !string.IsNullOrEmpty(w.Hotel.Description)
+            ? w.Hotel.Description.Substring(0, Math.Min(150, w.Hotel.Description.Length)) + "..."
+            : string.Empty,
             CoverImageUrl = w.Hotel.CoverImageUrl ?? string.Empty,
-
             ImageUrls = w.Hotel.HotelImages
                 .OrderBy(i => i.Id)
                 .Take(4)
                 .Select(i => i.ImageUrl)
                 .ToList(),
-
+            HighlightAmenities = w.Hotel.HotelAmenities
+                .Take(3)
+                .Select(a => new AmenityDTO
+                {
+                    Id = a.Amenity.Id,
+                    Name = a.Amenity.Name,
+                    // IconCode = a.Amenity.IconCode ?? string.Empty
+                })
+                .ToList(),
             MinPricePerNight = w.Hotel.RoomTypes.Any()
                 ? w.Hotel.RoomTypes.Min(r => r.PricePerNight)
                 : null,
 
-            City = w.Hotel.City != null ? w.Hotel.City.Name : string.Empty,
-            Country = w.Hotel.City != null && w.Hotel.City.Country != null
-                ? w.Hotel.City.Country.Name
-                : string.Empty,
-
-            Amenities = w.Hotel.HotelAmenities
-                .Select(a => a.Amenity.Name)
-                .ToList(),
-
-            RoomTypes = w.Hotel.RoomTypes
-                .Select(r => r.Name)
-                .ToList(),
-
-            // Có ít nhất 1 phòng còn "Available"
-            IsAvailable = w.Hotel.RoomTypes
+            AvailableRooms = w.Hotel.RoomTypes
                 .SelectMany(rt => rt.Rooms)
-                .Any(r => r.Status == "Available"),
+                .Count(r => r.Status == "Available"),
 
             AverageRating = w.Hotel.Reviews.Any(r => r.Rating.HasValue)
                 ? Math.Round(w.Hotel.Reviews.Average(r => r.Rating ?? 0), 1)
                 : 0,
 
             ReviewCount = w.Hotel.Reviews.Count(r => r.Rating.HasValue),
-
-            IsVerified = w.Hotel.IsVerified ?? false,
-            Status = w.Hotel.Status ?? "PendingVerification",
+            MaxAdultCapacity = w.Hotel.RoomTypes.Any() ? w.Hotel.RoomTypes.Max(rt => rt.AdultCapacity) : null, 
+            MaxChildCapacity = w.Hotel.RoomTypes.Any() ? w.Hotel.RoomTypes.Max(rt => rt.ChildCapacity) : null,
             IsWishlist = true
         })
-.ToListAsync();
-
+        .ToListAsync();
     }
 }

@@ -8,49 +8,112 @@
 
 <h3>Kết quả tìm kiếm</h3>
 
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+}
 @if (Hotels == null)
 {
     <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
 }
-else if (Hotels.Count == 0)
+else if (!Hotels.Any())
 {
-    <p>Không tìm thấy khách sạn nào phù hợp.</p>
+    <MudAlert Severity="Severity.Info">Không tìm thấy khách sạn nào phù hợp.</MudAlert>
 }
 else
 {
-    @foreach (var hotel in Hotels)
-    {
-        <HotelCard Hotel="hotel" />
-    }
+    <div class="row">
+        @foreach (var hotel in Hotels)
+        {
+            <div class="col-sm-6 col-md-3 mb-4">
+                <HotelCard Hotel="hotel" OnWishlistToggle="ToggleWishlist" />
+            </div>
+        }
+    </div>
 }
 
-
 @code {
-    public List<SearchHotelResultDTO> Hotels;
-    HttpClient _httpClient;
+    private List<HotelCardVM> Hotels = new();
+    private HashSet<int> loadingHotels = new();
+    private string? errorMessage;
+
     protected override async Task OnInitializedAsync()
     {
-        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
-
-        // Lấy query string từ URL
+        var httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
         var uri = NavManager.ToAbsoluteUri(NavManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
 
-        // Lấy giá trị từ query string
-        var destination = query["destination"];
-        var checkin = query["checkin"];
-        var checkout = query["checkout"];
-        var adults = query["adults"];
-        var children = query["children"];
-        var rooms = query["rooms"];
+        var apiUrl = "api/hotel/get-search-options?" +
+        $"cityName={Uri.EscapeDataString(query["destination"] ?? "")}" +
+        $"&checkIn={query["checkin"] ?? ""}" +
+        $"&checkOut={query["checkout"] ?? ""}" +
+        $"&adults={query["adults"] ?? "1"}" +
+        $"&children={query["children"] ?? "0"}" +
+        $"&rooms={query["rooms"] ?? "1"}";
 
+        try
+        {
+            var response = await httpClient.GetFromJsonAsync<List<HotelCardVM>>(apiUrl);
+            Hotels = response?.Select(h => new HotelCardVM
+            {
+                HotelId = h.HotelId,
+                HotelName = h.HotelName,
+                Address = h.Address,
+                City = h.City,
+                Country = h.Country,
+                ShortDescription = h.ShortDescription,
+                CoverImageUrl = h.CoverImageUrl,
+                ImageUrls = h.ImageUrls,
+                HighlightAmenities = h.HighlightAmenities.Select(a => new AmenityVM { Id = a.Id, Name = a.Name }).ToList(),
+                IsWishlist = h.IsWishlist,
+                MinPricePerNight = h.MinPricePerNight,
+                AverageRating = h.AverageRating,
+                ReviewCount = h.ReviewCount,
+                AvailableRooms = h.AvailableRooms,
+                MaxAdultCapacity = h.MaxAdultCapacity,
+                MaxChildCapacity = h.MaxChildCapacity,
+                IsVerified = false,
+                Status = "PendingVerification"
+            }).ToList() ?? new List<HotelCardVM>();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Lỗi khi tải dữ liệu.";
+            Console.WriteLine($"Error: {ex.Message}");
+            Hotels = new List<HotelCardVM>();
+        }
+    }
 
-        var apiUrl =
-        $"hotel/get-search-options?cityName={destination}&checkin={checkin}&checkout={checkout}&adults={adults}&children={children}&rooms={rooms}";
+    private async Task ToggleWishlist(int hotelId)
+    {
+        if (loadingHotels.Contains(hotelId)) return;
+        loadingHotels.Add(hotelId);
 
-        Hotels = await _httpClient.GetFromJsonAsync<List<SearchHotelResultDTO>>(apiUrl);
+        try
+        {
+            var hotel = Hotels.FirstOrDefault(h => h.HotelId == hotelId);
+            if (hotel != null)
+            {
+                var prevState = hotel.IsWishlist;
+                hotel.IsWishlist = !hotel.IsWishlist;
 
-        Console.WriteLine($"Fetched {Hotels.Count} hotels from API.");
+                var httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+                var res = await httpClient.PostAsync($"api/wishlist/toggle/{hotelId}", null);
 
+                if (!res.IsSuccessStatusCode)
+                {
+                    hotel.IsWishlist = prevState; // Rollback
+                }
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+        finally
+        {
+            loadingHotels.Remove(hotelId);
+        }
     }
 }

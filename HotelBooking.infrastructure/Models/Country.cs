@@ -11,9 +11,5 @@ public partial class Country
 
     public string? Code { get; set; }
 
-    public string? Additional { get; set; }
-
     public virtual ICollection<City> Cities { get; set; } = new List<City>();
-
-    public virtual ICollection<Hotel> Hotels { get; set; } = new List<Hotel>();
 }

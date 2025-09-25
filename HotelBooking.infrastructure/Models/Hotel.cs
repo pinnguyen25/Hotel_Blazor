@@ -17,6 +17,8 @@ public partial class Hotel
 
     public int OwnerId { get; set; }
 
+    public int? CityId { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public bool? IsVerified { get; set; }
@@ -25,17 +27,11 @@ public partial class Hotel
 
     public bool? IsDeleted { get; set; }
 
-    public int? CityId { get; set; }
-
-    public int? CountryId { get; set; }
-
     public string? Additional { get; set; }
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
     public virtual City? City { get; set; }
-
-    public virtual Country? Country { get; set; }
 
     public virtual ICollection<HotelAmenity> HotelAmenities { get; set; } = new List<HotelAmenity>();
 

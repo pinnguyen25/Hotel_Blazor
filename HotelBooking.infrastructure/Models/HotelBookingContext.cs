@@ -72,9 +72,9 @@ public partial class HotelBookingContext : DbContext
     {
         modelBuilder.Entity<Amenity>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Amenitie__3214EC0707B67CC2");
+            entity.HasKey(e => e.Id).HasName("PK__Amenitie__3214EC072378411A");
 
-            entity.HasIndex(e => e.Name, "UQ__Amenitie__737584F6222DCDCA").IsUnique();
+            entity.HasIndex(e => e.Name, "UQ__Amenitie__737584F65CF505EA").IsUnique();
 
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.Name).HasMaxLength(100);
@@ -82,7 +82,7 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<Booking>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Bookings__3214EC07E61DF4A8");
+            entity.HasKey(e => e.Id).HasName("PK__Bookings__3214EC07DEE253EF");
 
             entity.HasIndex(e => e.CustomerId, "IX_Bookings_CustomerId");
 
@@ -115,7 +115,7 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<BookingRoom>(entity =>
         {
-            entity.HasKey(e => new { e.BookingId, e.RoomId }).HasName("PK__BookingR__F0BD797E38132D46");
+            entity.HasKey(e => new { e.BookingId, e.RoomId }).HasName("PK__BookingR__F0BD797E8AFC2356");
 
             entity.HasIndex(e => e.BookingId, "IX_BookingRooms_BookingId");
 
@@ -127,7 +127,6 @@ public partial class HotelBookingContext : DbContext
 
             entity.HasOne(d => d.Booking).WithMany(p => p.BookingRooms)
                 .HasForeignKey(d => d.BookingId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_BookingRooms_Bookings");
 
             entity.HasOne(d => d.Room).WithMany(p => p.BookingRooms)
@@ -138,20 +137,20 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<City>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Cities__3214EC07C04DB18F");
+            entity.HasKey(e => e.Id).HasName("PK__Cities__3214EC07FFD15D34");
 
             entity.Property(e => e.Name).HasMaxLength(100);
 
             entity.HasOne(d => d.Country).WithMany(p => p.Cities)
                 .HasForeignKey(d => d.CountryId)
-                .HasConstraintName("FK__Cities__CountryI__19DFD96B");
+                .HasConstraintName("FK_Cities_Countries");
         });
 
         modelBuilder.Entity<Country>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Countrie__3214EC07A22038DC");
+            entity.HasKey(e => e.Id).HasName("PK__Countrie__3214EC0724A881B2");
 
-            entity.HasIndex(e => e.Name, "UQ__Countrie__737584F61DA94F6C").IsUnique();
+            entity.HasIndex(e => e.Name, "UQ__Countrie__737584F6A47C3346").IsUnique();
 
             entity.Property(e => e.Code).HasMaxLength(10);
             entity.Property(e => e.Name).HasMaxLength(100);
@@ -159,11 +158,9 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<Hotel>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Hotels__3214EC07A121216E");
+            entity.HasKey(e => e.Id).HasName("PK__Hotels__3214EC07E250627F");
 
             entity.HasIndex(e => e.CityId, "IX_Hotels_CityId");
-
-            entity.HasIndex(e => e.CountryId, "IX_Hotels_CountryId");
 
             entity.Property(e => e.Address).HasMaxLength(500);
             entity.Property(e => e.CoverImageUrl).HasMaxLength(500);
@@ -179,11 +176,7 @@ public partial class HotelBookingContext : DbContext
 
             entity.HasOne(d => d.City).WithMany(p => p.Hotels)
                 .HasForeignKey(d => d.CityId)
-                .HasConstraintName("FK__Hotels__CityId__1AD3FDA4");
-
-            entity.HasOne(d => d.Country).WithMany(p => p.Hotels)
-                .HasForeignKey(d => d.CountryId)
-                .HasConstraintName("FK__Hotels__CountryI__1BC821DD");
+                .HasConstraintName("FK_Hotels_Cities");
 
             entity.HasOne(d => d.Owner).WithMany(p => p.Hotels)
                 .HasForeignKey(d => d.OwnerId)
@@ -193,7 +186,7 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<HotelAmenity>(entity =>
         {
-            entity.HasKey(e => new { e.HotelId, e.AmenityId }).HasName("PK__HotelAme__EE40948F26065B25");
+            entity.HasKey(e => new { e.HotelId, e.AmenityId }).HasName("PK__HotelAme__EE40948F69BCDA4F");
 
             entity.HasIndex(e => e.HotelId, "IX_HotelAmenities_HotelId");
 
@@ -226,7 +219,7 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<HotelPolicy>(entity =>
         {
-            entity.HasKey(e => new { e.HotelId, e.PolicyId }).HasName("PK__HotelPol__14E30845E7C3EC46");
+            entity.HasKey(e => new { e.HotelId, e.PolicyId }).HasName("PK__HotelPol__14E30845B0E139B4");
 
             entity.HasIndex(e => e.HotelId, "IX_HotelPolicies_HotelId");
 
@@ -245,7 +238,7 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<Message>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Messages__3214EC07F8C61465");
+            entity.HasKey(e => e.Id).HasName("PK__Messages__3214EC0730872451");
 
             entity.HasIndex(e => e.BookingId, "IX_Messages_BookingId");
 
@@ -282,7 +275,7 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<Notification>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Notifica__3214EC075FB21967");
+            entity.HasKey(e => e.Id).HasName("PK__Notifica__3214EC0720F48723");
 
             entity.HasIndex(e => e.UserId, "IX_Notifications_UserId");
 
@@ -300,7 +293,7 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<Payment>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Payments__3214EC0797434055");
+            entity.HasKey(e => e.Id).HasName("PK__Payments__3214EC079A5A39EA");
 
             entity.HasIndex(e => e.BookingId, "IX_Payments_BookingId");
 
@@ -319,7 +312,7 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<Policy>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Policies__3214EC0700D60673");
+            entity.HasKey(e => e.Id).HasName("PK__Policies__3214EC07DF39C412");
 
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.Name).HasMaxLength(150);
@@ -327,7 +320,7 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<Review>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Reviews__3214EC07A386440F");
+            entity.HasKey(e => e.Id).HasName("PK__Reviews__3214EC07C0720FC1");
 
             entity.HasIndex(e => e.CustomerId, "IX_Reviews_CustomerId");
 
@@ -350,9 +343,9 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Roles__3214EC072A5B7B14");
+            entity.HasKey(e => e.Id).HasName("PK__Roles__3214EC077623A3F2");
 
-            entity.HasIndex(e => e.Name, "UQ__Roles__737584F68381FAA3").IsUnique();
+            entity.HasIndex(e => e.Name, "UQ__Roles__737584F627023123").IsUnique();
 
             entity.Property(e => e.Description).HasMaxLength(255);
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
@@ -361,7 +354,7 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<Room>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Rooms__3214EC076BBF4588");
+            entity.HasKey(e => e.Id).HasName("PK__Rooms__3214EC07698AAC5E");
 
             entity.HasIndex(e => e.RoomTypeId, "IX_Rooms_RoomTypeId");
 
@@ -378,7 +371,7 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<RoomAmenity>(entity =>
         {
-            entity.HasKey(e => new { e.RoomTypeId, e.AmenityId }).HasName("PK__RoomAmen__148A3961C8C36DBD");
+            entity.HasKey(e => new { e.RoomTypeId, e.AmenityId }).HasName("PK__RoomAmen__148A39618EC1AA3F");
 
             entity.HasIndex(e => e.RoomTypeId, "IX_RoomAmenities_RoomTypeId");
 
@@ -397,7 +390,7 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<RoomImage>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__RoomImag__3214EC077159EC15");
+            entity.HasKey(e => e.Id).HasName("PK__RoomImag__3214EC078ADA08F3");
 
             entity.HasIndex(e => e.RoomTypeId, "IX_RoomImages_RoomTypeId");
 
@@ -411,7 +404,7 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<RoomService>(entity =>
         {
-            entity.HasKey(e => new { e.RoomId, e.ServiceId }).HasName("PK__RoomServ__8ED78239812D49AF");
+            entity.HasKey(e => new { e.RoomId, e.ServiceId }).HasName("PK__RoomServ__8ED78239851F0BE5");
 
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
@@ -419,16 +412,16 @@ public partial class HotelBookingContext : DbContext
 
             entity.HasOne(d => d.Room).WithMany(p => p.RoomServices)
                 .HasForeignKey(d => d.RoomId)
-                .HasConstraintName("FK__RoomServi__RoomI__1332DBDC");
+                .HasConstraintName("FK_RoomServices_Rooms");
 
             entity.HasOne(d => d.Service).WithMany(p => p.RoomServices)
                 .HasForeignKey(d => d.ServiceId)
-                .HasConstraintName("FK__RoomServi__Servi__14270015");
+                .HasConstraintName("FK_RoomServices_Services");
         });
 
         modelBuilder.Entity<RoomType>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__RoomType__3214EC072436EC76");
+            entity.HasKey(e => e.Id).HasName("PK__RoomType__3214EC075BB9A09F");
 
             entity.HasIndex(e => e.HotelId, "IX_RoomTypes_HotelId");
 
@@ -443,9 +436,9 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<Service>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Services__3214EC076E85D35A");
+            entity.HasKey(e => e.Id).HasName("PK__Services__3214EC07DF68E9E2");
 
-            entity.HasIndex(e => e.Name, "UQ__Services__737584F66A96DDF0").IsUnique();
+            entity.HasIndex(e => e.Name, "UQ__Services__737584F6024A1EE5").IsUnique();
 
             entity.Property(e => e.Description).HasMaxLength(255);
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
@@ -454,11 +447,17 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<UpgradeRequest>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__UpgradeR__3214EC071216498F");
+            entity.HasKey(e => e.Id).HasName("PK__UpgradeR__3214EC07EC0F4542");
+
+            entity.HasIndex(e => e.Status, "IX_UpgradeRequests_Status");
+
+            entity.HasIndex(e => e.UserId, "IX_UpgradeRequests_UserId");
 
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.ApprovedAt).HasColumnType("datetime");
-            entity.Property(e => e.RequestedAt).HasColumnType("datetime");
+            entity.Property(e => e.RequestedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
             entity.Property(e => e.Status).HasMaxLength(20);
             entity.Property(e => e.TaxCode).HasMaxLength(50);
 
@@ -474,11 +473,11 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Users__3214EC07A7911710");
+            entity.HasKey(e => e.Id).HasName("PK__Users__3214EC07B4C00BA9");
 
-            entity.HasIndex(e => e.Email, "UQ__Users__A9D10534800A8CF8").IsUnique();
+            entity.HasIndex(e => e.Email, "UQ__Users__A9D10534D70EF504").IsUnique();
 
-            entity.HasIndex(e => e.UserName, "UQ__Users__C9F284569817A4FB").IsUnique();
+            entity.HasIndex(e => e.UserName, "UQ__Users__C9F284569E96BA83").IsUnique();
 
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.AvatarUrl).HasMaxLength(500);
@@ -497,7 +496,7 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<UserRole>(entity =>
         {
-            entity.HasKey(e => new { e.UserId, e.RoleId }).HasName("PK__UserRole__AF2760ADCB5D2FC2");
+            entity.HasKey(e => new { e.UserId, e.RoleId }).HasName("PK__UserRole__AF2760AD40338FC2");
 
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")

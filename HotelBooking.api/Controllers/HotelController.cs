@@ -30,14 +30,42 @@ namespace HotelBooking.api.Controllers
         }
 
         [HttpGet("get-search-options")]
-        public async Task<IActionResult> GetSearchOptionsAsync([FromQuery] string cityName,
+        public async Task<IActionResult> GetSearchOptionsAsync(
+        [FromQuery] string cityName,
         [FromQuery] DateTime? checkIn,
         [FromQuery] DateTime? checkOut,
         [FromQuery] int? adults,
         [FromQuery] int? children,
         [FromQuery] int? rooms)
         {
-            var response = await _hotelService.GetSearchOptionsAsync(cityName, checkIn, checkOut, adults, children, rooms);
+            int? userId = null;
+            if (int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int uid))
+                userId = uid;
+
+            var response = await _hotelService.GetSearchOptionsAsync(cityName, checkIn, checkOut, adults, children, rooms, userId);
+            return Ok(response);
+        }
+
+        [HttpGet("highly-rated")]
+        public async Task<IActionResult> GetHighlyRatedHotelsAsync()
+        {
+            int? userId = null;
+            if (int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int uid))
+                userId = uid;
+
+            var response = await _hotelService.GetHighlyRatedHotelsAsync(userId);
+            return Ok(response);
+        }
+
+        [HttpGet("{hotelId}")]
+        public async Task<IActionResult> GetHotelByIdAsync(int hotelId)
+        {
+            int? userId = null;
+            if (int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int uid))
+                userId = uid;
+
+            var response = await _hotelService.GetHotelByIdAsync(hotelId, userId);
+            if (response == null) return NotFound();
             return Ok(response);
         }
 

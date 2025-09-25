@@ -13,7 +13,5 @@ public partial class RoomImage
 
     public bool? IsDeleted { get; set; }
 
-    public string? Additional { get; set; }
-
     public virtual RoomType RoomType { get; set; } = null!;
 }

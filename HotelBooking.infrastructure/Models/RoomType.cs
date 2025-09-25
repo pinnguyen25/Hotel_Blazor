@@ -19,6 +19,8 @@ public partial class RoomType
 
     public bool? IsDeleted { get; set; }
 
+    public string? Additional { get; set; }
+
     public int? AdultCapacity { get; set; }
 
     public int? ChildCapacity { get; set; }

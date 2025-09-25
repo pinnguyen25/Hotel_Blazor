@@ -7,5 +7,15 @@
     "C:\\Users\\HP VICTUS\\.nuget\\packages\\microsoft.aspnetcore.openapi\\9.0.5\\microsoft.aspnetcore.openapi.9.0.5.nupkg.sha512",
     "C:\\Users\\HP VICTUS\\.nuget\\packages\\microsoft.openapi\\1.6.17\\microsoft.openapi.1.6.17.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "Undefined",
+      "level": "Warning",
+      "message": "Problem reading the cache file D:\\DA_Dotnet\\HotelBooking\\HotelBooking.shared\\obj\\project.nuget.cache : '<' is an invalid start of a property name. Expected a '\"'. Path: $ | LineNumber: 2 | BytePositionInLine: 0.",
+      "projectPath": "D:\\DA_Dotnet\\HotelBooking\\HotelBooking.shared\\HotelBooking.shared.csproj",
+      "warningLevel": 1,
+      "filePath": "D:\\DA_Dotnet\\HotelBooking\\HotelBooking.shared\\HotelBooking.shared.csproj",
+      "targetGraphs": []
+    }
+  ]
 }
