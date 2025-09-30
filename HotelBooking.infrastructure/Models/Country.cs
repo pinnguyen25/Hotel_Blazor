@@ -11,5 +11,7 @@ public partial class Country
 
     public string? Code { get; set; }
 
+    public bool? IsDeleted { get; set; }
+
     public virtual ICollection<City> Cities { get; set; } = new List<City>();
 }

@@ -1,81 +1,98 @@
 @using HotelBooking.webapp.ViewModels.Hotel
 @using MudBlazor
+@inject NavigationManager _nav
 
-<MudPaper Class="d-flex p-3 mb-3 rounded shadow-sm" Style="align-items: stretch; position: relative;">
+<MudPaper Class="p-3 mb-3 rounded shadow-sm d-flex flex-column" Style="position: relative; cursor:pointer;"
+    OnClick="@(() => _nav.NavigateTo($"/hotels/{Hotel.HotelId}"))">
+
     <!-- Ảnh khách sạn -->
-    <MudImage Src="@(string.IsNullOrEmpty(Hotel.CoverImageUrl) ? "/images/default-hotel.jpg" : Hotel.CoverImageUrl)"
-        Alt="@Hotel.HotelName" Width="200" Height="150" Class="rounded me-3" ObjectFit="ObjectFit.Cover"
-        LazyLoading="true" />
+    <div class="position-relative mb-3">
+        @if (Hotel.ImageUrls != null && Hotel.ImageUrls.Any())
+        {
+            <MudCarousel TData="string" Items="@Hotel.ImageUrls" AutoCycle="true" Interval="4000" Class="rounded"
+                Style="width:100%; height:220px;">
+                <ItemTemplate Context="img">
+                    <MudImage Src="@img" Alt="@Hotel.HotelName" Style="width:100%;height:220px" ObjectFit="ObjectFit.Cover" />
+                </ItemTemplate>
+            </MudCarousel>
+        }
+        else
+        {
+            <MudImage Src="/images/default-hotel.jpg" Alt="@Hotel.HotelName" Style="width:100%;height:220px" Class="rounded"
+                ObjectFit="ObjectFit.Cover" />
+        }
 
-    <!-- Nội dung chính -->
-    <div class="flex-grow-1 d-flex flex-column justify-content-between">
-        <!-- Tên & Địa chỉ -->
-        <div>
-            <MudText Typo="Typo.h6" Class="fw-bold">@Hotel.HotelName</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">@Hotel.Address</MudText>
-            <MudText Typo="Typo.body2">@Hotel.City, @Hotel.Country</MudText>
-            <MudText Typo="Typo.body2" Class="mt-1">@Hotel.ShortDescription</MudText>
-            <!-- Tiện ích nổi bật -->
-            <div class="mt-2 d-flex flex-wrap gap-1">
-                @foreach (var amenity in Hotel.HighlightAmenities ?? new List<AmenityVM>())
-                {
-                    <MudChip T="string" Label="true" Color="Color.Default" Size="Size.Small" Class="me-1"
-                        Icon="@(string.IsNullOrEmpty(amenity.IconCode) ? null : amenity.IconCode)">
-                        @amenity.Name
-                    </MudChip>
-                }
-            </div>
-        </div>
-
-        <!-- Thông tin sức chứa -->
-        <div class="mt-2">
-            <MudText Typo="Typo.body2">
-                <b>Sức chứa tối đa:</b> @(Hotel.MaxAdultCapacity ?? 0) người lớn · @(Hotel.MaxChildCapacity ?? 0) trẻ em
-            </MudText>
-            <MudText Typo="Typo.body2">
-                <b>Phòng trống:</b> @(Hotel.AvailableRooms ?? 0)
-            </MudText>
-        </div>
-    </div>
-
-    <!-- Giá & Rating -->
-    <div class="d-flex flex-column align-items-end justify-content-between ms-3">
-        <div class="d-flex align-items-center">
-            <MudText Typo="Typo.subtitle1" Color="Color.Success" Class="fw-bold me-2">
-                @(Hotel.AverageRating >= 8 ? "Excellent" : Hotel.AverageRating >= 6 ? "Good" : "Average")
-            </MudText>
-            <MudPaper Class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center"
-                Style="width: 40px; height: 40px;">
-                <span>@Hotel.AverageRating.ToString("0.0")</span>
-            </MudPaper>
-        </div>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">@Hotel.ReviewCount reviews</MudText>
-
-        <div class="text-end mt-2">
-            <MudText Typo="Typo.h6" Class="fw-bold text-dark">
-                @(Hotel.MinPricePerNight.HasValue ? Hotel.MinPricePerNight.Value.ToString("C0", new
-                                System.Globalization.CultureInfo("vi-VN")) : "Liên hệ")
-            </MudText>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" Href="@($"/hotels/{Hotel.HotelId}")">
-                Xem chi tiết
+        <!-- Wishlist button -->
+        <MudTooltip Text="@(Hotel.IsWishlist ? "Xóa khỏi danh sách yêu thích" : "Thêm vào danh sách yêu thích")">
+            <MudButton Class="position-absolute top-0 end-0 m-2" Size="Size.Small" Disabled="@isToggling"
+                OnClick="HandleWishlistToggle" Style="z-index: 5;"
+                AriaLabel="@(Hotel.IsWishlist ? "Xóa khỏi danh sách yêu thích" : "Thêm vào danh sách yêu thích")">
+                <MudIcon
+                    Icon="@(Hotel.IsWishlist ? @Icons.Material.Filled.Favorite : @Icons.Material.Outlined.FavoriteBorder)"
+                    Color="@(Hotel.IsWishlist ? Color.Error : Color.Default)" />
             </MudButton>
+        </MudTooltip>
+    </div>
+
+    <!-- Rating trên cùng -->
+    <div class="d-flex align-items-center mb-2">
+        <MudPaper Class="bg-success text-white rounded" Style="padding:4px 8px; min-width:50px; text-align:center;">
+            <span>@Hotel.AverageRating.ToString("0.0")</span>
+        </MudPaper>
+        <div class="ms-2 d-flex flex-column">
+            <MudText Typo="Typo.subtitle2" Class="fw-bold">
+                @(Hotel.AverageRating >= 8 ? "Excellent" : Hotel.AverageRating >= 6 ? "Good" : "Average")
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                     ( @Hotel.ReviewCount reviews )
+                </MudText>
+            </MudText>
         </div>
     </div>
 
-    <!-- Wishlist Button -->
-    <MudTooltip Text="@(Hotel.IsWishlist ? "Xóa khỏi danh sách yêu thích" : "Thêm vào danh sách yêu thích")">
-        <MudButton Class="position-absolute top-0 end-0 m-2" Size="Size.Small" Disabled="@isToggling"
-            OnClick="HandleWishlistToggle" Style="z-index: 5;"
-            AriaLabel="@(Hotel.IsWishlist ? "Xóa khỏi danh sách yêu thích" : "Thêm vào danh sách yêu thích")">
-            <MudIcon
-                Icon="@(Hotel.IsWishlist ? @Icons.Material.Filled.Favorite : @Icons.Material.Outlined.FavoriteBorder)"
-                Color="@(Hotel.IsWishlist ? Color.Error : Color.Default)" />
-        </MudButton>
-    </MudTooltip>
+    <!-- Tên khách sạn -->
+    <MudText Typo="Typo.h6" Class="fw-bold mb-1">@Hotel.HotelName</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">@Hotel.Address</MudText>
+    <MudText Typo="Typo.body2">@Hotel.City, @Hotel.Country</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">@Hotel.ShortDescription</MudText>
+
+    <!-- Tiện ích -->
+    <div class="mt-2 d-flex flex-wrap gap-1">
+        @foreach (var amenity in Hotel.HighlightAmenities ?? new List<AmenityVM>())
+        {
+            @* <MudChip T="string" Label="true" Color="Color.Default" Size="Size.Small" Class="me-1"
+                Icon="@(string.IsNullOrEmpty(amenity.IconCode) ? null : amenity.IconCode)">
+                @amenity.Name
+            </MudChip> *@
+        }
+    </div>
+
+    <!-- Giá -->
+    <div class="text-start mt-3">
+        @if (Hotel.MinPricePerNight.HasValue)
+        {
+            @if (Hotel.MaxPricePerNight.HasValue && Hotel.MinPricePerNight != Hotel.MaxPricePerNight)
+            {
+                <!-- Có giảm giá -->
+                <MudText Typo="Typo.h6" Class="fw-bold text-dark">
+                    @Hotel.MinPricePerNight?.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Giá gốc: @Hotel.MaxPricePerNight?.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))
+                </MudText>
+            }
+            else
+            {
+                <!-- Giá bình thường -->
+                <MudText Typo="Typo.h6" Class="fw-bold text-dark">
+                    @Hotel.MinPricePerNight?.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))
+                </MudText>
+            }
+        }
+    </div>
 </MudPaper>
 
 @code {
-    [Parameter] public HotelCardVM Hotel { get; set; } = null!;
+    [Parameter] public HotelListItemVM Hotel { get; set; } = null!;
     [Parameter] public EventCallback<int> OnWishlistToggle { get; set; }
     private bool isToggling = false;
 

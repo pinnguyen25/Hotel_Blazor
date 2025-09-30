@@ -29,9 +29,10 @@ namespace HotelBooking.api.Controllers
             return Ok(response);
         }
 
+        // tìm kiếm hotel
         [HttpGet("get-search-options")]
         public async Task<IActionResult> GetSearchOptionsAsync(
-        [FromQuery] string cityName,
+        [FromQuery] string? destination,
         [FromQuery] DateTime? checkIn,
         [FromQuery] DateTime? checkOut,
         [FromQuery] int? adults,
@@ -42,10 +43,11 @@ namespace HotelBooking.api.Controllers
             if (int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int uid))
                 userId = uid;
 
-            var response = await _hotelService.GetSearchOptionsAsync(cityName, checkIn, checkOut, adults, children, rooms, userId);
+            var response = await _hotelService.GetSearchOptionsAsync(destination, checkIn, checkOut, adults, children, rooms, userId);
             return Ok(response);
         }
 
+        // lấy hotel có rate cao
         [HttpGet("highly-rated")]
         public async Task<IActionResult> GetHighlyRatedHotelsAsync()
         {
@@ -57,6 +59,7 @@ namespace HotelBooking.api.Controllers
             return Ok(response);
         }
 
+        // lấy info hotel theo id
         [HttpGet("{hotelId}")]
         public async Task<IActionResult> GetHotelByIdAsync(int hotelId)
         {
@@ -67,6 +70,20 @@ namespace HotelBooking.api.Controllers
             var response = await _hotelService.GetHotelByIdAsync(hotelId, userId);
             if (response == null) return NotFound();
             return Ok(response);
+        }
+
+        [HttpGet("get-cityName")]
+        public async Task<IActionResult> GetCityNameAsync()
+        {
+            var cities = await _hotelService.GetCityNameAsync();
+            return Ok(cities);
+        }
+
+        [HttpGet("autocomplete")]
+        public async Task<IActionResult> Autocomplete([FromQuery] string keyword)
+        {
+            var res = await _hotelService.GetAutocompleteAsync(keyword);
+            return Ok(res);
         }
 
     }

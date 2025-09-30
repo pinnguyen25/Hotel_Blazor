@@ -31,7 +31,7 @@
 </div>
 
 @code {
-    private List<HotelCardVM> SavedHotels = new List<HotelCardVM>();
+    private List<HotelListItemVM> SavedHotels = new List<HotelListItemVM>();
     private HashSet<int> loadingHotels = new HashSet<int>();
     private string? errorMessage;
 
@@ -40,11 +40,11 @@
         try
         {
             var httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
-            var res = await httpClient.GetFromJsonAsync<List<HotelCardVM>>("api/wishlist/GetUserWishlist");
+            var res = await httpClient.GetFromJsonAsync<List<HotelListItemVM>>("Wishlist/GetUserWishlist");
 
             if (res != null)
             {
-                SavedHotels = res.Select(h => new HotelCardVM
+                SavedHotels = res.Select(h => new HotelListItemVM
                 {
                     HotelId = h.HotelId,
                     HotelName = h.HotelName,
@@ -71,7 +71,7 @@
         {
             errorMessage = "Lỗi khi tải danh sách khách sạn đã lưu.";
             Console.WriteLine($"Error: {ex.Message}");
-            SavedHotels = new List<HotelCardVM>();
+            SavedHotels = new List<HotelListItemVM>();
         }
     }
 
@@ -88,7 +88,7 @@
                 hotel.IsWishlist = !hotel.IsWishlist;
 
                 var httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
-                var res = await httpClient.PostAsync($"api/wishlist/toggle/{hotelId}", null);
+                var res = await httpClient.PostAsync($"Wishlist/toggle/{hotelId}", null);
 
                 if (res.IsSuccessStatusCode)
                 {

@@ -1,23 +1,38 @@
 namespace HotelBooking.webapp.ViewModels.Hotel;
 
-public class HotelCardVM
+public class HotelListItemVM
 {
     public int HotelId { get; set; }
     public string HotelName { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
     public string City { get; set; } = string.Empty;
     public string Country { get; set; } = string.Empty;
-    public string ShortDescription { get; set; } = string.Empty;
-    public string CoverImageUrl { get; set; } = string.Empty;
-    public List<string> ImageUrls { get; set; } = new List<string>();
-    public List<AmenityVM> HighlightAmenities { get; set; } = new();
-    public bool IsWishlist { get; set; } = false;
+
+    public string? ShortDescription { get; set; }
+
+    // Hình ảnh
+    public string? CoverImageUrl { get; set; }
+    public List<string> ImageUrls { get; set; } = new();
+
+    // Rating & Review
+    public double AverageRating { get; set; }
+    public int ReviewCount { get; set; }
+
+    // Giá
     public decimal? MinPricePerNight { get; set; }
-    public double AverageRating { get; set; } = 0;
-    public int ReviewCount { get; set; } = 0;
+    public decimal? MaxPricePerNight { get; set; }
+    public decimal? AvgPricePerNight { get; set; }
+
+    // Phòng & Sức chứa
     public int? AvailableRooms { get; set; }
     public int? MaxAdultCapacity { get; set; }
     public int? MaxChildCapacity { get; set; }
+
+    // Tiện nghi nổi bật
+    public List<AmenityVM> HighlightAmenities { get; set; } = new();
+
+    // Wishlist
+    public bool IsWishlist { get; set; }
     public bool IsVerified { get; set; } = false;
     public string Status { get; set; } = "PendingVerification";
 }
@@ -26,5 +41,6 @@ public class AmenityVM
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
-    public string IconCode { get; set; } = string.Empty;
+    public string IconClass { get; set; } = string.Empty;
+    public string IconColor { get; set; } = "#000";
 }

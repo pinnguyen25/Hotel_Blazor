@@ -1,14 +1,26 @@
+using System.Globalization;
 using System.Linq;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
+using HotelBooking.application.Helpers;
 using HotelBooking.infrastructure.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-
+using Newtonsoft.Json;
 public interface IHotelService
 {
+    // Lấy hotel theo id
     public Task<HotelDetailDTO> GetHotelByIdAsync(int hotelId, int? userId = null);
+    // Lấy hotel rate cao
     public Task<List<HotelListItemDTO>> GetHighlyRatedHotelsAsync(int? userId = null);
     public Task<string> GetOwnerDashBoard(int ownerId);
-    public Task<List<HotelListItemDTO>> GetSearchOptionsAsync(string cityName, DateTime? checkIn, DateTime? checkOut,
+    // search hotel theo name
+    public Task<List<HotelListItemDTO>> GetSearchOptionsAsync(string? destination, DateTime? checkIn, DateTime? checkOut,
     int? adults, int? children, int? rooms, int? userId);
+    public Task<List<CityDTO>> GetCityNameAsync();
+    Task<List<AutocompleteDTO>> GetAutocompleteAsync(string keyword);
 }
 
 public class HotelService : IHotelService
@@ -24,109 +36,115 @@ public class HotelService : IHotelService
         _dbu = dbu;
     }
 
+
     public async Task<List<HotelListItemDTO>> GetHighlyRatedHotelsAsync(int? userId = null)
     {
-        // lấy hotel có rate >= 6.5 
-        var query = _context.Hotels
-        .Include(h => h.City).ThenInclude(c => c.Country)
-        .Include(h => h.HotelImages)
-        .Include(h => h.HotelAmenities).ThenInclude(ha => ha.Amenity)
-        .Include(h => h.RoomTypes).ThenInclude(rt => rt.Rooms)
-        .Include(h => h.Reviews)
-        .Where(h => h.Reviews.Any() && h.Reviews.Average(r => r.Rating ?? 0) >= 6.5)
-        .OrderByDescending(h => h.Reviews.Average(r => r.Rating ?? 0))
-        .Take(10);  // Limit để tối ưu
-
-        var hotels = await query.ToListAsync();
-
         // Load wishlistId nếu có userId
         var wishlistId = userId.HasValue
             ? await _context.Wishlists.Where(w => w.UserId == userId).Select(w => w.HotelId).ToListAsync()
             : new List<int>();
 
-        var res = hotels.Select(h => new HotelListItemDTO
-        {
-            HotelId = h.Id,
-            Name = h.Name,
-            Address = h.Address,
-            City = h.City?.Name ?? string.Empty,
-            Country = h.City?.Country?.Name ?? string.Empty,
-            ShortDescription = !string.IsNullOrEmpty(h.Description)
-            ? h.Description.Substring(0, Math.Min(150, h.Description.Length)) + "..."
-            : string.Empty,
-            CoverImageUrl = h.CoverImageUrl ?? string.Empty,
-            ImageUrls = h.HotelImages.OrderBy(i => i.Id).Take(4).Select(i => i.ImageUrl).ToList(),
-            HighlightAmenities = h.HotelAmenities.Take(3)
-            .Select(a => new AmenityDTO
+        var topHotels = await _context.Hotels
+            .AsNoTracking()
+            .Where(h => h.Reviews.Any() && h.Reviews.Average(r => r.Rating ?? 0) >= 6.5)
+            .OrderByDescending(h => h.Reviews.Average(r => r.Rating ?? 0))
+            .Take(10)
+            .Select(h => new HotelListItemDTO
             {
-                Id = a.Amenity.Id,
-                Name = a.Amenity.Name
-                // IconCode = a.Amenity.IconCode ?? string.Empty;
-            }).ToList(),
+                HotelId = h.Id,
+                HotelName = h.Name,
+                Address = h.Address,
+                City = h.City.Name,
+                Country = h.City.Country.Name,
+                CoverImageUrl = h.CoverImageUrl,
+                ImageUrls = h.HotelImages
+                    .OrderBy(i => i.Id)
+                    .Take(4)
+                    .Select(i => i.ImageUrl)
+                    .ToList(),
+                HighlightAmenities = h.HotelAmenities
+                    .Take(3)
+                    .Select(a => new AmenityDTO
+                    {
+                        Id = a.Amenity.Id,
+                        Name = a.Amenity.Name
+                    })
+                    .ToList(),
+                MinPricePerNight = h.RoomTypes.Min(r => r.PricePerNight),
+                MaxPricePerNight = h.RoomTypes.Max(r => r.PricePerNight),
+                AvgPricePerNight = Math.Round(h.RoomTypes.Average(r => r.PricePerNight), 0),
+                AvailableRooms = h.RoomTypes
+                    .SelectMany(rt => rt.Rooms)
+                    .Count(r => r.Status == "Available"),
+                AverageRating = Math.Round(h.Reviews.Average(r => r.Rating ?? 0), 1),
+                ReviewCount = h.Reviews.Count(r => r.Rating.HasValue),
+                MaxAdultCapacity = h.RoomTypes.Max(rt => rt.AdultCapacity),
+                MaxChildCapacity = h.RoomTypes.Max(rt => rt.ChildCapacity),
+                IsWishlist = wishlistId.Contains(h.Id)
+            })
+            .ToListAsync();
+        return topHotels;
+    }
 
-            MinPricePerNight = h.RoomTypes.Any()
-            ? h.RoomTypes.Min(r => r.PricePerNight)
-            : null,
+    public async Task<List<CityDTO>> GetCityNameAsync()
+    {
+        var countryCode = await _context.Countries
+            .Where(co => co.Code == "VN")
+            .Select(c => c.Id)
+            .FirstOrDefaultAsync();
 
-            AvailableRooms = h.RoomTypes
-            .SelectMany(rt => rt.Rooms)
-            .Count(r => r.Status == "Available"),
+        var cities = await _context.Cities
+            .Where(c => c.CountryId == countryCode)
+            .ToListAsync(); 
 
-            AverageRating = h.Reviews.Any(r => r.Rating.HasValue)
-            ? Math.Round(h.Reviews.Average(r => r.Rating ?? 0), 1)
-            : 0,
-
-            ReviewCount = h.Reviews.Count(r => r.Rating.HasValue),
-            MaxAdultCapacity = h.RoomTypes.Any() ? h.RoomTypes.Max(rt => rt.AdultCapacity) : null,
-            MaxChildCapacity = h.RoomTypes.Any() ? h.RoomTypes.Max(rt => rt.ChildCapacity) : null,
-            IsWishlist = wishlistId.Contains(h.Id)
+        var result = cities.Select(c =>
+        {
+            var slug = c.Name.Slugify();
+            return new CityDTO
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Slug = slug,
+                CountryId = c.CountryId,
+                CoverImageUrl = $"/images/cities/{slug}.jpg"
+            };
         }).ToList();
 
-        return res;
+        return result;
     }
 
     public async Task<HotelDetailDTO> GetHotelByIdAsync(int hotelId, int? userId = null)
     {
-        var hotel = await _context.Hotels
-        .Include(h => h.City).ThenInclude(c => c.Country)
-        .Include(h => h.HotelImages)
-        .Include(h => h.HotelAmenities).ThenInclude(ha => ha.Amenity)
-        .Include(h => h.RoomTypes).ThenInclude(rt => rt.Rooms)
-        .Include(h => h.Reviews)
-        // .Include(h => h.Policies) // bổ sung khi có chính sách
-        .FirstOrDefaultAsync(h => h.Id == hotelId);
-
-        if (hotel == null) return null;
 
         bool isWishlist = userId.HasValue && await _context.Wishlists.AnyAsync(w => w.UserId == userId && w.HotelId == hotelId);
 
         // Map sang HotelDetailDTO
-        return new HotelDetailDTO
+        var hotel = await _context.Hotels.Where(h => h.Id == hotelId).Select(h => new HotelDetailDTO
         {
-            HotelId = hotel.Id,
-            Name = hotel.Name,
-            Address = hotel.Address,
-            Description = hotel.Description,
-            CoverImageUrl = hotel.CoverImageUrl ?? string.Empty,
-            ImageUrls = hotel.HotelImages
+            HotelId = h.Id,
+            HotelName = h.Name,
+            Address = h.Address,
+            Description = h.Description,
+            CoverImageUrl = h.CoverImageUrl ?? string.Empty,
+            ImageUrls = h.HotelImages
             .Select(i => i.ImageUrl)
             .ToList(),
 
-            AverageRating = hotel.Reviews.Any()
-            ? Math.Round(hotel.Reviews.Average(r => r.Rating ?? 0), 1) : 0,
+            AverageRating = h.Reviews.Any()
+            ? Math.Round(h.Reviews.Average(r => r.Rating ?? 0), 1) : 0,
 
-            ReviewCount = hotel.Reviews.Count,
-            MinPricePerNight = hotel.RoomTypes.Any()
-            ? hotel.RoomTypes.Min(r => r.PricePerNight) 
+            ReviewCount = h.Reviews.Count,
+            MinPricePerNight = h.RoomTypes.Any()
+            ? h.RoomTypes.Min(r => r.PricePerNight)
             : null,
-            AvailableRooms = hotel.RoomTypes
+            AvailableRooms = h.RoomTypes
             .SelectMany(rt => rt.Rooms)
             .Count(r => r.Status == "Available"),
 
-            IsVerified = hotel.IsVerified ?? false, // nếu trong DB giá trị IsVerified = null, thì DTO sẽ nhận false  
-            Status = hotel.Status,
+            IsVerified = h.IsVerified ?? false, // nếu trong DB giá trị IsVerified = null, thì DTO sẽ nhận false  
+            Status = h.Status,
             IsWishlist = isWishlist,
-            Amenities = hotel.HotelAmenities
+            Amenities = h.HotelAmenities
             .Select(a => new AmenityDTO
             {
                 Id = a.Amenity.Id,
@@ -135,7 +153,8 @@ public class HotelService : IHotelService
             }).ToList(),
             // Policies = ... (implement nếu có)
             // RoomTypes = ... (implement nếu có)
-        };
+        }).FirstOrDefaultAsync();
+        return hotel;
     }
 
     public async Task<string> GetOwnerDashBoard(int ownerId)
@@ -143,18 +162,22 @@ public class HotelService : IHotelService
         return await Task.FromResult($"Owner Dashboard for Owner ID: {ownerId}");
     }
 
-    public async Task<List<HotelListItemDTO>> GetSearchOptionsAsync(string cityName, DateTime? checkIn, DateTime? checkOut,
+    public async Task<List<HotelListItemDTO>> GetSearchOptionsAsync(string? destination, DateTime? checkIn, DateTime? checkOut,
     int? adults, int? children, int? rooms, int? userId = null)
     {
-        // lấy danh sách HotelId từ SP
-        var hotelId = await _context.Database
-        .SqlQueryRaw<int>(
-            "EXEC sp_SearchHotels @CityName={0}, @CheckIn={1}, @CheckOut={2}, @Adults={3}, @Children={4}, @Rooms={5}",
-            cityName, checkIn, checkOut, adults, children, rooms)
-        .ToListAsync();
-        if (!hotelId.Any())
-            return new List<HotelListItemDTO>();
+        // set giá trị mặc định nếu null
+        checkIn ??= DateTime.Today;
+        checkOut ??= checkIn.Value.AddDays(1);
+        adults ??= 1;
+        children ??= 0;
+        rooms ??= 1;
 
+        if (!string.IsNullOrEmpty(destination))
+        {
+            destination = destination.Trim(); // loại bỏ khoảng trắng đầu/cuối
+            destination = System.Text.RegularExpressions.Regex.Replace(destination, @"\s+", " "); // chuẩn hóa khoảng trắng giữa các từ
+            destination = destination.ToLowerInvariant(); // chuyển sang chữ thường
+        }
         // load wishlistIds của user trước
         var wishlistIds = userId.HasValue
             ? await _context.Wishlists
@@ -163,58 +186,51 @@ public class HotelService : IHotelService
                 .ToListAsync()
             : new List<int>();
 
-        // lấy dữ liệu chi tiết ( gồm: ảnh, amenities, review,...)
-        var hotels = await _context.Hotels
-        .Include(h => h.City).ThenInclude(c => c.Country)
-        .Include(h => h.HotelImages)
-        .Include(h => h.HotelAmenities).ThenInclude(ha => ha.Amenity)
-        .Include(h => h.RoomTypes).ThenInclude(rt => rt.Rooms)
-        .Include(h => h.Reviews)
-        .Where(h => hotelId.Contains(h.Id))
+        // lấy danh sách từ SP 
+        var hotelRes = await _context.Database
+        .SqlQueryRaw<SearchHotelResultDTO>(
+            "EXEC sp_SearchHotels @destination={0}, @CheckIn={1}, @CheckOut={2}, @Adults={3}, @Children={4}, @Rooms={5}",
+        destination, checkIn, checkOut, adults, children, rooms)
         .ToListAsync();
+
         // map sang DTO
-        var res = hotels.Select(h => new HotelListItemDTO
+        return hotelRes.Select(h => new HotelListItemDTO
         {
-            HotelId = h.Id,
-            Name = h.Name,
+            HotelId = h.HotelId,
+            HotelName = h.HotelName,
             Address = h.Address,
-            City = h.City?.Name ?? string.Empty,
-            Country = h.City?.Country?.Name ?? string.Empty,
-            ShortDescription = !string.IsNullOrEmpty(h.Description)
-            ? h.Description.Substring(0, Math.Min(150, h.Description.Length)) + "..."
-            : string.Empty,
-
-            CoverImageUrl = h.CoverImageUrl ?? string.Empty,
-            ImageUrls = h.HotelImages.OrderBy(i => i.Id).Take(4).Select(i => i.ImageUrl).ToList(),
-
-            HighlightAmenities = h.HotelAmenities.Take(3)
-            .Select(a => new AmenityDTO
-            {
-                Id = a.Amenity.Id,
-                Name = a.Amenity.Name
-                // IconCode = a.Amenity.IconCode ?? string.Empty
-            }).ToList(),
-
-            MinPricePerNight = h.RoomTypes.Any()
-            ? h.RoomTypes.Min(r => r.PricePerNight)
-            : null,
-
-            AvailableRooms = h.RoomTypes
-            .SelectMany(rt => rt.Rooms)
-            .Count(r => r.Status == "Available"),
-
-            AverageRating = h.Reviews.Any(r => r.Rating.HasValue)
-            ? Math.Round(h.Reviews.Average(r => r.Rating ?? 0), 1)
-            : 0,
-
-            ReviewCount = h.Reviews.Count(r => r.Rating.HasValue),
-
-            MaxAdultCapacity = h.RoomTypes.Any() ? h.RoomTypes.Max(rt => rt.AdultCapacity) : null,
-            MaxChildCapacity = h.RoomTypes.Any() ? h.RoomTypes.Max(rt => rt.ChildCapacity) : null,
-
-            IsWishlist = wishlistIds.Contains(h.Id)
+            City = h.CityName,
+            Country = h.CountryName,
+            CoverImageUrl = h.CoverImageUrl,
+            ImageUrls = string.IsNullOrEmpty(h.Images)
+            ? new List<string>()
+            : JsonConvert.DeserializeObject<List<string>>(h.Images).Take(4).ToList(),
+            // HighlightAmenities = string.IsNullOrEmpty(h.AmenityNames)
+            // ? new List<AmenityDTO>()
+            // : JsonConvert.DeserializeObject<List<string>>(h.AmenityNames)
+            //     .Take(3)
+            //     .Select(a => new AmenityDTO { Name = a })
+            //     .ToList(),
+            MinPricePerNight = h.MinPrice,
+            MaxPricePerNight = h.MaxPrice,
+            AvgPricePerNight = h.AvgPrice,
+            AvailableRooms = h.AvailableRooms,
+            AverageRating = h.AvgRating,
+            ReviewCount = h.ReviewCount,
+            IsWishlist = wishlistIds.Contains(h.HotelId)
+            // nếu SP có cột ShortDescription, IsVerified, Status thì map thêm
+            // ShortDescription = h.ShortDescription ?? string.Empty,
+            // IsVerified = h.IsVerified,
+            // Status = h.Status
         }).ToList();
+    }
 
-        return res;
+    public async Task<List<AutocompleteDTO>> GetAutocompleteAsync(string keyword)
+    {
+        if (string.IsNullOrWhiteSpace(keyword)) return new List<AutocompleteDTO>();
+
+        return await _context.Database
+            .SqlQueryRaw<AutocompleteDTO>("EXEC sp_AutocompleteSearch @Keyword={0}", keyword)
+            .ToListAsync();
     }
 }

@@ -1,7 +1,8 @@
+@using Microsoft.AspNetCore.WebUtilities
 @using MudBlazor
 @using System.ComponentModel.DataAnnotations
 @inject NavigationManager _navManager
-
+@inject IHotelApiClient HotelApiClient
 <div class="hero-search position-absolute bottom-0 start-50 translate-middle-x w-100 mb-5"
     style="z-index: 3; max-width: 1000px;">
     <div class="search-form container p-3 bg-white rounded-3">
@@ -11,23 +12,12 @@
 
             <!-- Điểm đến -->
             <div class="col-12 col-md-4 position-relative">
-                <MudTextField T="string" Label="Địa điểm đến" @bind-Value="Destination" For="@(() => Destination)"
-                    Variant="Variant.Outlined" Adornment="Adornment.Start"
-                    AdornmentIcon="@Icons.Material.Filled.LocationOn" Class="w-100 location-input" Required="true"
-                    Immediate="true" Validation="@(new Func<string, string>(ValidateDestination))"
-                    @onclick="() => ShowPopularDestinations = true" />
-
-                @if (ShowPopularDestinations)
-                {
-                    <ul class="list-group suggestion-list">
-                        @foreach (var dest in PopularDestinations)
-                        {
-                            <li class="list-group-item" @onclick="() => SelectDestination(dest)">
-                                @dest
-                            </li>
-                        }
-                    </ul>
-                }
+                <MudAutocomplete T="SearchSuggestionVM" @bind-Value="SelectedDestination" ToStringFunc="s => s?.Label"
+                    SearchFunc="SearchSuggestions" DebounceInterval="300" Variant="Variant.Outlined"
+                    Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.LocationOn"
+                    Class="w-100 location-input" Label="Địa điểm đến" Clearable="true" ResetValueOnEmptyText="true"
+                    Required="true"
+                    MaxItems="65" />
             </div>
 
             <!-- Ngày nhận - trả -->
@@ -96,14 +86,20 @@
 @code {
     // 1. Điểm đến
     [Required(ErrorMessage = "Vui lòng nhập điểm đến")]
-    private string Destination { get; set; } = "";
-    private bool ShowPopularDestinations { get; set; } = false;
-    private List<string> PopularDestinations { get; set; } = new() { "Hà Nội", "Đà Nẵng", "Hồ Chí Minh", "Nha Trang" };
+    private SearchSuggestionVM? SelectedDestination { get; set; }
+    private List<SearchSuggestionVM> AllCities { get; set; } = new List<SearchSuggestionVM>();
 
-    private void SelectDestination(string destination)
+    // gọi api autocomplete
+    private async Task<IEnumerable<SearchSuggestionVM>> SearchSuggestions(string value, CancellationToken token)
     {
-        Destination = destination;
-        ShowPopularDestinations = false;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            // user chưa nhập gì → trả về toàn bộ city preload
+            return AllCities;
+        }
+
+        // có input → call API autocomplete (có thể trả cả city + hotel)
+        return await HotelApiClient.GetAutocompleteAsync(value);
     }
 
     private string ValidateDestination(string value)
@@ -141,17 +137,29 @@
     // 4. Xử lý tìm kiếm
     private void SearchHotels()
     {
-        var checkin = SelectedRange?.Start?.ToString("yyyy-MM-dd") ?? DateTime.Today.ToString("yyyy-MM-dd");
-        var checkout = SelectedRange?.End?.ToString("yyyy-MM-dd") ?? DateTime.Today.AddDays(1).ToString("yyyy-MM-dd");
+        var checkin = SelectedRange?.Start?.ToString("yyyy-MM-dd") ?? "";
+        var checkout = SelectedRange?.End?.ToString("yyyy-MM-dd") ?? "";
 
-        var url = $"/searchresult" +
-        $"?destination={Uri.EscapeDataString(Destination)}" +
-        $"&checkin={checkin}" +
-        $"&checkout={checkout}" +
-        $"&adults={Adults}" +
-        $"&children={Children}" +
-        $"&rooms={Rooms}";
+        // Luôn truyền Destination
+        var destinationValue = SelectedDestination?.Label ?? "";
 
+        var queryDict = new Dictionary<string, string>
+        {
+            ["destination"] = destinationValue,
+            ["checkin"] = checkin,
+            ["checkout"] = checkout,
+            ["adults"] = Adults.ToString(),
+            ["children"] = Children.ToString(),
+            ["rooms"] = Rooms.ToString()
+        };
+
+        var url = QueryHelpers.AddQueryString("/searchresult", queryDict);
         _navManager.NavigateTo(url);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // preload tất cả city từ BE
+        AllCities = await HotelApiClient.GetCitiesAsync();
     }
 }

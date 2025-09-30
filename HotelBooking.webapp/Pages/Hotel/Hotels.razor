@@ -1,0 +1,97 @@
+@page "/Hotels"
+@using HotelBooking.webapp.ViewModels.Hotel
+@layout MainLayout
+@using MudBlazor
+
+<!-- Hero Section -->
+<section class="hero-section position-relative min-vh-100">
+    <div class="hero-bg">
+        <img src="https://your-cdn-link/hero-banner.jpg" 
+             alt="Hero Background" 
+             class="w-100 vh-100 object-fit-cover" />
+    </div>
+
+    <div class="hero-overlay"></div>
+
+    <div class="hero-title position-absolute top-50 start-50 translate-middle text-center text-white">
+        <h1 class="fw-bold display-5">
+            STAY 24-HOURS WITH 24/7 <br /> SELF-SERVICES
+        </h1>
+    </div>
+
+    <SearchForm />
+</section>
+
+
+<!-- Hotels Section -->
+<section class="container my-5">
+    <div class="row">
+        <!-- Sidebar / Filters -->
+        <div class="col-lg-3 mb-4">
+            <div class="p-3 bg-white rounded shadow-sm">
+                <h5 class="fw-bold mb-3">Your Search</h5>
+                <SearchForm />
+
+                <hr />
+
+                <h5 class="fw-bold mb-3">Loại chỗ ở</h5>
+                <MudCheckbox Checked="@true" Label="Free Cancellation" />
+                <MudCheckbox Checked="@false" Label="Breakfast Included" />
+                <MudCheckbox Checked="@false" Label="Pet Friendly" />
+
+                <hr />
+
+                <h5 class="fw-bold mb-3">Price per Night</h5>
+                <MudSlider Min="0" Max="10000" Step="500" @bind-Value="priceRange" ThumbLabel="true" />
+
+                <hr />
+
+                <h5 class="fw-bold mb-3">Guest Rating</h5>
+                <MudCheckbox Checked="@true" Label="Excellent 8+" />
+                <MudCheckbox Checked="@true" Label="Good 6+" />
+                <MudCheckbox Checked="@false" Label="Average 4+" />
+            </div>
+        </div>
+
+        <!-- Hotels List -->
+        <div class="col-lg-9">
+            <h2 class="mb-4 text-center">Tất cả các địa điểm</h2>
+
+            <div class="row">
+                @if (HotelsList != null && HotelsList.Any())
+                {
+                    @foreach (var h in HotelsList)
+                    {
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <HotelPreview Hotel="@h" OnWishlistToggle="HandleWishlistToggle" />
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p class="text-center text-muted">Chưa có khách sạn nào.</p>
+                }
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+@code
+{
+    private List<HotelListItemVM> HotelsList = new List<HotelListItemVM>();
+    private double priceRange = 5000; // ví dụ slider Price per night
+    protected override async Task OnInitializedAsync()
+    {
+        // gọi API từ service để lấy danh sách hotel
+        @* Hotels = await HotelService.GetAllHotelsAsync(); *@
+    }
+
+    private async Task HandleWishlistToggle(int hotelId)
+    {
+        // TODO: gọi API toggle wishlist
+        var h = HotelsList.FirstOrDefault(x => x.HotelId == hotelId);
+        if (h != null) h.IsWishlist = !h.IsWishlist;
+    }
+}

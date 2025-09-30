@@ -88,6 +88,8 @@ public partial class HotelBookingContext : DbContext
 
             entity.HasIndex(e => e.HotelId, "IX_Bookings_HotelId");
 
+            entity.HasIndex(e => new { e.Status, e.CheckInDate, e.CheckOutDate }, "IX_Bookings_Status_Date");
+
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -139,7 +141,11 @@ public partial class HotelBookingContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Cities__3214EC07FFD15D34");
 
+            entity.HasIndex(e => e.Name, "IX_Cities_Name");
+
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.Name).HasMaxLength(100);
+            entity.Property(e => e.Slug).HasMaxLength(100);
 
             entity.HasOne(d => d.Country).WithMany(p => p.Cities)
                 .HasForeignKey(d => d.CountryId)
@@ -153,6 +159,7 @@ public partial class HotelBookingContext : DbContext
             entity.HasIndex(e => e.Name, "UQ__Countrie__737584F6A47C3346").IsUnique();
 
             entity.Property(e => e.Code).HasMaxLength(10);
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.Name).HasMaxLength(100);
         });
 
@@ -161,6 +168,8 @@ public partial class HotelBookingContext : DbContext
             entity.HasKey(e => e.Id).HasName("PK__Hotels__3214EC07E250627F");
 
             entity.HasIndex(e => e.CityId, "IX_Hotels_CityId");
+
+            entity.HasIndex(e => new { e.CityId, e.IsVerified, e.Status }, "IX_Hotels_City_Verified_Status");
 
             entity.Property(e => e.Address).HasMaxLength(500);
             entity.Property(e => e.CoverImageUrl).HasMaxLength(500);
@@ -314,6 +323,8 @@ public partial class HotelBookingContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Policies__3214EC07DF39C412");
 
+            entity.HasIndex(e => e.Name, "UQ_Policies_Name").IsUnique();
+
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.Name).HasMaxLength(150);
         });
@@ -357,6 +368,8 @@ public partial class HotelBookingContext : DbContext
             entity.HasKey(e => e.Id).HasName("PK__Rooms__3214EC07698AAC5E");
 
             entity.HasIndex(e => e.RoomTypeId, "IX_Rooms_RoomTypeId");
+
+            entity.HasIndex(e => new { e.RoomTypeId, e.IsDeleted }, "IX_Rooms_RoomType_IsDeleted");
 
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.RoomNumber).HasMaxLength(50);
@@ -424,6 +437,8 @@ public partial class HotelBookingContext : DbContext
             entity.HasKey(e => e.Id).HasName("PK__RoomType__3214EC075BB9A09F");
 
             entity.HasIndex(e => e.HotelId, "IX_RoomTypes_HotelId");
+
+            entity.HasIndex(e => new { e.HotelId, e.AdultCapacity, e.ChildCapacity }, "IX_RoomTypes_Hotel_Capacity");
 
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.Name).HasMaxLength(100);

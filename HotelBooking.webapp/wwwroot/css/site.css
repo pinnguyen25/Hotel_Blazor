@@ -19,7 +19,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  
+
 }
 
 /* Logo */
@@ -188,126 +188,133 @@ body {
 }
 
 /* search-form */
-.location-input .mud-input-root, 
+.location-input .mud-input-root,
 .guest-room-input .mud-input-root {
-    padding: 14px 12px 14px 36px !important;
-    height: 56px;
+  padding: 14px 12px 14px 36px !important;
+  height: 56px;
 }
 
 .custom-date-range .mud-input-root {
-    padding: 14px 12px 14px 10px !important; 
-    height: 56px;
+  padding: 14px 12px 14px 10px !important;
+  height: 56px;
 }
 
-.location-input .mud-input-adornment-start, 
-.custom-date-range .mud-input-adornment-start, 
+.location-input .mud-input-adornment-start,
+.custom-date-range .mud-input-adornment-start,
 .guest-room-input .mud-input-adornment-start {
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: rgba(0, 0, 0, 0.54);
-    font-size: 20px;
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(0, 0, 0, 0.54);
+  font-size: 20px;
 }
 
 .suggestion-list {
-    border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-    background-color: #fff;
-    z-index: 1000;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  background-color: #fff;
+  z-index: 1000;
 }
 
 .suggestion-list .list-group-item {
-    border: none;
-    cursor: pointer;
+  border: none;
+  cursor: pointer;
 }
 
 .suggestion-list .list-group-item:hover {
-    background-color: #f5f5f5;
+  background-color: #f5f5f5;
 }
 
 /* Input stepper buttons */
 .input-stepper .mud-button-root {
-    min-width: 32px;
-    height: 32px;
-    padding: 0;
-    line-height: 1;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  line-height: 1;
 }
 
 /* Start date */
 .custom-date-range input:first-of-type {
-    font-size: 16px;   /* Ví dụ: đổi size chữ */
-    padding-left: 36px;
-    padding-right: 4px !important;
-    margin-left: 20px;
+  font-size: 16px;
+  /* Ví dụ: đổi size chữ */
+  padding-left: 36px;
+  padding-right: 4px !important;
+  margin-left: 20px;
 }
 
 /* Ô "Trả" (End date */
 .custom-date-range input:last-of-type {
-    font-size: 16px;
-    padding-right: 6px !important;
+  font-size: 16px;
+  padding-right: 6px !important;
 }
 
 /* Nút tìm */
 .search-btn {
-    height: 46px;
-    font-size: 15px;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 8px;
-    border-radius: 8px;        /* bo góc nhẹ hơn */
-    background: transparent;   /* giống navbar */
-    border: 2px solid #4facfe ; /* màu border chủ đạo */
-    color: #4facfe;            /* chữ màu xanh */
-    transition: all 0.3s ease; /* hiệu ứng hover */
+  height: 46px;
+  font-size: 15px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+  border-radius: 8px;
+  /* bo góc nhẹ hơn */
+  background: transparent;
+  /* giống navbar */
+  border: 2px solid #4facfe;
+  /* màu border chủ đạo */
+  color: #4facfe;
+  /* chữ màu xanh */
+  transition: all 0.3s ease;
+  /* hiệu ứng hover */
 }
 
 .search-btn:hover {
-    background: #4facfe ;
-    color: #fff ;               /* hover đổi ngược */
+  background: #4facfe;
+  color: #fff;
+  /* hover đổi ngược */
 }
 
 .search-btn .mud-icon-root {
-    font-size: 20px;
+  font-size: 20px;
 }
 
 /* Ensure ellipsis for long text */
 .mud-input-root .mud-input-slot {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .position-relative .suggestion-list {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    width: 100%;
-    margin-top: 4px;
-    border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-    background-color: #fff;
-    z-index: 1000;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  margin-top: 4px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  background-color: #fff;
+  z-index: 1000;
 }
 
 /* Khách dropdown rộng hơn */
 .guest-dropdown {
-    min-width: 260px;
+  min-width: 260px;
 }
 
 /* List item hover */
 .suggestion-list .list-group-item:hover {
-    background-color: #f5f5f5;
-    cursor: pointer;
+  background-color: #f5f5f5;
+  cursor: pointer;
 }
 
 /* Stepper button size */
 .input-stepper .mud-button-root {
-    min-width: 32px;
-    height: 32px;
-    padding: 0;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
 }
 
 /* hotels  */
@@ -483,21 +490,56 @@ h3 {
 
 /* index */
 /* -- Khám phá VN -- */
-#multiCardCarousel .card:first-child {
-  margin-left: 10px;
+/* Destination card */
+.destination-card {
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 18rem;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+}
+.destination-card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+.destination-card .card-body {
+  padding: 10px 15px;
+}
+.destination-card .card-title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #1a2a6c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-#carouselWrapper {
-  padding-left: calc(3rem + 0.5rem);
-  /* nút + khoảng cách */
+/* Swiper carousel */
+.swiper {
+  width: 100%;
+  overflow: hidden;
+  padding: 0 3.5rem;
+}
+.swiper-wrapper {
+  display: flex;
+  align-items: center;
+}
+.swiper-slide {
+  width: 18rem !important;
+  display: flex;
+  justify-content: center;
 }
 
-
-/* Carousel wrapper hover mới show nút */
+/* Carousel navigation */
 .carousel-wrapper {
   position: relative;
+  max-width: 100%;
+  margin: 0 auto;
 }
-
 .carousel-wrapper .carousel-btn {
   position: absolute;
   top: 50%;
@@ -506,7 +548,6 @@ h3 {
   height: 3rem;
   border-radius: 50%;
   background-color: rgba(0, 123, 255, 0.7);
-  /* xanh biển nhạt */
   color: #fff;
   border: none;
   display: flex;
@@ -518,68 +559,49 @@ h3 {
   transition: opacity 0.3s, background-color 0.3s;
   z-index: 10;
 }
-
 .carousel-wrapper:hover .carousel-btn {
   opacity: 1;
 }
-
 .carousel-btn:hover {
   background-color: #007bff;
-  /* đậm hơn khi hover */
 }
-
-/* Vị trí prev/next */
 .prev-btn {
   left: 0.5rem;
 }
-
 .next-btn {
   right: 0.5rem;
 }
 
-/* Card tối ưu hình ảnh */
-.destination-card {
-  border-radius: 12px;
-  overflow: hidden;
-  background: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  flex-shrink: 0;
-  min-width: 18rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.destination-card img {
-  width: 100%;
-  height: 180px;
-  object-fit: cover;
-}
-
-.destination-card .card-body {
-  padding: 10px 15px;
-}
-
-.destination-card .card-title {
-  font-weight: 600;
-  font-size: 1rem;
-  color: #1a2a6c;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
+  .destination-card {
+    width: 16rem;
+  }
   .destination-card img {
     height: 140px;
   }
+  .swiper-slide {
+    width: 16rem !important;
+  }
+  .swiper {
+    padding: 0 2rem;
+  }
 }
-
 @media (max-width: 576px) {
+  .destination-card {
+    width: 14rem;
+  }
   .destination-card img {
     height: 120px;
   }
+  .swiper-slide {
+    width: 14rem !important;
+  }
+  .swiper {
+    padding: 0 1.5rem;
+  }
 }
+
 
 /* phân loại lưu trú */
 .accommodation-grid {

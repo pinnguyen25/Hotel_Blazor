@@ -26,14 +26,14 @@ else
         @foreach (var hotel in Hotels)
         {
             <div class="col-sm-6 col-md-3 mb-4">
-                <HotelCard Hotel="hotel" OnWishlistToggle="ToggleWishlist" />
+                <HotelPreview Hotel="hotel" OnWishlistToggle="ToggleWishlist" />
             </div>
         }
     </div>
 }
 
 @code {
-    private List<HotelCardVM> Hotels = new();
+    private List<HotelListItemVM> Hotels = new();
     private HashSet<int> loadingHotels = new();
     private string? errorMessage;
 
@@ -42,45 +42,41 @@ else
         var httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
         var uri = NavManager.ToAbsoluteUri(NavManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        // đọc query và bind vào model
+        var queryParams = new SearchResultVM
+        {
+            Destination = query["destination"] ?? "",
+            CheckIn = string.IsNullOrEmpty(query["checkin"]) ? null : DateTime.Parse(query["checkin"]),
+            CheckOut = string.IsNullOrEmpty(query["checkout"]) ? null : DateTime.Parse(query["checkout"]),
+            Adults = int.TryParse(query["adults"], out var a) ? a : 1,
+            Children = int.TryParse(query["children"], out var c) ? c : 0,
+            Rooms = int.TryParse(query["rooms"], out var r) ? r : 1,
+            @* AccommodationType = query["type"] *@
+        };
+        // Build API URL
+        var queryDict = new Dictionary<string, string?>
+        {
+            ["destination"] = queryParams.Destination,
+            ["checkIn"] = queryParams.CheckIn?.ToString("yyyy-MM-dd"),
+            ["checkOut"] = queryParams.CheckOut?.ToString("yyyy-MM-dd"),
+            ["adults"] = queryParams.Adults.ToString(),
+            ["children"] = queryParams.Children.ToString(),
+            ["rooms"] = queryParams.Rooms.ToString(),
+            // ["accommodationType"] = queryParams.AccommodationType
+        };
 
-        var apiUrl = "api/hotel/get-search-options?" +
-        $"cityName={Uri.EscapeDataString(query["destination"] ?? "")}" +
-        $"&checkIn={query["checkin"] ?? ""}" +
-        $"&checkOut={query["checkout"] ?? ""}" +
-        $"&adults={query["adults"] ?? "1"}" +
-        $"&children={query["children"] ?? "0"}" +
-        $"&rooms={query["rooms"] ?? "1"}";
+        var apiUrl = QueryHelpers.AddQueryString("Hotel/get-search-options", queryDict);
 
         try
         {
-            var response = await httpClient.GetFromJsonAsync<List<HotelCardVM>>(apiUrl);
-            Hotels = response?.Select(h => new HotelCardVM
-            {
-                HotelId = h.HotelId,
-                HotelName = h.HotelName,
-                Address = h.Address,
-                City = h.City,
-                Country = h.Country,
-                ShortDescription = h.ShortDescription,
-                CoverImageUrl = h.CoverImageUrl,
-                ImageUrls = h.ImageUrls,
-                HighlightAmenities = h.HighlightAmenities.Select(a => new AmenityVM { Id = a.Id, Name = a.Name }).ToList(),
-                IsWishlist = h.IsWishlist,
-                MinPricePerNight = h.MinPricePerNight,
-                AverageRating = h.AverageRating,
-                ReviewCount = h.ReviewCount,
-                AvailableRooms = h.AvailableRooms,
-                MaxAdultCapacity = h.MaxAdultCapacity,
-                MaxChildCapacity = h.MaxChildCapacity,
-                IsVerified = false,
-                Status = "PendingVerification"
-            }).ToList() ?? new List<HotelCardVM>();
+            // FE nhận DTO trực tiếp từ API, không cần map lại
+            Hotels = await httpClient.GetFromJsonAsync<List<HotelListItemVM>>(apiUrl)
+            ?? new List<HotelListItemVM>();
         }
         catch (Exception ex)
         {
             errorMessage = "Lỗi khi tải dữ liệu.";
             Console.WriteLine($"Error: {ex.Message}");
-            Hotels = new List<HotelCardVM>();
         }
     }
 
@@ -98,7 +94,7 @@ else
                 hotel.IsWishlist = !hotel.IsWishlist;
 
                 var httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
-                var res = await httpClient.PostAsync($"api/wishlist/toggle/{hotelId}", null);
+                var res = await httpClient.PostAsync($"Wishlist/toggle/{hotelId}", null);
 
                 if (!res.IsSuccessStatusCode)
                 {
@@ -106,6 +102,7 @@ else
                 }
                 StateHasChanged();
             }
+            StateHasChanged();
         }
         catch (Exception ex)
         {

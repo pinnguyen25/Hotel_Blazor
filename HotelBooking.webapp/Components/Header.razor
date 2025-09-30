@@ -1,4 +1,5 @@
 @using System.Security.Claims
+@using Blazored.LocalStorage
 @using HotelBooking.Client
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
@@ -60,6 +61,11 @@
                                     <i class="bi bi-person me-2"></i> Thông tin
                                 </a>
                             </li>
+                            <li>
+                                <a class="dropdown-item" href="@($"/wishlist-page")">
+                                    <i class="bi bi-heart me-2"></i> Đã lưu
+                                </a>
+                            </li>
                             @if (userRoles.Contains("Owner"))
                             {
                                 <li>
@@ -112,6 +118,7 @@
     private List<string> userRoles = new();
     private string userFullName = "Người dùng";
     private string userAvatar = "/images/default-avatar.png";
+    private int? userId;
     protected override async Task OnInitializedAsync()
     {
         AuthStateProvider.AuthenticationStateChanged += async (task) =>
@@ -134,12 +141,21 @@
             userFullName = user.FindFirst("FullName")?.Value ?? "Người dùng";
             userAvatar = user.FindFirst("Avatar")?.Value ?? string.Empty;
             userRoles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+            if (int.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int parsedUserId))
+            {
+                userId = parsedUserId;
+            }
+            else
+            {
+                userId = null;
+            }
         }
         else
         {
             userFullName = "Người dùng";
             userAvatar = string.Empty;
             userRoles.Clear();
+            userId = null;
         }
     }
 

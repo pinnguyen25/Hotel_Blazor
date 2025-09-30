@@ -11,6 +11,10 @@ public partial class City
 
     public string Name { get; set; } = null!;
 
+    public bool? IsDeleted { get; set; }
+
+    public string? Slug { get; set; }
+
     public virtual Country Country { get; set; } = null!;
 
     public virtual ICollection<Hotel> Hotels { get; set; } = new List<Hotel>();

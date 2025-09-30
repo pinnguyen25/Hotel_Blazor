@@ -5,13 +5,16 @@
 @inject IJSRuntime JS
 @inject IHttpClientFactory HttpClientFactory
 @inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
 @* trang chủ chứa nội dung tổng quan về dịch vụ của website *@
 
 <!-- Hero Carousel -->
 <div id="heroCarousel" class="carousel slide carousel-fade position-relative" data-bs-ride="carousel">
   <div class="carousel-inner">
     <div class="carousel-item active vh-100 bg-cover"
-      style="background-image: url('https://source.unsplash.com/1600x900/?hotel');"></div>
+      style="background-image: url('https://source.unsplash.com/1600x900/?hotel=1');"></div>
     <div class="carousel-item vh-100 bg-cover"
       style="background-image: url('https://source.unsplash.com/1600x900/?resort');"></div>
     <div class="carousel-item vh-100 bg-cover"
@@ -44,71 +47,21 @@
 <!-- địa điểm du lịch để booking-->
 <div class="container mt-5">
   <h2 class="mb-4 text-center">Khám phá Việt Nam</h2>
-  <div class="position-relative carousel-wrapper">
-    <!-- Carousel wrapper -->
-    <div class="overflow-hidden" id="carouselWrapper">
-      <div id="multiCardCarousel" class="d-flex" style="gap:1rem; transition: transform 0.5s ease;">
-        <!-- Card items -->
-        <div class="card flex-shrink-0 destination-card">
-          <img src="https://source.unsplash.com/400x300/?city,travel" class="card-img-top">
-          <div class="card-body text-center">
-            <h5 class="card-title">Hà Nội</h5>
+  <div class="carousel-wrapper">
+    <!-- Swiper container -->
+    <div class="swiper" id="multiCardCarousel">
+      <div class="swiper-wrapper">
+        @foreach (var city in cities)
+        {
+          <div class="swiper-slide">
+            <div class="card destination-card" @onclick="() => NavigateToCity(city.Name)">
+              <img src="@city.CoverImageUrl" class="card-img-top" alt="@city.Slug">
+              <div class="card-body text-center">
+                <h5 class="card-title">@city.Name</h5>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="card flex-shrink-0 destination-card">
-          <img src="https://source.unsplash.com/400x300/?city,travel" class="card-img-top">
-          <div class="card-body text-center">
-            <h5 class="card-title">Hà Nội 2</h5>
-          </div>
-        </div>
-        <div class="card flex-shrink-0 destination-card">
-          <img src="https://source.unsplash.com/400x300/?city,travel" class="card-img-top">
-          <div class="card-body text-center">
-            <h5 class="card-title">Hà Nội 3</h5>
-          </div>
-        </div>
-        <div class="card flex-shrink-0 destination-card">
-          <img src="https://source.unsplash.com/400x300/?city,travel" class="card-img-top">
-          <div class="card-body text-center">
-            <h5 class="card-title">Hà Nội4</h5>
-          </div>
-        </div>
-        <div class="card flex-shrink-0 destination-card">
-          <img src="https://source.unsplash.com/400x300/?city,travel" class="card-img-top">
-          <div class="card-body text-center">
-            <h5 class="card-title">Hà Nội5</h5>
-          </div>
-        </div>
-        <div class="card flex-shrink-0 destination-card">
-          <img src="https://source.unsplash.com/400x300/?city,travel" class="card-img-top">
-          <div class="card-body text-center">
-            <h5 class="card-title">Hà Nội6</h5>
-          </div>
-        </div>
-        <div class="card flex-shrink-0 destination-card">
-          <img src="https://source.unsplash.com/400x300/?city,travel" class="card-img-top">
-          <div class="card-body text-center">
-            <h5 class="card-title">Hà Nội7</h5>
-          </div>
-        </div>
-        <div class="card flex-shrink-0 destination-card">
-          <img src="https://source.unsplash.com/400x300/?city,travel" class="card-img-top">
-          <div class="card-body text-center">
-            <h5 class="card-title">Hà Nội8</h5>
-          </div>
-        </div>
-        <div class="card flex-shrink-0 destination-card">
-          <img src="https://source.unsplash.com/400x300/?city,travel" class="card-img-top">
-          <div class="card-body text-center">
-            <h5 class="card-title">Hà Nội9</h5>
-          </div>
-        </div>
-        <div class="card flex-shrink-0 destination-card">
-          <img src="https://source.unsplash.com/400x300/?city,travel" class="card-img-top">
-          <div class="card-body text-center">
-            <h5 class="card-title">Hà Nội0</h5>
-          </div>
-        </div>
+        }
       </div>
     </div>
 
@@ -156,30 +109,26 @@
 
 <!-- Chỗ ở được đánh giá cao -->
 <div class="container mt-5">
-    <h2 class="mb-4 text-center">Chỗ ở được đánh giá cao</h2>
-    @if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
-    }
-    @if (hotels == null)
-    {
-        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-    }
-    else if (!hotels.Any())
-    {
-        <MudAlert Severity="Severity.Info">Không có khách sạn nào được đánh giá cao.</MudAlert>
-    }
-    else
-    {
-        <div class="row">
-            @foreach (var hotel in hotels)
-            {
-                <div class="col-sm-6 col-md-3 mb-4">
-                    <HotelCard Hotel="hotel" OnWishlistToggle="ToggleWishlist" />
-                </div>
-            }
+  <h2 class="mb-4 text-center">Chỗ ở được đánh giá cao</h2>
+  @if (hotels == null)
+  {
+    <p>Loading...</p>
+  }
+  else if (!hotels.Any())
+  {
+    <p>Không có khách sạn nào được đánh giá cao.</p>
+  }
+  else
+  {
+    <div class="row">
+      @foreach (var hotel in hotels)
+      {
+        <div class="col-sm-6 col-md-3 mb-4">
+          <HotelCard Hotel="hotel" OnWishlistToggle="ToggleWishlist" />
         </div>
-    }
+      }
+    </div>
+  }
 </div>
 
 
@@ -230,24 +179,28 @@
 
 
 @code {
-  private List<HotelCardVM> hotels = new();
-  private HashSet<int> loadingHotels = new();
+  private List<HotelListItemVM>? hotels;
+  private List<CityVM> cities = new List<CityVM>();
+  private HashSet<int> loadingHotels = new HashSet<int>();
   private string? errorMessage;
-  private int? userId;
+  private int? userId; 
+  private bool swiperInit = false;
 
   protected override async Task OnInitializedAsync()
   {
     await LoadUserId();
     await LoadHotels();
+    await LoadCities();
   }
 
   protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    if (!swiperInit && cities.Any())
     {
-        if (firstRender)
-        {
-            await JS.InvokeVoidAsync("initMultiCardCarousel");
-        }
+      await JS.InvokeVoidAsync("initSwiper");
+      swiperInit = true;
     }
+  }
 
   private async Task LoadUserId()
   {
@@ -259,44 +212,43 @@
     }
   }
 
+  // Hàm tải danh sách khách sạn từ API
   private async Task LoadHotels()
   {
     try
     {
       var httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");
-      var query = userId.HasValue ? $"?userId={userId}" : "";
-      var response = await httpClient.GetFromJsonAsync<List<HotelCardVM>>($"api/hotel/highly-rated{query}");
-
-      // Map sang HotelCardVM nếu cần (nếu cấu trúc khác)
-      hotels = response?.Select(h => new HotelCardVM
-      {
-        HotelId = h.HotelId,
-        HotelName = h.HotelName, // Map nếu tên field khác
-        Address = h.Address,
-        City = h.City,
-        Country = h.Country,
-        ShortDescription = h.ShortDescription, // Hoặc ShortDescription
-        CoverImageUrl = h.CoverImageUrl,
-        ImageUrls = h.ImageUrls,
-        MinPricePerNight = h.MinPricePerNight,
-        AverageRating = h.AverageRating,
-        ReviewCount = h.ReviewCount,
-        IsWishlist = h.IsWishlist,
-        // Amenities = h.HighlightAmenities.Select(a => a.Name).ToList(), // Nếu cần
-        // ... các field khác
-      }).ToList() ?? new List<HotelCardVM>();
+      hotels = await httpClient.GetFromJsonAsync<List<HotelListItemVM>>("Hotel/highly-rated");
     }
     catch (Exception ex)
     {
       errorMessage = "Lỗi khi tải danh sách khách sạn.";
-      Console.WriteLine($"Error: {ex.Message}");
-      hotels = new List<HotelCardVM>();
+      Console.WriteLine($"Error loading hotels: {ex.Message}");
     }
+  }
+  // load city
+  private async Task LoadCities()
+  {
+    try
+    {
+      var httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");
+      cities = await httpClient.GetFromJsonAsync<List<CityVM>>("Hotel/get-cityName") ?? new List<CityVM>();
+      StateHasChanged();
+    }
+    catch (Exception ex)
+    {
+      errorMessage = "Lỗi khi tải danh sách thành phố.";
+      Console.WriteLine($"Error loading cities: {ex.Message}");
+    }
+  }
+  private void NavigateToCity(string cityName)
+  {
+    Navigation.NavigateTo($"Hotel/get-search-options/{cityName}");
   }
 
   private async Task ToggleWishlist(int hotelId)
   {
-    if (loadingHotels.Contains(hotelId)) return;
+    if (loadingHotels.Contains(hotelId)) return; // chặn double click
     loadingHotels.Add(hotelId);
 
     try
@@ -304,27 +256,27 @@
       var hotel = hotels.FirstOrDefault(h => h.HotelId == hotelId);
       if (hotel != null)
       {
-        var prevState = hotel.IsWishlist;
         hotel.IsWishlist = !hotel.IsWishlist;
 
         var httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");
-        var res = await httpClient.PostAsync($"api/wishlist/toggle/{hotelId}", null);
+        await httpClient.PostAsJsonAsync($"Wishlist/toggle/{hotelId}", new { });
 
-        if (!res.IsSuccessStatusCode)
-        {
-          hotel.IsWishlist = prevState; // Rollback nếu fail
-        }
         StateHasChanged();
       }
     }
     catch (Exception ex)
     {
-      Console.WriteLine($"Error: {ex.Message}");
+      Console.WriteLine($"Error toggling wishlist: {ex.Message}");
     }
     finally
     {
-      loadingHotels.Remove(hotelId);
+      loadingHotels.Remove(hotelId); //Luôn cho phép click lại
     }
+  }
+
+  public async ValueTask DisposeAsync()
+  {
+    await JS.InvokeVoidAsync("disposeSwiper");
   }
 
 }

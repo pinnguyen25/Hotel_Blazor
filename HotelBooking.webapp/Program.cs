@@ -40,6 +40,7 @@ builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddAuthentication();
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
+builder.Services.AddScoped<IHotelApiClient, HotelApiClient>();
 builder.Services.AddAuthorizationCore();
 
 

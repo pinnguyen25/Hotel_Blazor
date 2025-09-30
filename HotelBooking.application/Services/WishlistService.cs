@@ -42,7 +42,7 @@ public class WishlistService : IWishlistService
         return await _context.Wishlists.Where(w => w.UserId == userId).Select(w => new HotelListItemDTO
         {
             HotelId = w.Hotel.Id,
-            Name = w.Hotel.Name,
+            HotelName = w.Hotel.Name,
             Address = w.Hotel.Address,
             City = w.Hotel.City != null ? w.Hotel.City.Name : string.Empty,
             Country = w.Hotel.City != null && w.Hotel.City.Country != null ? w.Hotel.City.Country.Name : string.Empty,
