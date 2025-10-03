@@ -1,0 +1,59 @@
+@using HotelBooking.webapp.ViewModels.Hotel
+
+@inject IHttpClientFactory HttpClientFactory
+
+<div class="container mt-5">
+  <h2 class="mb-4 text-center">Chỗ ở được đánh giá cao</h2>
+  @if (hotels == null)
+  {
+    <p>Loading...</p>
+  }
+  else if (!hotels.Any())
+  {
+    <p>Không có khách sạn nào được đánh giá cao.</p>
+  }
+  else
+  {
+    <div class="row">
+      @foreach (var hotel in hotels)
+      {
+        <div class="col-sm-6 col-md-3 mb-4">
+          <HotelCard Hotel="hotel" OnWishlistToggle="ToggleWishlist" />
+        </div>
+      }
+    </div>
+  }
+</div>
+
+@code {
+  private List<HotelListItemVM>? hotels;
+  private HashSet<int> loadingHotels = new();
+
+  protected override async Task OnInitializedAsync()
+  {
+    var httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");
+    hotels = await httpClient.GetFromJsonAsync<List<HotelListItemVM>>("Hotel/highly-rated");
+  }
+
+  private async Task ToggleWishlist(int hotelId)
+  {
+    if (loadingHotels.Contains(hotelId)) return;
+    loadingHotels.Add(hotelId);
+
+    try
+    {
+      var hotel = hotels?.FirstOrDefault(h => h.HotelId == hotelId);
+      if (hotel != null)
+      {
+        hotel.IsWishlist = !hotel.IsWishlist;
+        var httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");
+        await httpClient.PostAsJsonAsync($"Wishlist/toggle/{hotelId}", new { });
+        StateHasChanged();
+      }
+    }
+    finally
+    {
+      loadingHotels.Remove(hotelId);
+    }
+  }
+}

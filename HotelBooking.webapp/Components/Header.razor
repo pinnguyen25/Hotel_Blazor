@@ -1,8 +1,6 @@
-@using System.Security.Claims
-@using Blazored.LocalStorage
 @using HotelBooking.Client
-@inject NavigationManager NavigationManager
-@inject AuthenticationStateProvider AuthStateProvider
+@inject ICurrentUserService CurrentUserService
+
 <header class="navbar navbar-expand-lg position-fixed top-0 start-0 w-100 shadow-sm" style="z-index: 1000;">
     <div class="container">
         <!-- Logo -->
@@ -33,70 +31,46 @@
                 </li>
             </ul>
 
-            <!-- Actions -->
-            <div class="d-flex navbar-actions align-items-center">
-                @if (isAuthenticated)
+            <!-- User Actions -->
+            <div class="d-flex align-items-center">
+                @if (user?.IsAuthenticated == true)
                 {
                     <div class="dropdown">
-                        <a class="d-flex align-items-center text-decoration-none dropdown-toggle" href="#" id="userDropdown"
-                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
-
-                            @if (!string.IsNullOrEmpty(userAvatar) && userAvatar.StartsWith("http"))
+                        <a class="d-flex align-items-center text-decoration-none dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            @if (!string.IsNullOrEmpty(user.Avatar) && user.Avatar.StartsWith("http"))
                             {
-                                <img src="@userAvatar" alt="avatar" class="rounded-circle me-2"
-                                    style="width:40px; height:40px;" />
+                                <img src="@user.Avatar" class="rounded-circle me-2" style="width:40px;height:40px;" />
                             }
                             else
                             {
-                                <div class="rounded-circle me-2 d-flex align-items-center justify-content-center text-white"
-                                    style="width:40px; height:40px; background-color: #007bff; font-size: 18px; font-weight: bold;">
-                                    @GetFirstLetter(userFullName)
+                                <div class="rounded-circle me-2 d-flex align-items-center justify-content-center bg-primary text-white fw-bold"
+                                     style="width:40px;height:40px;">
+                                    @GetFirstLetter(user.FullName)
                                 </div>
                             }
-                            <span class="fw-semibold text-dark">@userFullName</span>
+                            <span class="fw-semibold text-dark">@user.FullName</span>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown">
-                            <li>
-                                <a class="dropdown-item" href="/profile">
-                                    <i class="bi bi-person me-2"></i> Thông tin
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="@($"/wishlist-page")">
-                                    <i class="bi bi-heart me-2"></i> Đã lưu
-                                </a>
-                            </li>
-                            @if (userRoles.Contains("Owner"))
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li><a class="dropdown-item" href="/profile"><i class="bi bi-person me-2"></i>Thông tin</a></li>
+                            <li><a class="dropdown-item" href="/wishlist-page"><i class="bi bi-heart me-2"></i>Đã lưu</a></li>
+
+                            @if (user.Roles.Contains("Owner"))
                             {
-                                <li>
-                                    <a class="dropdown-item" href="/owner-dashboard">
-                                        <i class="bi bi-building me-2"></i> Quản lý khách sạn
-                                    </a>
-                                </li>
+                                <li><a class="dropdown-item" href="/owner-dashboard"><i class="bi bi-building me-2"></i>Quản lý khách sạn</a></li>
                             }
-                            else if (userRoles.Contains("Customer"))
+                            @if (user.Roles.Contains("Customer"))
                             {
-                                <li>
-                                    <a class="dropdown-item" href="/upgrade-owner">
-                                        <i class="bi bi-pen me-2"></i> Đăng ký đối tác
-                                    </a>
-                                </li>
+                                <li><a class="dropdown-item" href="/upgrade-owner"><i class="bi bi-pen me-2"></i>Đăng ký đối tác</a></li>
+                            }
+                            @if (user.Roles.Contains("Admin"))
+                            {
+                                <li><a class="dropdown-item" href="/admin"><i class="bi bi-gear me-2"></i>Quản trị</a></li>
                             }
 
-                            @if (userRoles.Contains("Admin"))
-                            {
-                                <li>
-                                    <a class="dropdown-item" href="/admin">
-                                        <i class="bi bi-gear me-2"></i> Quản lý
-                                    </a>
-                                </li>
-                            }
-                            <li>
-                                <hr class="dropdown-divider" />
-                            </li>
+                            <li><hr class="dropdown-divider" /></li>
                             <li>
                                 <button class="dropdown-item text-danger" @onclick="Logout">
-                                    <i class="bi bi-box-arrow-right me-2"></i> Đăng xuất
+                                    <i class="bi bi-box-arrow-right me-2"></i>Đăng xuất
                                 </button>
                             </li>
                         </ul>
@@ -104,75 +78,31 @@
                 }
                 else
                 {
-                    <a class="btn btn-outline-light" href="/customer-register">Đăng ký</a>
-                    <a class="btn btn-light" href="/customer-login">Đăng nhập</a>
+                    <NavLink class="btn btn-outline-primary me-2" href="/customer-register">Đăng ký</NavLink>
+                    <NavLink class="btn btn-primary" href="/customer-login">Đăng nhập</NavLink>
                 }
             </div>
-
         </div>
     </div>
 </header>
 
 @code {
-    private bool isAuthenticated = false;
-    private List<string> userRoles = new();
-    private string userFullName = "Người dùng";
-    private string userAvatar = "/images/default-avatar.png";
-    private int? userId;
+    private CurrentUserVM? user;
+
     protected override async Task OnInitializedAsync()
     {
-        AuthStateProvider.AuthenticationStateChanged += async (task) =>
-        {
-            var authState = await task;
-            await UserInfo(authState);
-            StateHasChanged();
-        };
-
-        await UserInfo(await AuthStateProvider.GetAuthenticationStateAsync());
+        user = await CurrentUserService.GetCurrentUserAsync();
     }
 
-    private async Task UserInfo(AuthenticationState authState)
+    private string GetFirstLetter(string fullName)
     {
-        var user = authState.User;
-        isAuthenticated = user.Identity?.IsAuthenticated ?? false;
-
-        if (isAuthenticated)
-        {
-            userFullName = user.FindFirst("FullName")?.Value ?? "Người dùng";
-            userAvatar = user.FindFirst("Avatar")?.Value ?? string.Empty;
-            userRoles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-            if (int.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int parsedUserId))
-            {
-                userId = parsedUserId;
-            }
-            else
-            {
-                userId = null;
-            }
-        }
-        else
-        {
-            userFullName = "Người dùng";
-            userAvatar = string.Empty;
-            userRoles.Clear();
-            userId = null;
-        }
-    }
-
-    private string GetFirstLetter(string FullName)
-    {
-        var name = FullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var lastName = name[^1]; // Last word (given name)
-        return lastName.Length > 0 ? lastName[0].ToString().ToUpper() : "?";
+        var name = fullName?.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var lastName = name?.LastOrDefault();
+        return string.IsNullOrEmpty(lastName) ? "?" : lastName[0].ToString().ToUpper();
     }
 
     private async Task Logout()
     {
-        if (AuthStateProvider is CustomAuthStateProvider customAuth)
-        {
-            await customAuth.MarkUserAsLoggedOut();
-        }
-        NavigationManager.NavigateTo("/", forceLoad: true);
+        await CurrentUserService.LogoutAsync();
     }
-
 }

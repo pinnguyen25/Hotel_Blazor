@@ -2,7 +2,7 @@
 @using MudBlazor
 @using System.ComponentModel.DataAnnotations
 @inject NavigationManager _navManager
-@inject IHotelApiClient HotelApiClient
+@inject IHotelServices HotelServices
 <div class="hero-search position-absolute bottom-0 start-50 translate-middle-x w-100 mb-5"
     style="z-index: 3; max-width: 1000px;">
     <div class="search-form container p-3 bg-white rounded-3">
@@ -99,7 +99,7 @@
         }
 
         // có input → call API autocomplete (có thể trả cả city + hotel)
-        return await HotelApiClient.GetAutocompleteAsync(value);
+        return await HotelServices.GetAutocompleteAsync(value);
     }
 
     private string ValidateDestination(string value)
@@ -160,6 +160,6 @@
     protected override async Task OnInitializedAsync()
     {
         // preload tất cả city từ BE
-        AllCities = await HotelApiClient.GetCitiesAsync();
+        AllCities = await HotelServices.GetCitiesAsync();
     }
 }

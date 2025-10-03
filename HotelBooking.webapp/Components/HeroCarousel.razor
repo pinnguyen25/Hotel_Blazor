@@ -1,0 +1,27 @@
+@* Components/Home/HeroCarousel.razor *@
+<div id="heroCarousel" class="carousel slide carousel-fade position-relative" data-bs-ride="carousel">
+  <div class="carousel-inner">
+    <div class="carousel-item active vh-100 bg-cover"
+      style="background-image: url('https://source.unsplash.com/1600x900/?hotel=1');"></div>
+    <div class="carousel-item vh-100 bg-cover"
+      style="background-image: url('https://source.unsplash.com/1600x900/?resort');"></div>
+    <div class="carousel-item vh-100 bg-cover"
+      style="background-image: url('https://source.unsplash.com/1600x900/?beach,hotel');"></div>
+  </div>
+
+  <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+    <span class="carousel-control-prev-icon"></span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+    <span class="carousel-control-next-icon"></span>
+  </button>
+
+  <div class="overlay position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-25"></div>
+
+  <div class="carousel-caption d-flex flex-column justify-content-center h-100">
+    <h1 class="fw-bold display-4">Enjoy Your Stay</h1>
+    <p class="lead">Find the best deals for your perfect vacation</p>
+  </div>
+
+  <SearchForm />
+</div>

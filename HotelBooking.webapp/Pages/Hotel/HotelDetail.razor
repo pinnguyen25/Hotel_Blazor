@@ -1,12 +1,13 @@
 @* @page "/hoteldetail/{HotelId:int}" *@
 @page "/hoteldetail"
+@layout MainLayout
 @using MudBlazor
 <div class="container my-4">
 
     <!-- Nút quay lại -->
     <div class="row mb-2 mt-2 ">
         <div class="col-12">
-            <button  style="border-radius:50%;" @onclick="GoBack">
+            <button style="border-radius:50%;" @onclick="GoBack">
                 <i class="bi bi-arrow-left-short fs-2"></i>
             </button>
         </div>
@@ -117,20 +118,59 @@
     </div>
 </section>
 
-<div class="container my-4">
-    <!-- Review -->
-    <h5 class="mt-4">Đánh giá</h5>
-    <div class="border rounded p-3 mb-2 shadow-sm">
-        <strong>Nguyễn Văn A</strong> - <small class="text-muted">25/09/2025</small>
-        <p class="mb-0">Phòng sạch sẽ, nhân viên thân thiện!</p>
-    </div>
-    <div class="border rounded p-3 mb-2 shadow-sm">
-        <strong>Trần Thị B</strong> - <small class="text-muted">22/09/2025</small>
-        <p class="mb-0">Vị trí tốt, nhưng giá hơi cao.</p>
-    </div>
+<div class="container my-5">
+    <h5 class="mb-4 fw-semibold text-primary">Đánh giá</h5>
+
+    <MudCarousel TData="Review" ShowArrows="true" AutoCycle="false" Class="py-4" Color="Color.Info">
+        @foreach (var review in Reviews)
+        {
+            <MudCarouselItem>
+                <div class="card border-0 shadow-sm p-4 d-flex flex-column align-items-center justify-content-center"
+                     style="min-height:250px; border-radius:16px; background-color:#ffffff;">
+
+                    <!-- Điểm đánh giá -->
+                    <span class="badge bg-info text-white fs-5 fw-bold mb-3 px-3 py-2" 
+                          style="border-radius:12px;">
+                        @review.Rating / 10
+                    </span>
+
+                    <!-- Nội dung -->
+                    <p class="text-center fst-italic text-secondary px-3 mb-3" 
+                       style="font-size:1.05rem;">
+                        "@review.Content"
+                    </p>
+
+                    <!-- Avatar + Tên -->
+                    <div class="d-flex align-items-center mt-auto">
+                        <i class="bi bi-person-circle fs-3 me-2 text-info"></i>
+                        <span class="fw-semibold text-dark">@review.UserName</span>
+                    </div>
+
+                    <!-- Ngày -->
+                    <small class="text-muted mt-2">@review.Date.ToString("dd/MM/yyyy")</small>
+                </div>
+            </MudCarouselItem>
+        }
+    </MudCarousel>
 </div>
+
 @code {
     [Inject] private NavigationManager Navigation { get; set; } = default!;
+    public class Review
+    {
+        public string UserName { get; set; } = "";
+        public string Content { get; set; } = "";
+        public int Rating { get; set; }
+        public DateTime Date { get; set; }
+    }
+
+    private List<Review> Reviews = new()
+{
+new Review { UserName="Nguyễn Văn A", Content="Phòng sạch sẽ, nhân viên thân thiện!", Rating=9, Date=new
+DateTime(2025,9,25)},
+new Review { UserName="Trần Thị B", Content="Vị trí tốt, nhưng giá hơi cao.", Rating=8, Date=new DateTime(2025,9,22)},
+new Review { UserName="Lê Văn C", Content="Bữa sáng ngon và đa dạng.", Rating=10, Date=new DateTime(2025,9,20)},
+};
 
     private void GoBack()
     {

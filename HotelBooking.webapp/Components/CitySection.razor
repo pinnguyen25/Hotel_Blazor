@@ -1,0 +1,52 @@
+@using HotelBooking.webapp.ViewModels.Hotel
+@inject IJSRuntime JS
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<div class="container mt-5">
+  <h2 class="mb-4 text-center">Khám phá Việt Nam</h2>
+  <div class="carousel-wrapper">
+    <div class="swiper" id="multiCardCarousel">
+      <div class="swiper-wrapper">
+        @foreach (var city in cities)
+        {
+          <div class="swiper-slide">
+            <div class="card destination-card" @onclick="() => NavigateToCity(city.Name)">
+              <img src="@city.CoverImageUrl" class="card-img-top" alt="@city.Slug">
+              <div class="card-body text-center">
+                <h5 class="card-title">@city.Name</h5>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+    <button class="carousel-btn prev-btn" id="prevBtn">&#10094;</button>
+    <button class="carousel-btn next-btn" id="nextBtn">&#10095;</button>
+  </div>
+</div>
+
+@code {
+  private List<CityVM> cities = new();
+  private bool swiperInit;
+
+  protected override async Task OnInitializedAsync()
+  {
+    var httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");
+    cities = await httpClient.GetFromJsonAsync<List<CityVM>>("Hotel/get-cityName") ?? new();
+  }
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    if (firstRender && cities.Any())
+    {
+      await JS.InvokeVoidAsync("initSwiper");
+      swiperInit = true;
+    }
+  }
+
+  private void NavigateToCity(string cityName)
+  {
+    Navigation.NavigateTo($"Hotel/get-search-options/{cityName}");
+  }
+}

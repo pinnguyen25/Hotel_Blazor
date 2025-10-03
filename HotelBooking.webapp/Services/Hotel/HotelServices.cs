@@ -1,14 +1,17 @@
-public interface IHotelApiClient
+using HotelBooking.webapp.ViewModels.Hotel;
+
+public interface IHotelServices
 {
+    public Task<HotelListItemVM> GetHotelAsync();
     public Task<List<SearchSuggestionVM>> GetAutocompleteAsync(string keyword);
     public Task<List<SearchSuggestionVM>> GetCitiesAsync();
 }
 
-public class HotelApiClient : IHotelApiClient
+public class HotelServices : IHotelServices
 {
     private readonly HttpClient _httpClient;
 
-    public HotelApiClient(IHttpClientFactory httpClientFactory)
+    public HotelServices(IHttpClientFactory httpClientFactory)
     {
         _httpClient = httpClientFactory.CreateClient("HotelBookingAPI");
     }
@@ -32,5 +35,10 @@ public class HotelApiClient : IHotelApiClient
             Type = "City",
             RefId = c.Id
         }).ToList();
+    }
+
+    public Task<HotelListItemVM> GetHotelAsync()
+    {
+        throw new NotImplementedException();
     }
 }

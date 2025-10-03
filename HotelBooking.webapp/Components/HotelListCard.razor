@@ -1,12 +1,14 @@
 @using HotelBooking.webapp.ViewModels.Hotel
 @using MudBlazor
+@inject NavigationManager NavigationManager
 
-<MudPaper Class="d-flex p-3 rounded shadow-sm" Style="gap:1rem; cursor:pointer;">
+<MudPaper Class="d-flex p-3 rounded shadow-sm hover-elevation-6" Style="gap:1rem; cursor:pointer;"
+    @onclick="() => GoToDetail(Hotel.HotelId)">
     <!-- Ảnh -->
     <div class="position-relative" style="width:250px; flex-shrink:0;">
         @if (Hotel.ImageUrls != null && Hotel.ImageUrls.Any())
         {
-            <MudCarousel TData="string" Items="@Hotel.ImageUrls.Take(4)">
+            <MudCarousel TData="string" Items="@(Hotel.ImageUrls.Take(4).ToList())" ShowArrows="true" AutoCycle="false">
                 <ItemTemplate Context="img">
                     <MudImage Src="@img" Alt="@Hotel.HotelName" />
                 </ItemTemplate>
@@ -20,7 +22,7 @@
         <!-- Wishlist -->
         <MudTooltip Text="@(Hotel.IsWishlist ? "Xóa khỏi yêu thích" : "Thêm vào yêu thích")">
             <MudButton Class="position-absolute top-0 end-0 m-2" Size="Size.Small" Disabled="@isToggling"
-                OnClick="HandleWishlistClick">
+                @onclick="HandleWishlistClick" Variant="Variant.Outlined">
                 <MudIcon
                     Icon="@(Hotel.IsWishlist ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
                     Color="@(Hotel.IsWishlist ? Color.Error : Color.Default)" />
@@ -35,20 +37,20 @@
 
         <!-- Rate + Price -->
         <div class="d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-1">
+            <div class="d-flex align-items-center gap-2">
                 <MudPaper Class="bg-success text-white rounded px-2 py-1">
                     @Hotel.AverageRating.ToString("0.0")
                 </MudPaper>
+                <MudRating Value="Hotel.AverageRating" MaxValue="10" ReadOnly="true" Size="Size.Small" />
                 <MudText Typo="Typo.caption" Color="Color.Secondary">
-                    @(Hotel.AverageRating >= 8 ? "Excellent" : Hotel.AverageRating >= 6 ? "Good" : "Average")
-                    (@Hotel.ReviewCount reviews)
+                    (@Hotel.ReviewCount đánh giá)
                 </MudText>
             </div>
             <div class="text-end">
                 @if (Hotel.MinPricePerNight.HasValue)
                 {
                     <MudText Typo="Typo.subtitle1" Class="fw-bold text-dark">
-                        @Hotel.MinPricePerNight?.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))
+                        @($"{Hotel.MinPricePerNight?.ToString("#,##0")} ₫ / đêm")
                     </MudText>
                 }
             </div>
@@ -59,8 +61,8 @@
 @code {
     [Parameter] public HotelListItemVM Hotel { get; set; } = null!;
     [Parameter] public EventCallback<int> OnWishlistToggle { get; set; }
-
-    private bool isToggling = false;
+    
+    private bool isToggling;
 
     private async Task HandleWishlistClick()
     {
@@ -74,7 +76,11 @@
         finally
         {
             isToggling = false;
-            StateHasChanged();
         }
+    }
+
+    private void GoToDetail(int hotelId)
+    {
+        NavigationManager.NavigateTo($"/HotelDetail/{hotelId}");
     }
 }

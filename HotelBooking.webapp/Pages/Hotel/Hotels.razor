@@ -60,10 +60,10 @@
             <div class="row">
                 @if (HotelsList != null && HotelsList.Any())
                 {
-                    @foreach (var h in HotelsList)
+                    @foreach (var list in HotelsList)
                     {
                         <div class="col-md-6 col-lg-4 mb-4">
-                            <HotelPreview Hotel="@h" OnWishlistToggle="HandleWishlistToggle" />
+                            <HotelListCard Hotel="@list" OnWishlistToggle="HandleWishlistToggle" />
                         </div>
                     }
                 }

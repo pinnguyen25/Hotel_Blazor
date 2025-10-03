@@ -485,7 +485,8 @@ h3 {
 
 /* Ensure consistency for other pages */
 .page-content {
-  min-height: calc(100vh - 200px);
+    min-height: calc(100vh - 120px); /* 100vh trừ header + footer */
+    padding-bottom: 40px;            /* tránh dính footer */
 }
 
 /* index */

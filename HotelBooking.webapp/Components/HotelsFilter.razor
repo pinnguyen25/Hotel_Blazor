@@ -1,0 +1,51 @@
+@* @using MudBlazor
+
+<MudPaper Class="p-4 rounded-3 shadow-sm">
+    <h6 class="fw-bold mb-3 text-primary">Bộ lọc</h6>
+
+    <!-- Thành phố -->
+    <MudSelect T="string" Label="Thành phố" @bind-Value="SelectedCity" Class="mb-3">
+        <MudSelectItem Value="Hà Nội">Hà Nội</MudSelectItem>
+        <MudSelectItem Value="Hồ Chí Minh">Hồ Chí Minh</MudSelectItem>
+        <MudSelectItem Value="Đà Nẵng">Đà Nẵng</MudSelectItem>
+    </MudSelect>
+
+    <!-- Giá -->
+    <MudSlider @bind-Value="MaxPrice" Min="500000" Max="5000000" Step="500000" 
+               ValueLabel="true" Label="Giá tối đa" Class="mb-3" />
+
+    <!-- Xếp hạng -->
+    <MudRating @bind-SelectedValue="MinRating" MaxValue="5" Color="Color.Primary" Size="Size.Medium" />
+    <div class="text-muted small mb-3">Tối thiểu: @MinRating sao</div>
+
+    <!-- Nút -->
+    <MudButton Variant="Filled" Color="Primary" Class="w-100" OnClick="ApplyFilter">
+        Áp dụng
+    </MudButton>
+</MudPaper>
+
+@code {
+    [Parameter] public EventCallback<FilterOptions> OnFilterChanged { get; set; }
+
+    private string? SelectedCity;
+    private double MaxPrice = 5000000;
+    private int MinRating = 0;
+
+    private async Task ApplyFilter()
+    {
+        var options = new FilterOptions
+        {
+            City = SelectedCity,
+            MaxPrice = (int)MaxPrice,
+            MinRating = MinRating
+        };
+        await OnFilterChanged.InvokeAsync(options);
+    }
+}
+
+public class FilterOptions
+{
+    public string? City { get; set; }
+    public int MaxPrice { get; set; }
+    public int MinRating { get; set; }
+} *@
