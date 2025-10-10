@@ -13,5 +13,5 @@ public class SearchHotelResultDTO
     public double AvgRating { get; set; }
     public int ReviewCount { get; set; }
     public string? Images { get; set; } = "[]";         // JSON string
-    public string? AmenityNames { get; set; } = "[]";   // JSON string
+    public string AmenityNames { get; set; } = string.Empty;   // JSON string
 }

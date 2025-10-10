@@ -1,3 +1,5 @@
+using System.Globalization;
+
 public class HotelDetailDTO
 {
     public int HotelId { get; set; }
@@ -10,17 +12,22 @@ public class HotelDetailDTO
     // đánh giá
     public double AverageRating { get; set; } = 0;
     public int ReviewCount { get; set; } = 0;
+    public List<ReviewDTO> Reviews { get; set; } = new();
     // Giá & số phòng
     public decimal? MinPricePerNight { get; set; }
-    public int? AvailableRooms { get; set; }
-    // Trạng thái kiểm duyệt
+    public string FormattedMinPricePerNight =>
+        MinPricePerNight.HasValue
+            ? MinPricePerNight.Value.ToString("N0", new CultureInfo("vi-VN")) + "đ / đêm"
+            : "N/A";
+    public int AvailableRooms { get; set; } = 0;
+    public bool IsWishlist { get; set; } = false;
+
+    // Trạng thái và xác thực
     public bool IsVerified { get; set; } = false;
     public string Status { get; set; } = "PendingVerification";
-
-    public bool IsWishlist { get; set; } = false;
     // mở rộng:
     public List<AmenityDTO> Amenities { get; set; } = new();
     // public List<PolicyDTO> Policies { get; set; } = new();
-    // public List<RoomTypeDTO> RoomTypes { get; set; } = new();
+    public List<RoomTypeDTO> RoomTypes { get; set; } = new();
 
 }

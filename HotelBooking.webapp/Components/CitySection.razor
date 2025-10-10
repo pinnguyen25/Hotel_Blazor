@@ -47,6 +47,6 @@
 
   private void NavigateToCity(string cityName)
   {
-    Navigation.NavigateTo($"Hotel/get-search-options/{cityName}");
+    Navigation.NavigateTo($"/searchresult?destination={cityName}");
   }
 }

@@ -1,5 +1,5 @@
 namespace HotelBooking.webapp.ViewModels.Hotel;
-
+using System.ComponentModel.DataAnnotations;
 public class HotelListItemVM
 {
     public int HotelId { get; set; }
@@ -40,7 +40,15 @@ public class HotelListItemVM
 public class AmenityVM
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string IconClass { get; set; } = string.Empty;
-    public string IconColor { get; set; } = "#000";
+
+    [Required(ErrorMessage = "Name is required!")]
+    public string Name { get; set; }
+    public string? Description { get; set; }
+    public bool IsDeleted { get; set; } = false;
+
+    // Parse từ Additional JSON
+
+    [Required(ErrorMessage = "Icon class is required!")]
+    public string? IconClass { get; set; }
+    public string IconColor { get; set; } = "color: #4ea6feff";
 }

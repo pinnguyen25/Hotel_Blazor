@@ -1,9 +1,18 @@
+using System.ComponentModel.DataAnnotations;
+
 public class AmenityDTO
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;        // Tên tiện ích: "Wifi" Class icon: "fa fa-wifi"
-    // lưu lệnh FA
-    public string IconClass { get; set; } = string.Empty; 
-    public string IconColor { get; set; } = "#00ff80ff"; 
+
+    [Required(ErrorMessage = "Name is required")]
+    public string Name { get; set; }
+    public string? Description { get; set; }
+    public string? Additional { get; set; }
+    public bool IsDeleted { get; set; } = false;
+
+    // Parse từ Additional JSON
     
+    [Required(ErrorMessage = "Icon class is required")]
+    public string? IconClass { get; set; }
+    public string? IconColor { get; set; } = "#54a9ffff";
 }
