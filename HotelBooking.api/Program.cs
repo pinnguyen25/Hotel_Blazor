@@ -50,10 +50,14 @@ builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IHotelService, HotelService>();
 builder.Services.AddScoped<IUpgradeRequestService, UpgradeRequestService>();
 builder.Services.AddScoped<IWishlistService, WishlistService>();
-
+builder.Services.AddLogging(logging =>
+{
+    logging.AddConsole();
+    logging.AddDebug();
+});
 //Use map controller
 builder.Services.AddControllers();
-
+builder.Services.AddMemoryCache();
 // ============== Swagger =============== //
 //Swagger cấu hình có điền Authentication
 builder.Services.AddEndpointsApiExplorer();
