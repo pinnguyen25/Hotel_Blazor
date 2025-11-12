@@ -1,6 +1,16 @@
 let swiperInstance;
+let scrollAnimation = null;
+let targetScrollLeft = 0;
 
 window.initSwiper = function () {
+  const container = document.querySelector("#multiCardCarousel");
+  if (!container) return;
+
+  // Destroy nếu đã tồn tại
+  if (swiperInstance) {
+    swiperInstance.destroy(true, true);
+  }
+
   swiperInstance = new Swiper("#multiCardCarousel", {
     slidesPerView: 5,
     spaceBetween: 16,
@@ -45,4 +55,37 @@ window.disposeSwiper = function () {
     swiperInstance.destroy(true, true);
     swiperInstance = null;
   }
+};
+
+// Scroll highly rate hotel
+window.scrollContainer = (direction) => {
+
+  const container = document.getElementById("hotelScrollContainer");
+  if (!container) return;
+
+  const item = container.querySelector(".scroll-item");
+  if (!item) return;
+
+  const itemWidth = item.offsetWidth + 24;
+  const scrollAmount = itemWidth * 1 * direction;
+
+  //
+  targetScrollLeft += scrollAmount;
+  targetScrollLeft = Math.max(0, Math.min(targetScrollLeft, container.scrollWidth - container.clientWidth));
+
+  if (scrollAnimation) {
+    cancelAnimationFrame(scrollAnimation);
+  }
+
+  container.scrollBy({
+    left: scrollAmount,
+    behavior: "smooth"
+  });
+
+  setTimeout(() => {
+    // Làm tròn vị trí về đúng card gần nhất
+    const snapped = Math.round(container.scrollLeft / itemWidth) * itemWidth;
+    container.scrollTo({ left: snapped, behavior: "auto" });
+    isScrolling = false;
+  }, 300);
 };

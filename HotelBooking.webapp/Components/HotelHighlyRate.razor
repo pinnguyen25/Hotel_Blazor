@@ -1,9 +1,9 @@
 @using HotelBooking.webapp.ViewModels.Hotel
-
+@inject IJSRuntime JSRuntime
 @inject IHttpClientFactory HttpClientFactory
 
-<div class="container mt-5">
-  <h2 class="mb-4 text-center">Chỗ ở được đánh giá cao</h2>
+<div class="container mt-15">
+  <h2 class="mb-6 text-center">Top chỗ ở được yêu thích</h2>
   @if (hotels == null)
   {
     <p>Loading...</p>
@@ -14,13 +14,26 @@
   }
   else
   {
-    <div class="row">
-      @foreach (var hotel in hotels)
-      {
-        <div class="col-sm-6 col-md-3 mb-4">
-          <HotelCard Hotel="hotel" OnWishlistToggle="ToggleWishlist" />
-        </div>
-      }
+    <div class="scroll-container-wrapper position-relative">
+      <!-- Nút Prev -->
+      <button class="scroll-btn prev-btn" @onclick="() => Scroll(-1)">
+        <i class="bi bi-chevron-left"></i>
+      </button>
+
+      <!-- Vùng hiển thị các hotel -->
+      <div class="scroll-container" id="hotelScrollContainer">
+        @foreach (var hotel in hotels)
+        {
+          <div class="scroll-item">
+            <HotelCard Hotel="hotel" OnWishlistToggle="ToggleWishlist" />
+          </div>
+        }
+      </div>
+
+      <!-- Nút Next -->
+      <button class="scroll-btn next-btn" @onclick="() => Scroll(1)">
+        <i class="bi bi-chevron-right"></i>
+      </button>
     </div>
   }
 </div>
@@ -55,5 +68,10 @@
     {
       loadingHotels.Remove(hotelId);
     }
+  }
+
+  private async Task Scroll(int direction)
+  {
+    await JSRuntime.InvokeVoidAsync("scrollContainer", direction);
   }
 }

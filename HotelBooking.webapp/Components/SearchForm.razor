@@ -86,6 +86,7 @@
 @code {
     // 1. Điểm đến
     [Required(ErrorMessage = "Vui lòng nhập điểm đến")]
+
     private SearchSuggestionVM? SelectedDestination { get; set; }
     private List<SearchSuggestionVM> AllCities { get; set; } = new List<SearchSuggestionVM>();
 
@@ -157,6 +158,28 @@
         _navManager.NavigateTo(url);
     }
 
+    // 5. Nhận tham số từ trang Hotels
+    [Parameter]
+    public SearchResultVM? SearchResult { get; set; }
+    protected override void OnParametersSet()
+    {
+        if (SearchResult != null)
+        {
+            // Khi trang Hotels truyền tham số vào, cập nhật lại form
+            if(SearchResult != null)
+            {
+                SelectedDestination = new SearchSuggestionVM
+                {
+                    Label = SearchResult.Destination
+                };
+                SelectedRange = new MudBlazor.DateRange(SearchResult.CheckIn, SearchResult.CheckOut);
+                Adults = SearchResult.Adults;
+                Children = SearchResult.Children;
+                Rooms = SearchResult.Rooms;
+            }
+        }
+    }
+    
     protected override async Task OnInitializedAsync()
     {
         // preload tất cả city từ BE

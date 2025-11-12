@@ -73,7 +73,7 @@ public class WishlistService : IWishlistService
                 .Count(r => r.Status == "Available"),
 
             AverageRating = w.Hotel.Reviews.Any(r => r.Rating.HasValue)
-                ? Math.Round(w.Hotel.Reviews.Average(r => r.Rating ?? 0), 1)
+                ? Math.Round((decimal)w.Hotel.Reviews.Average(r => r.Rating ?? 0), 1)
                 : 0,
 
             ReviewCount = w.Hotel.Reviews.Count(r => r.Rating.HasValue),

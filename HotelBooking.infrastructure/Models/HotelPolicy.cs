@@ -11,6 +11,8 @@ public partial class HotelPolicy
 
     public DateTime? CreatedAt { get; set; }
 
+    public string? Additional { get; set; }
+
     public virtual Hotel Hotel { get; set; } = null!;
 
     public virtual Policy Policy { get; set; } = null!;

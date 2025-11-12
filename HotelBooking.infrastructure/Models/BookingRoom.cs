@@ -11,6 +11,8 @@ public partial class BookingRoom
 
     public DateTime? CreatedAt { get; set; }
 
+    public string? Additional { get; set; }
+
     public virtual Booking Booking { get; set; } = null!;
 
     public virtual Room Room { get; set; } = null!;

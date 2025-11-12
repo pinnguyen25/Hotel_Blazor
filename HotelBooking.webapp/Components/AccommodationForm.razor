@@ -1,0 +1,184 @@
+@using HotelBooking.webapp.ViewModels.Hotel
+@inject ISnackbar Snackbar
+
+<EditForm Model="@Accommodation" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger small mb-3" />
+
+    <div class="row g-4">
+        <!-- Thông tin -->
+        <div class="col-lg-7">
+            <div class="mb-3">
+                <label class="form-label fw-medium">Tên <span class="text-danger">*</span></label>
+                <InputText @bind-Value="Accommodation.Name"
+                           class="form-control"
+                           placeholder="Ví dụ: Khách sạn, Homestay, Villa..." />
+                <ValidationMessage For="@(() => Accommodation.Name)" class="text-danger small" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-medium">Slug</label>
+                <InputText @bind-Value="Accommodation.Slug"
+                           class="form-control"
+                           placeholder="Tự động tạo nếu để trống" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-medium">Mô tả</label>
+                <InputTextArea @bind-Value="Accommodation.Description"
+                               class="form-control"
+                               rows="5"
+                               placeholder="Mô tả ngắn về loại hình lưu trú..." />
+            </div>
+        </div>
+
+        <!-- Upload ảnh -->
+        <div class="col-lg-5">
+            <label class="form-label fw-medium d-block mb-2">Hình ảnh</label>
+
+            <!-- INPUT FILE ẨN -->
+            <InputFile id="imageUpload"
+                       OnChange="HandleImageChange"
+                       accept=".jpg,.jpeg,.png"
+                       class="d-none" />
+
+            <!-- KHU VỰC CLICK ĐỂ CHỌN ẢNH -->
+            <label for="imageUpload"
+                   class="image-upload-zone d-block border rounded-3 bg-light
+                          overflow-hidden position-relative"
+                   style="height:260px; cursor:pointer; transition:all .2s;">
+
+                @* preview (khi đã chọn file mới) *@
+                @if (!string.IsNullOrEmpty(ImagePreview))
+                {
+                    <div class="w-100 h-100 position-relative">
+                        <img src="@ImagePreview"
+                             alt="Preview"
+                             class="w-100 h-100 object-fit-cover" />
+                        <button type="button"
+                                class="btn btn-sm btn-danger rounded-circle position-absolute top-0 end-0 m-2"
+                                @onclick="ClearImagePreview"
+                                @onclick:stopPropagation>
+                            <i class="bi bi-icons bi-x"></i>
+                        </button>
+                        <div class="upload-overlay position-absolute bottom-0 start-0 end-0
+                                    bg-dark bg-opacity-50 text-white text-center p-2 d-none">
+                            <i class="bi bi-camera fs-5"></i><br />
+                            <small>Click để thay ảnh</small>
+                        </div>
+                    </div>
+                }
+                @* Ảnh hiện tại (khi edit) *@
+                else if (IsEditMode && !string.IsNullOrEmpty(Accommodation.ImagePath))
+                {
+                    <div class="w-100 h-100 position-relative">
+                        <img src="@Accommodation.ImagePath"
+                             alt="Current"
+                             class="w-100 h-100 object-fit-cover" />
+                        <div class="upload-overlay position-absolute bottom-0 start-0 end-0
+                                    bg-dark bg-opacity-50 text-white text-center p-2">
+                            <i class="bi bi-camera fs-5"></i><br />
+                            <small>Click để thay ảnh</small>
+                        </div>
+                        <span class="badge bg-primary position-absolute top-0 start-0 m-2">Hiện tại</span>
+                    </div>
+                }
+                @* Chưa có ảnh (create) *@
+                else
+                {
+                    <div class="text-center text-muted d-flex flex-column
+                                justify-content-center h-100">
+                        <i class="bi bi-cloud-upload fs-1 mb-2"></i>
+                        <p class="mb-1 fw-medium">Click để tải ảnh lên</p>
+                        <small class="text-secondary">JPG, PNG • Tối đa 5MB</small>
+                    </div>
+                }
+            </label>
+
+        </div>
+    </div>
+
+    <hr class="my-4" />
+
+    <div class="d-flex justify-content-end gap-2">
+        <button type="button"
+                class="btn btn-outline-secondary"
+                @onclick="Cancel"
+                disabled="@isSubmitting">
+            Hủy
+        </button>
+        <button type="submit"
+                class="btn btn-primary d-flex align-items-center gap-2"
+                disabled="@isSubmitting">
+            @if (isSubmitting)
+            {
+                <span class="spinner-border spinner-border-sm" role="status"></span>
+            }
+            @(IsEditMode ? "Cập nhật" : "Tạo mới")
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    private const long MaxFileSize = 5 * 1024 * 1024;
+    private string ImagePreview = string.Empty;
+    private bool isSubmitting = false;
+
+    [Parameter] public AdminAccommodationTypeVM Accommodation { get; set; } = new();
+    [Parameter] public bool IsEditMode { get; set; }
+    [Parameter] public EventCallback OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private async Task HandleImageChange(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+        if (!new[] { ".jpg", ".jpeg", ".png" }.Contains(ext))
+        {
+            Snackbar.Add("Chỉ hỗ trợ định dạng JPG, JPEG, PNG.", Severity.Error);
+            return;
+        }
+
+        if (file.Size > MaxFileSize)
+        {
+            Snackbar.Add("Ảnh không được vượt quá 5MB.", Severity.Error);
+            return;
+        }
+
+        var buffer = new byte[file.Size];
+        await using var stream = file.OpenReadStream(MaxFileSize);
+        await stream.ReadAsync(buffer);
+        ImagePreview = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
+        Accommodation.ImageFile = file;
+    }
+
+    private void ClearImagePreview()
+    {
+        ImagePreview = string.Empty;
+        Accommodation.ImageFile = null;
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(Accommodation.Name?.Trim()))
+        {
+            Snackbar.Add("Vui lòng nhập tên loại lưu trú.", Severity.Error);
+            return;
+        }
+
+        isSubmitting = true;
+        StateHasChanged();
+
+        try { await OnSubmit.InvokeAsync(); }
+        finally { isSubmitting = false; }
+    }
+
+    private async Task Cancel()
+    {
+        ImagePreview = string.Empty;
+        Accommodation.ImageFile = null;
+        await OnCancel.InvokeAsync();
+    }
+}

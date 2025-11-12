@@ -21,16 +21,11 @@
 
         <!-- Wishlist -->
         <MudTooltip Text="@(Hotel.IsWishlist ? "Xóa khỏi yêu thích" : "Thêm vào yêu thích")">
-            <MudButton 
-                Class="position-absolute top-0 end-0 m-2 rounded-circle bg-white shadow-sm" 
-                Style="width:40px; height:40px; min-width:40px;"
-                Size="Size.Small" 
-                Disabled="@isToggling"
-                @onclick="HandleWishlistClick" 
-                Variant="Variant.Outlined">
-                <MudIcon
-                    Icon="@(Hotel.IsWishlist ? Icons.Material.Filled.Favorite : 
-                    Icons.Material.Outlined.FavoriteBorder)"
+            <MudButton Class="position-absolute top-0 end-0 m-2 rounded-circle bg-white shadow-sm"
+                Style="width:40px; height:40px; min-width:40px;" Size="Size.Small" Disabled="@isToggling"
+                @onclick="HandleWishlistClick" Variant="Variant.Outlined">
+                <MudIcon Icon="@(Hotel.IsWishlist ? Icons.Material.Filled.Favorite : 
+                                             Icons.Material.Outlined.FavoriteBorder)"
                     Color="@(Hotel.IsWishlist ? Color.Error : Color.Default)" />
             </MudButton>
         </MudTooltip>
@@ -45,14 +40,16 @@
         <div class="d-flex flex-wrap gap-1 mb-2">
             @foreach (var amenity in Hotel.HighlightAmenities)
             {
-                <MudChip T="string" Color="Color.Default" Size="Size.Small" Style="background:none; margin-left: 0; padding-left: 0" >
+                <MudChip T="string" Color="Color.Default" Size="Size.Small"
+                    Style="background:none; margin-left: 0; padding-left: 0">
                     <MudIcon Icon="@amenity.IconClass" Size="Size.Small" Class="mr-2"
-                    Style="@($"color:{amenity.IconColor}; font-size: 1rem;")" /> 
-                    <span style="font-size: 1rem; font-weight: 500; color: #333; vertical-align: middle;">@amenity.Name</span>
+                        Style="@($"color:{amenity.IconColor}; font-size: 1rem;")" />
+                    <span
+                        style="font-size: 1rem; font-weight: 500; color: #333; vertical-align: middle;">@amenity.Name</span>
                 </MudChip>
             }
         </div>
-        
+
         <!-- Rate + Price -->
         <div class="d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-2">
@@ -67,11 +64,23 @@
                 </MudText>
             </div>
             <div class="text-end">
-                @if (Hotel.MinPricePerNight.HasValue)
+                @if (Hotel.IsBookable)
                 {
-                    <MudText Typo="Typo.subtitle1" Class="fw-bold text-dark">
-                        @($"{Hotel.MinPricePerNight?.ToString("#,##0")} ₫ / đêm")
-                    </MudText>
+                    @if (Hotel.MinPricePerNight.HasValue)
+                    {
+                        <MudText Typo="Typo.subtitle1" Class="fw-bold text-dark">
+                            @($"{Hotel.MinPricePerNight?.ToString("#,##0")} ₫ / đêm")
+                        </MudText>
+                    }
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Class="mt-1">
+                        Xem phòng
+                    </MudButton>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true" Class="pa-2">
+                        <b>Hết phòng</b>
+                    </MudAlert>
                 }
             </div>
         </div>
@@ -81,7 +90,7 @@
 @code {
     [Parameter] public HotelListItemVM Hotel { get; set; } = null!;
     [Parameter] public EventCallback<int> OnWishlistToggle { get; set; }
-    
+
     private bool isToggling;
 
     private async Task HandleWishlistClick()
@@ -96,22 +105,23 @@
         finally
         {
             isToggling = false;
+            StateHasChanged();
         }
     }
 
     private void GoToDetail(int hotelId)
     {
-        NavigationManager.NavigateTo($"/hoteldetail/{hotelId}");
+        NavigationManager.NavigateTo($"/Hotel/{hotelId}");
     }
 
-    private string GetRatingText(double Rating)
+    private string GetRatingText(decimal Rating)
     {
         return Rating switch
         {
-            >= 8.5 => "Excellent",
-            >= 7.0 => "Very Good",
-            >= 5.5 => "Good",
-            >= 4.0 => "Average",
+            >= 8.5m => "Excellent",
+            >= 7.0m => "Very Good",
+            >= 5.5m => "Good",
+            >= 4.0m => "Average",
             _ => "Poor"
         };
     }

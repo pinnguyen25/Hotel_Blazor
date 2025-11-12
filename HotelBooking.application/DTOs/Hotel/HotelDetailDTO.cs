@@ -1,4 +1,5 @@
 using System.Globalization;
+using HotelBooking.infrastructure.Models;
 
 public class HotelDetailDTO
 {
@@ -10,15 +11,12 @@ public class HotelDetailDTO
     public string CoverImageUrl { get; set; } = string.Empty;
     public List<string> ImageUrls { get; set; } = new();
     // đánh giá
-    public double AverageRating { get; set; } = 0;
+    public decimal AverageRating { get; set; }
     public int ReviewCount { get; set; } = 0;
     public List<ReviewDTO> Reviews { get; set; } = new();
     // Giá & số phòng
     public decimal? MinPricePerNight { get; set; }
-    public string FormattedMinPricePerNight =>
-        MinPricePerNight.HasValue
-            ? MinPricePerNight.Value.ToString("N0", new CultureInfo("vi-VN")) + "đ / đêm"
-            : "N/A";
+
     public int AvailableRooms { get; set; } = 0;
     public bool IsWishlist { get; set; } = false;
 
@@ -26,8 +24,10 @@ public class HotelDetailDTO
     public bool IsVerified { get; set; } = false;
     public string Status { get; set; } = "PendingVerification";
     // mở rộng:
+    public string City { get; set; } = string.Empty;
+    public string Country { get; set; } = string.Empty;
     public List<AmenityDTO> Amenities { get; set; } = new();
-    // public List<PolicyDTO> Policies { get; set; } = new();
+    public List<PolicyDTO> Policies { get; set; } = new();
     public List<RoomTypeDTO> RoomTypes { get; set; } = new();
 
 }

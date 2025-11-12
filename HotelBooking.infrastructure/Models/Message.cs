@@ -23,6 +23,8 @@ public partial class Message
 
     public bool? IsDeleted { get; set; }
 
+    public string? Additional { get; set; }
+
     public virtual Booking? Booking { get; set; }
 
     public virtual Hotel? Hotel { get; set; }

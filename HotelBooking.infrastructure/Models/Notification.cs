@@ -15,7 +15,13 @@ public partial class Notification
 
     public DateTime? CreatedAt { get; set; }
 
+    public int? CreatedBy { get; set; }
+
     public bool? IsDeleted { get; set; }
+
+    public string? Additional { get; set; }
+
+    public virtual User? CreatedByNavigation { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

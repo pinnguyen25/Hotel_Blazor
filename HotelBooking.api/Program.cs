@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using CloudinaryDotNet;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,7 +39,8 @@ builder.Services.AddScoped<IRoomAmenityRepository, RoomAmenityRepository>();
 builder.Services.AddScoped<IHotelPolicyRepository, HotelPolicyRepository>();
 builder.Services.AddScoped<IHotelAmenityRepository, HotelAmenityRepository>();
 builder.Services.AddScoped<IBookingRoomRepository, BookingRoomRepository>();
-
+builder.Services.AddScoped<IAccommodationRepository, AccommodationRepository>();
+builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 
 // DI for UnitOfWork
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -50,6 +52,7 @@ builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IHotelService, HotelService>();
 builder.Services.AddScoped<IUpgradeRequestService, UpgradeRequestService>();
 builder.Services.AddScoped<IWishlistService, WishlistService>();
+
 builder.Services.AddLogging(logging =>
 {
     logging.AddConsole();
@@ -64,8 +67,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "HotelBooking API", Version = "v1" });
-
-    // 🔥 Thêm hỗ trợ Authorization header tất cả api
+    
+   
+    // Thêm hỗ trợ Authorization header tất cả api
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -132,6 +136,16 @@ builder.Services.AddAuthorization();
 // Khai báo JWT AUTH SERVICE
 // builder.Services.AddScoped<JwtAuthService>();
 
+// ============== Cấu hình Cloudinary =============== //
+var cloudinarySettings = builder.Configuration.GetSection("CloudinarySettings");
+var account = new Account(
+    cloudinarySettings["CloudName"],
+    cloudinarySettings["ApiKey"],
+    cloudinarySettings["ApiSecret"]
+);
+var cloudinary = new Cloudinary(account);
+builder.Services.AddSingleton(cloudinary);
+// ================================================== //
 // Thêm CORS
 builder.Services.AddCors(options =>
 {
@@ -160,3 +174,4 @@ app.UseSwaggerUI();
 app.UseAuthentication();
 app.UseAuthorization();
 app.Run();
+

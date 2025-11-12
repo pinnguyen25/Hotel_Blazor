@@ -23,11 +23,21 @@ public partial class Booking
 
     public DateTime? CreatedAt { get; set; }
 
+    public DateTime? UpdatedAt { get; set; }
+
+    public int? CreatedBy { get; set; }
+
+    public int? UpdatedBy { get; set; }
+
     public bool? IsDeleted { get; set; }
 
     public string? Additional { get; set; }
 
     public virtual ICollection<BookingRoom> BookingRooms { get; set; } = new List<BookingRoom>();
+
+    public virtual ICollection<BookingService> BookingServices { get; set; } = new List<BookingService>();
+
+    public virtual User? CreatedByNavigation { get; set; }
 
     public virtual User Customer { get; set; } = null!;
 
@@ -38,4 +48,6 @@ public partial class Booking
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
     public virtual RoomType RoomType { get; set; } = null!;
+
+    public virtual User? UpdatedByNavigation { get; set; }
 }

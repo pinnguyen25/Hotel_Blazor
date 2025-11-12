@@ -15,7 +15,7 @@ public class HotelListItemVM
     public List<string> ImageUrls { get; set; } = new();
 
     // Rating & Review
-    public double AverageRating { get; set; }
+    public decimal AverageRating { get; set; } = 0;
     public int ReviewCount { get; set; }
 
     // Giá
@@ -25,6 +25,8 @@ public class HotelListItemVM
 
     // Phòng & Sức chứa
     public int? AvailableRooms { get; set; }
+    // Khả năng đặt phòng
+    public bool IsBookable { get; set; }
     public int? MaxAdultCapacity { get; set; }
     public int? MaxChildCapacity { get; set; }
 
@@ -35,20 +37,4 @@ public class HotelListItemVM
     public bool IsWishlist { get; set; }
     public bool IsVerified { get; set; } = false;
     public string Status { get; set; } = "PendingVerification";
-}
-
-public class AmenityVM
-{
-    public int Id { get; set; }
-
-    [Required(ErrorMessage = "Name is required!")]
-    public string Name { get; set; }
-    public string? Description { get; set; }
-    public bool IsDeleted { get; set; } = false;
-
-    // Parse từ Additional JSON
-
-    [Required(ErrorMessage = "Icon class is required!")]
-    public string? IconClass { get; set; }
-    public string IconColor { get; set; } = "color: #4ea6feff";
 }

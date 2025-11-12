@@ -1,0 +1,61 @@
+@* @page "/hotel-wizard"
+@layout OwnerLayout
+
+<div class="d-flex justify-content-center mt-4">
+
+
+    <MudPaper Style="width:900px" Class="pa-4">
+        <MudStepper NonLinear ShowResetButton OnPreviewInteraction="OnPreviewInteraction">
+            <MudStep Title="Basic Info" SecondaryText="Thông tin cơ bản">
+                <StepBasicInfo @ref="_stepBasic" />
+            </MudStep>
+
+            <MudStep Title="Amenities" SecondaryText="Tiện ích">
+                <StepAmenities @ref="_stepAmenities" />
+            </MudStep>
+
+            <MudStep Title="Policies" SecondaryText="Chính sách">
+                <StepPolicies @ref="_stepPolicy" />
+            </MudStep>
+
+            <MudStep Title="Images" SecondaryText="Ảnh khách sạn">
+                <StepImages @ref="_stepImages" />
+            </MudStep>
+        </MudStepper>
+    </MudPaper>
+</div>
+
+@code {
+    private StepBasicInfo? _stepBasic;
+    private StepAmenities? _stepAmenities;
+    private StepPolicies? _stepPolicy;
+    private StepImages? _stepImages;
+
+    private async Task OnPreviewInteraction(StepperInteractionEventArgs arg)
+    {
+        if (arg.Action == StepAction.Complete)
+        {
+            switch (arg.StepIndex)
+            {
+                case 0:
+                    if (!(_stepBasic?.Validate() ?? false))
+                        arg.Cancel = true;
+                    break;
+                case 1:
+                    if (!(_stepAmenities?.Validate() ?? false))
+                        arg.Cancel = true;
+                    break;
+                case 2:
+                    if (!(_stepPolicy?.Validate() ?? false))
+                        arg.Cancel = true;
+                    break;
+                case 3:
+                    if (!(_stepImages?.Validate() ?? false))
+                        arg.Cancel = true;
+                    break;
+            }
+        }
+        await Task.CompletedTask;
+    }
+
+} *@

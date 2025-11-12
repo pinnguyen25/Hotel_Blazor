@@ -1,0 +1,322 @@
+@page "/admin/manages/manage-accommodations"
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Text.Json
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin")]
+@inject IHttpClientFactory _httpClientFactory
+@inject ISnackbar Snackbar
+@inject ILocalStorageService _localStorage
+
+<PageTitle>Quản lý loại hình lưu trú</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0 fw-semibold">Quản lý loại hình lưu trú</h3>
+        <button class="btn btn-primary d-flex align-items-center gap-2" @onclick="OpenAddModal">
+            <i class="bi bi-plus-circle"></i> Thêm mới
+        </button>
+    </div>
+
+    <!-- Bảng danh sách -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Ảnh</th>
+                            <th>Tên</th>
+                            <th>Slug</th>
+                            <th>Mô tả</th>
+                            <th>Người tạo</th>
+                            <th>Ngày tạo</th>
+                            <th>Ngày sửa</th>
+                            <th class="text-end pe-3">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (accommodations == null)
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                                    <span class="ms-2">Đang tải...</span>
+                                </td>
+                            </tr>
+                        }
+                        else if (!accommodations.Any())
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center py-5 text-muted">
+                                    <i class="bi bi-inbox fs-1"></i>
+                                    <p class="mt-2">Chưa có loại hình lưu trú nào</p>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var acc in accommodations)
+                            {
+                                <tr>
+                                    <td class="ps-3">
+                                        @if (!string.IsNullOrEmpty(acc.ImagePath))
+                                        {
+                                            <img src="@acc.ImagePath" alt="@acc.Name" class="rounded object-fit-cover"
+                                                style="width: 60px; height: 60px;" />
+                                        }
+                                        else
+                                        {
+                                            <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                                                style="width: 60px; height: 60px;">
+                                                <i class="bi bi-image text-muted"></i>
+                                            </div>
+                                        }
+                                    </td>
+                                    <td class="fw-medium">@acc.Name</td>
+                                    <td><code class="small bg-light px-2 py-1 rounded">@acc.Slug</code></td>
+                                    <td class="text-truncate" style="max-width: 200px;">@acc.Description</td>
+                                    <td>@(string.IsNullOrEmpty(acc.CreatedByName) ? "—" : acc.CreatedByName)</td>
+                                    <td>@acc.CreatedAt?.ToString("dd/MM/yyyy")</td>
+                                    <td>@acc.UpdatedAt?.ToString("dd/MM/yyyy")</td>
+                                    <td class="text-end pe-3">
+                                        <button class="btn btn-sm btn-outline-warning" @onclick="() => EditAccommodation(acc)"
+                                            title="Sửa">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger ms-1"
+                                            @onclick="() => DeleteAccommodation(acc.Id)" title="Xóa">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Form -->
+@if (isModalOpen)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header border-0 pb-2">
+                    <h5 class="modal-title fw-bold">
+                        @(isEditMode ? "Cập nhật loại lưu trú" : "Thêm loại lưu trú mới")
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <AccommodationForm @ref="accommodationForm" Accommodation="selectedAccommodation"
+                        IsEditMode="isEditMode" OnSubmit="HandleValidSubmit" OnCancel="CloseModal" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<AdminAccommodationTypeVM>? accommodations;
+    private AdminAccommodationTypeVM selectedAccommodation = new();
+    private bool isModalOpen = false;
+    private bool isEditMode = false;
+    private HttpClient? _httpClient;
+    private const long maxAllowedSize = 5 * 1024 * 1024;
+    private AccommodationForm? accommodationForm;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+        await SetAuthHeader();
+        await LoadAccommodation();
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken"); 
+        if(!string.IsNullOrEmpty(token))
+        {
+            _httpClient!.DefaultRequestHeaders.Authorization = 
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
+    }
+
+    private async Task LoadAccommodation()
+    {
+        try
+        {
+            var response = await _httpClient!.GetAsync("hotel/get-all-accommodations");
+            var json = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Lỗi tải dữ liệu: {error}", Severity.Error);
+                accommodations = new();
+                return;
+            }
+
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<List<AdminAccommodationTypeVM>>>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            accommodations = apiResponse?.StatusCode == StatusCodeResponse.Success
+            ? apiResponse.Content ?? new()
+            : new();
+        }
+        catch (Exception ex)
+        {
+            accommodations = new();
+            Snackbar.Add($"Lỗi: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenAddModal()
+    {
+        selectedAccommodation = new AdminAccommodationTypeVM();
+        isEditMode = false;
+        isModalOpen = true;
+        StateHasChanged();
+    }
+
+    private void EditAccommodation(AdminAccommodationTypeVM acc)
+    {
+        selectedAccommodation = new AdminAccommodationTypeVM
+        {
+            Id = acc.Id,
+            Name = acc.Name,
+            Slug = acc.Slug,
+            Description = acc.Description,
+            ImagePath = acc.ImagePath,
+            CreatedAt = acc.CreatedAt,
+            UpdatedAt = acc.UpdatedAt
+        };
+        isEditMode = true;
+        isModalOpen = true;
+        StateHasChanged();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(selectedAccommodation.Name?.Trim()))
+        {
+            Snackbar.Add("Tên loại lưu trú không được để trống.", Severity.Error);
+            return;
+        }
+
+        if (!isEditMode)
+            await CreateAccommodation();
+        else
+            await UpdateAccommodation(selectedAccommodation.Id);
+    }
+
+    private async Task CreateAccommodation()
+    {
+        await SetAuthHeader();
+        var accData = new AccommodationCreateOrUpdateVM
+        {
+            Name = selectedAccommodation.Name!.Trim(),
+            Slug = selectedAccommodation.Slug?.Trim(),
+            Description = selectedAccommodation.Description?.Trim()
+        };
+
+        var response = await _httpClient!.PostAsJsonAsync("hotel/create-accommodation", accData);
+        if (!response.IsSuccessStatusCode) { await HandleErrorResponse(response); return; }
+
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<AdminAccommodationTypeVM>>();
+        if (result?.StatusCode != StatusCodeResponse.Success || result.Content == null)
+        {
+            SnackbarHelper.Show(Snackbar, result?.StatusCode ?? "Error", result?.Message ?? "Lỗi tạo mới");
+            return;
+        }
+
+        var newId = result.Content.Id;
+        if (selectedAccommodation.ImageFile != null)
+        {
+            var uploadRes = await UploadImageAsync(newId, selectedAccommodation.ImageFile);
+            if (!uploadRes.IsSuccessStatusCode)
+                Snackbar.Add("Tạo thành công nhưng upload ảnh thất bại.", Severity.Warning);
+        }
+
+        await LoadAccommodation();
+        Snackbar.Add("Tạo mới thành công!", Severity.Success);
+        CloseModal();
+    }
+
+    private async Task UpdateAccommodation(int id)
+    {
+        await SetAuthHeader();
+        var accData = new AccommodationCreateOrUpdateVM
+        {
+            Name = selectedAccommodation.Name!.Trim(),
+            Slug = selectedAccommodation.Slug?.Trim(),
+            Description = selectedAccommodation.Description?.Trim()
+        };
+
+        var response = await _httpClient!.PutAsJsonAsync($"hotel/update-accommodation/{id}", accData);
+        if (!response.IsSuccessStatusCode) { await HandleErrorResponse(response); return; }
+
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<AdminAccommodationTypeVM>>();
+        if (result?.StatusCode != StatusCodeResponse.Success)
+        {
+            SnackbarHelper.Show(Snackbar, result?.StatusCode ?? "Error", result?.Message ?? "Lỗi cập nhật");
+            return;
+        }
+
+        if (selectedAccommodation.ImageFile != null)
+        {
+            var uploadRes = await UploadImageAsync(id, selectedAccommodation.ImageFile);
+            if (!uploadRes.IsSuccessStatusCode)
+                Snackbar.Add("Cập nhật thành công nhưng upload ảnh thất bại.", Severity.Warning);
+        }
+
+        await LoadAccommodation();
+        Snackbar.Add("Cập nhật thành công!", Severity.Success);
+        CloseModal();
+    }
+
+    private async Task DeleteAccommodation(int id)
+    {
+        await SetAuthHeader();
+        var response = await _httpClient!.DeleteAsync($"hotel/delete-accommodation/{id}");
+        if (!response.IsSuccessStatusCode)
+        {
+            var msg = await response.Content.ReadAsStringAsync();
+            Snackbar.Add($"Lỗi: {msg}", Severity.Error);
+            return;
+        }
+
+        var apiRes = await response.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+        Snackbar.Add(apiRes?.Message ?? "Xóa thành công!", Severity.Success);
+        await LoadAccommodation();
+    }
+
+    private async Task<HttpResponseMessage> UploadImageAsync(int accId, IBrowserFile file)
+    {
+        await SetAuthHeader();
+        using var content = new MultipartFormDataContent();
+        using var stream = file.OpenReadStream(maxAllowedSize);
+        using var fileContent = new StreamContent(stream);
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+        content.Add(fileContent, "Image", file.Name);
+        return await _httpClient!.PostAsync($"hotel/accommodation/{accId}/image", content);
+    }
+
+    private void CloseModal()
+    {
+        isModalOpen = false;
+        selectedAccommodation = new AdminAccommodationTypeVM();
+        isEditMode = false;
+    }
+
+    private async Task HandleErrorResponse(HttpResponseMessage response)
+    {
+        var error = await response.Content.ReadAsStringAsync();
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            Snackbar.Add("Phiên đăng nhập hết hạn.", Severity.Error);
+        else
+            Snackbar.Add($"Lỗi: {error}", Severity.Error);
+    }
+}

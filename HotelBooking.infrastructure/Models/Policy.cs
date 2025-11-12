@@ -13,5 +13,19 @@ public partial class Policy
 
     public bool? IsDeleted { get; set; }
 
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
+    public int? CreatedBy { get; set; }
+
+    public int? UpdatedBy { get; set; }
+
+    public string? Additional { get; set; }
+
+    public virtual User? CreatedByNavigation { get; set; }
+
     public virtual ICollection<HotelPolicy> HotelPolicies { get; set; } = new List<HotelPolicy>();
+
+    public virtual User? UpdatedByNavigation { get; set; }
 }

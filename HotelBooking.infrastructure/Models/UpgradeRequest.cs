@@ -17,6 +17,14 @@ public partial class UpgradeRequest
 
     public int? ApprovedBy { get; set; }
 
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
+    public int? CreatedBy { get; set; }
+
+    public int? UpdatedBy { get; set; }
+
     public string? Additional { get; set; }
 
     public string? Address { get; set; }
@@ -24,6 +32,10 @@ public partial class UpgradeRequest
     public string? TaxCode { get; set; }
 
     public virtual User? ApprovedByNavigation { get; set; }
+
+    public virtual User? CreatedByNavigation { get; set; }
+
+    public virtual User? UpdatedByNavigation { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

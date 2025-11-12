@@ -11,6 +11,8 @@ public partial class HotelAmenity
 
     public DateTime? CreatedAt { get; set; }
 
+    public string? Additional { get; set; }
+
     public virtual Amenity Amenity { get; set; } = null!;
 
     public virtual Hotel Hotel { get; set; } = null!;

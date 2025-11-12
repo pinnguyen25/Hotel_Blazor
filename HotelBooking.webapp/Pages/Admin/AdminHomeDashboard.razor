@@ -1,6 +1,38 @@
 @page "/admin"
-
-@* @attribute [Authorize(Roles = "Admin")] *@
 @layout AdminLayout
+<div class="container-fluid mt-5">
+    <h2 class="fw-bold mb-4">Welcome to Admin Dashboard</h2>
 
-<h1>Admin Dashboard</h1>
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h5 class="card-title text-primary"><i class="fa-solid fa-building me-2"></i>Hotels</h5>
+                    <p class="card-text">Manage hotel listings and their owners.</p>
+                    <a href="/admin/manages/manage-hotels" class="btn btn-primary btn-sm">Go</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h5 class="card-title text-success"><i class="fa-solid fa-user-gear me-2"></i>Users</h5>
+                    <p class="card-text">View and manage user roles.</p>
+                    <a href="/admin/requests/upgrade-owner" class="btn btn-success btn-sm">Go</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h5 class="card-title text-info"><i class="fa-solid fa-chart-bar me-2"></i>Statistics</h5>
+                    <p class="card-text">View site activity and data summaries.</p>
+                    <a href="/admin/requests/requests-overview" class="btn btn-info btn-sm">Go</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

@@ -485,35 +485,62 @@ h3 {
 
 /* Ensure consistency for other pages */
 .page-content {
-    min-height: calc(100vh - 120px); /* 100vh trừ header + footer */
-    padding-bottom: 40px;            /* tránh dính footer */
+  min-height: calc(100vh - 120px);
+  /* 100vh trừ header + footer */
+  padding-bottom: 40px;
+  /* tránh dính footer */
 }
 
 /* index */
 /* -- Khám phá VN -- */
 /* Destination card */
 .destination-card {
-  border-radius: 12px;
+  position: relative;
+  border-radius: 14px;
   overflow: hidden;
-  background: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
   width: 18rem;
-  display: flex;
-  flex-direction: column;
+  height: 200px;
   cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
+
 .destination-card img {
   width: 100%;
-  height: 180px;
+  height: 200px;
   object-fit: cover;
 }
+
 .destination-card .card-body {
   padding: 10px 15px;
 }
+
 .destination-card .card-title {
   font-weight: 600;
-  font-size: 1rem;
-  color: #1a2a6c;
+  font-size: 1.1rem;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Overlay tên thành phố */
+.card-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1.5rem 1rem 1rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
+  color: white;
+  pointer-events: none;
+}
+
+.card-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -525,10 +552,12 @@ h3 {
   overflow: hidden;
   padding: 0 3.5rem;
 }
+
 .swiper-wrapper {
   display: flex;
   align-items: center;
 }
+
 .swiper-slide {
   width: 18rem !important;
   display: flex;
@@ -541,6 +570,7 @@ h3 {
   max-width: 100%;
   margin: 0 auto;
 }
+
 .carousel-wrapper .carousel-btn {
   position: absolute;
   top: 50%;
@@ -560,15 +590,19 @@ h3 {
   transition: opacity 0.3s, background-color 0.3s;
   z-index: 10;
 }
+
 .carousel-wrapper:hover .carousel-btn {
   opacity: 1;
 }
+
 .carousel-btn:hover {
   background-color: #007bff;
 }
+
 .prev-btn {
   left: 0.5rem;
 }
+
 .next-btn {
   right: 0.5rem;
 }
@@ -578,26 +612,33 @@ h3 {
   .destination-card {
     width: 16rem;
   }
+
   .destination-card img {
     height: 140px;
   }
+
   .swiper-slide {
     width: 16rem !important;
   }
+
   .swiper {
     padding: 0 2rem;
   }
 }
+
 @media (max-width: 576px) {
   .destination-card {
     width: 14rem;
   }
+
   .destination-card img {
     height: 120px;
   }
+
   .swiper-slide {
     width: 14rem !important;
   }
+
   .swiper {
     padding: 0 1.5rem;
   }
@@ -605,93 +646,94 @@ h3 {
 
 
 /* phân loại lưu trú */
-.accommodation-grid {
+.accommodation-type-icon {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
+.accommodation-type-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  height: 100%;
+}
+
+.accommodation-type-icon {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
+.transition-hover {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+/* Card cơ bản */
+.accommodation-card {
+  background: #fff;
+  padding: 1.5rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--gray-200);
+  text-align: center;
+  transition: all 0.3s ease;
+  height: 100%;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 0.75rem;
 }
 
-.accommodation-card {
-  flex-grow: 1;
-  flex-basis: 0;
-  min-width: 0;
-  text-align: center;
-  background: #f8f9fa;
-  border-radius: 10px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s;
-  position: relative;
-  overflow: hidden;
-  /* Đảm bảo ảnh không tràn ra ngoài viền khi phóng to */
+/* Hover effect */
+.accommodation-link:hover .accommodation-card {
+  transform: translateY(-6px);
+  border-color: var(--primary);
+  box-shadow: 0 12px 25px #1878ff2e;
 }
 
-.accommodation-card:hover img {
-  transform: scale(1.05);
-  /* Phóng to ảnh khi hover */
-  transition: transform 0.2s;
-  /* Hiệu ứng mượt mà cho ảnh */
+/* Icon */
+.accommodation-icon {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  transition: transform 0.3s ease;
 }
 
-/* Hàng 1: 3 cột đều nhau */
-.accommodation-card:nth-child(-n+3) {
-  flex: 1 1 calc(33.33% - 0.75rem);
-  max-width: calc(33.33% - 0.75rem);
+.accommodation-link:hover .accommodation-icon {
+  transform: scale(1.1);
 }
 
-/* Hàng 2: 4 cột đều nhau */
-.accommodation-card:nth-child(n+4):nth-child(-n+7) {
-  flex: 1 1 calc(25% - 0.75rem);
-  max-width: calc(25% - 0.75rem);
+/* Tiêu đề loại chỗ ở */
+.accommodation-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #212529;
+  margin: 0;
+  transition: color 0.3s ease;
 }
 
-.accommodation-card img {
-  width: 100%;
-  height: 170px;
-  object-fit: cover;
+.accommodation-link:hover .accommodation-title {
+  color: var(--primary);
+}
+
+/* Số lượng chỗ ở */
+.accommodation-count {
+  font-size: 0.875rem;
+  color: #6c757d;
+  transition: color 0.3s ease;
+}
+
+.accommodation-link:hover .accommodation-count {
+  color: var(--primary-dark);
+}
+
+.accommodation-link {
+  text-decoration: none;
+  color: inherit;
   display: block;
-  border-radius: 8px;
-  transition: transform 0.2s;
-  /* Thêm transition cho ảnh để mượt mà */
 }
 
-.accommodation-card .title-accommodation {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent 70%);
-  color: #fff;
-  font-size: 1.2rem;
-  font-weight: 500;
-  padding: 0.5rem 0.5rem;
-  text-align: center;
-  z-index: 10;
-  border-radius: 0;
-  line-height: 1.3;
-}
-
-
-.accommodation-card .title-accommodation::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
-  z-index: -1;
-}
-
-/* Responsive cho màn hình nhỏ */
-@media (max-width: 768px) {
-
-  .accommodation-card:nth-child(-n+3),
-  .accommodation-card:nth-child(n+4):nth-child(-n+7) {
-    flex: 1 1 100%;
-    max-width: 100%;
-  }
-
-  .accommodation-card img {
-    height: 140px;
-  }
-}
 
 /* <!-- Chỗ ở được đánh giá cao --> */
 .wishlist-btn {
@@ -736,11 +778,270 @@ h3 {
 /* Body */
 /* HotelList */
 .mud-icon-button.rounded-circle {
-    border-radius: 50% !important;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  border-radius: 50% !important;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
+/* Hotel-detail */
+.detail-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  /* Semi-transparent gray overlay */
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: detail-fadeIn 0.3s ease;
+}
+
+.detail-modal {
+  background: white;
+  border-radius: 16px;
+  max-width: 900px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  animation: detail-slideUp 0.3s ease;
+  position: relative;
+  padding: 20px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.detail-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2100;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.detail-close:hover {
+  background: #f0f0f0;
+  transform: scale(1.1);
+}
+
+.detail-hero-img {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.detail-btn {
+  transition: all 0.3s ease;
+  border-radius: 20px;
+  padding: 8px 20px;
+  font-weight: 500;
+}
+
+.detail-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.detail-room-card {
+  transition: transform 0.3s ease;
+}
+
+.detail-room-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.detail-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: detail-skeleton-loading 1.5s infinite;
+}
+
+@keyframes detail-skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes detail-fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes detail-slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* highly-rate hotel */
+
+.scroll-container-wrapper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.scroll-container {
+  display: flex;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  gap: 1.5rem;
+  padding: 0 1rem;
+}
+
+.scroll-item {
+  flex: 0 0 calc((100% - (1.5rem * 3)) / 4);
+  box-sizing: border-box;
+  scroll-snap-align: start;
+}
+
+.scroll-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scroll-btn:hover {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+.prev-btn {
+  left: 10px;
+}
+
+.next-btn {
+  right: 10px;
+}
+
+/* đăng ký đối tác */
+.partner-scroll {
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 35px 0;
+  background: #f8f9fa;
+  position: relative;
+}
+
+/* Dòng logo di chuyển */
+.partner-track {
+  display: inline-flex;
+  animation: scroll-left 32s linear infinite;
+}
+
+/* Mỗi logo */
+.partner-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 38px;
+  /* khoảng cách ngang */
+}
+
+/* Logo */
+.partner-logo {
+  width: 130px;
+  height: 85px;
+  object-fit: contain;
+  filter: grayscale(100%);
+  /* đen-trắng nhẹ */
+  transition: filter 0.4s ease;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Khi hover toàn bộ dãy → dừng để xem */
+.partner-scroll:hover .partner-track {
+  animation-play-state: paused;
+}
+
+/* Khi hover dãy → logo trở lại màu (không phóng to) */
+.partner-scroll:hover .partner-logo {
+  filter: grayscale(0%);
+}
+
+/* Animation chạy ngang */
+@keyframes scroll-left {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
 /* end body */
+
+/* admin */
+/* accommodation */
+/* Canh giữa nội dung bảng */
+.table td,
+.table th {
+  vertical-align: middle !important;
+}
+
+/* Căn giữa hình ảnh và text */
+.table img {
+  display: block;
+  margin: auto;
+}
+
+/* Căn giữa nút thao tác */
+.table .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Modal form cân đối hơn */
+.modal-dialog {
+  margin-top: 60px;
+}
+
+/* hover cho form accommodation */
+.image-upload-zone:hover .upload-overlay {
+  display: block !important;
+}
+
+.image-upload-zone:hover {
+  border-color: #0d6efd !important;
+  box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .25);
+}

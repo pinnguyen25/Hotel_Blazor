@@ -3,8 +3,8 @@
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager Navigation
 
-<div class="container mt-5">
-  <h2 class="mb-4 text-center">Khám phá Việt Nam</h2>
+<div class="container mt-10">
+  <h2 class="mb-7 text-center">Các điểm đến trong nước</h2>
   <div class="carousel-wrapper">
     <div class="swiper" id="multiCardCarousel">
       <div class="swiper-wrapper">
@@ -12,8 +12,8 @@
         {
           <div class="swiper-slide">
             <div class="card destination-card" @onclick="() => NavigateToCity(city.Name)">
-              <img src="@city.CoverImageUrl" class="card-img-top" alt="@city.Slug">
-              <div class="card-body text-center">
+              <img src="@city.CoverImageUrl" class="card-img" alt="@city.Slug">
+              <div class="card-overlay">
                 <h5 class="card-title">@city.Name</h5>
               </div>
             </div>
@@ -28,18 +28,20 @@
 
 @code {
   private List<CityVM> cities = new();
-  private bool swiperInit;
+  private bool swiperInit =false;
 
   protected override async Task OnInitializedAsync()
   {
     var httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");
-    cities = await httpClient.GetFromJsonAsync<List<CityVM>>("Hotel/get-cityName") ?? new();
+    cities = await httpClient.GetFromJsonAsync<List<CityVM>>("Hotel/get-cityName") ?? new List<CityVM>();
   }
 
   protected override async Task OnAfterRenderAsync(bool firstRender)
   {
-    if (firstRender && cities.Any())
+    // Khởi tạo Swiper sau khi được render lần đầu
+    if (cities.Any() && !swiperInit)
     {
+      await Task.Delay(100); // Đảm bảo phần tử đã được render
       await JS.InvokeVoidAsync("initSwiper");
       swiperInit = true;
     }
@@ -47,6 +49,6 @@
 
   private void NavigateToCity(string cityName)
   {
-    Navigation.NavigateTo($"/searchresult?destination={cityName}");
+    Navigation.NavigateTo($"/Hotels?destination={cityName}");
   }
 }

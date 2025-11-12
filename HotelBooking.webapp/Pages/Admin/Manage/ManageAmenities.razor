@@ -1,0 +1,274 @@
+@page "/admin/manages/manage-amenities"
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.Components.Manage
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Text.Json
+@layout AdminLayout
+
+@inject IHttpClientFactory _httpClientFactory
+@inject ILocalStorageService _localStorage
+@inject ISnackbar Snackbar
+
+<PageTitle>Quản lý tiện ích</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0 fw-semibold">Quản lý tiện ích</h3>
+        <button class="btn btn-primary d-flex align-items-center gap-2" @onclick="OpenAddModal">
+            <i class="bi bi-plus-circle"></i> Thêm mới
+        </button>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:60px;">#</th>
+                            <th style="width:80px;">Icon</th>
+                            <th>Tên tiện ích</th>
+                            <th>Mô tả</th>
+                            <th>Class Icon</th>
+                            <th>Người tạo</th>
+                            <th>Ngày tạo</th>
+                            <th>Người cập nhật</th>
+                            <th>Ngày cập nhật</th>
+                            <th class="text-end pe-3">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Amenities == null)
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <div class="spinner-border spinner-border-sm text-primary"></div>
+                                    <span class="ms-2 text-muted">Đang tải dữ liệu...</span>
+                                </td>
+                            </tr>
+                        }
+                        else if (!Amenities.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <i class="bi bi-inbox fs-1"></i>
+                                    <p class="mt-2">Chưa có tiện ích nào</p>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var amenity in Amenities)
+                            {
+                                <tr>
+                                    <td>@amenity.Id</td>
+                                    <td><i class="@amenity.IconClass fa-lg text-primary"></i></td>
+                                    <td class="fw-medium">@amenity.Name</td>
+                                    <td class="fw-medium">@amenity.Description</td>
+                                    <td><code class="small bg-light px-2 py-1 rounded">@amenity.IconClass</code></td>
+                                    <td>@amenity.CreatedByName</td>
+                                    <td>@amenity.CreatedAt.ToString("dd/MM/yyyy")</td>
+                                    <td>@amenity.UpdatedByName</td>
+                                    <td>@amenity.UpdatedAt?.ToString("dd/MM/yyyy")</td>
+                                    <td class="text-end pe-3">
+                                        <button class="btn btn-sm btn-outline-warning" @onclick="() => EditAmenity(amenity)"
+                                            title="Sửa">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger ms-1"
+                                            @onclick="() => DeleteAmenity(amenity.Id)" title="Xóa">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal thêm/sửa -->
+@if (isModalOpen)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header border-0 pb-2">
+                    <h5 class="modal-title fw-bold">
+                        @(isEditMode ? "Cập nhật tiện ích" : "Thêm tiện ích mới")
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <AmenityForm FormModel="@SelectedAmenity" IsEditMode="@isEditMode" OnValidSubmit="HandleValidSubmit"
+                        OnCancelClicked="CloseModal" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<AmenityVM>? Amenities;
+    private AmenityVM SelectedAmenity = new();
+    private bool isModalOpen = false;
+    private bool isEditMode = false;
+    private HttpClient? _httpClient;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+        await SetAuthHeader();
+        await LoadAmenities();
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient!.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
+    }
+
+    private async Task LoadAmenities()
+    {
+        try
+        {
+            await SetAuthHeader();
+            var response = await _httpClient!.GetAsync("hotel/get-all-amenities");
+            var json = await response.Content.ReadAsStringAsync();
+            var apiRes = JsonSerializer.Deserialize<ApiResponse<List<AmenityVM>>>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            Amenities = apiRes?.StatusCode == StatusCodeResponse.Success
+            ? apiRes.Content ?? new()
+            : new();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi khi tải dữ liệu: {ex.Message}", Severity.Error);
+            Amenities = new();
+        }
+        StateHasChanged();
+    }
+
+    private void OpenAddModal()
+    {
+        SelectedAmenity = new AmenityVM();
+        isEditMode = false;
+        isModalOpen = true;
+    }
+
+    private void EditAmenity(AmenityVM a)
+    {
+        SelectedAmenity = new AmenityVM
+        {
+            Id = a.Id,
+            Name = a.Name,
+            Description = a.Description,
+            IconClass = a.IconClass
+        };
+        isEditMode = true;
+        isModalOpen = true;
+    }
+
+    private async Task HandleValidSubmit(AmenityVM model)
+    {
+        if (isEditMode)
+            await UpdateAmenity(model);
+        else
+            await CreateAmenity(model);
+    }
+
+    private async Task HandleErrorResponse<T>(HttpResponseMessage response, string action, Func<Task>? reloadData = null)
+    {
+        if (!response.IsSuccessStatusCode)
+        {
+            Snackbar.Add($"{action} thất bại.", Severity.Error);
+            return;
+        }
+
+        var res = await response.Content.ReadFromJsonAsync<ApiResponse<T>>();
+        if (res?.StatusCode == StatusCodeResponse.Success)
+        {
+            Snackbar.Add($"{action} thành công!", Severity.Success);
+            if (reloadData != null) await reloadData();
+            CloseModal();
+        }
+        else
+        {
+            Snackbar.Add(res?.Message ?? $"{action} thất bại.", Severity.Error);
+        }
+    }
+
+    private async Task CreateAmenity(AmenityVM model)
+    {
+        await SetAuthHeader();
+        var response = await _httpClient!.PostAsJsonAsync("hotel/create-amenity", model);
+        await HandleResponse(response, "Tạo mới");
+    }
+
+    private async Task UpdateAmenity(AmenityVM model)
+    {
+        await SetAuthHeader();
+        var response = await _httpClient!.PutAsJsonAsync($"hotel/update-amenity/{model.Id}", model);
+        await HandleResponse(response, "Cập nhật");
+    }
+
+    private async Task DeleteAmenity(int id)
+    {
+        await SetAuthHeader();
+        var response = await _httpClient!.DeleteAsync($"hotel/delete-amenity/{id}");
+        if (!response.IsSuccessStatusCode)
+        {
+            var msg = await response.Content.ReadAsStringAsync();
+            Snackbar.Add($"Xóa thất bại: {msg}", Severity.Error);
+            return;
+        }
+
+        var apiRes = await response.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+        if (apiRes?.StatusCode == StatusCodeResponse.Success)
+        {
+            Snackbar.Add(apiRes.Message ?? "Xóa thành công!", Severity.Success);
+            await LoadAmenities();
+        }
+        else
+        {
+            Snackbar.Add(apiRes?.Message ?? "Xóa thất bại!", Severity.Error);
+        }
+
+    }
+
+    private async Task HandleResponse(HttpResponseMessage response, string action)
+    {
+        if (!response.IsSuccessStatusCode)
+        {
+            Snackbar.Add($"{action} thất bại.", Severity.Error);
+            return;
+        }
+
+        var res = await response.Content.ReadFromJsonAsync<ApiResponse<AmenityVM>>();
+        if (res?.StatusCode == StatusCodeResponse.Success)
+        {
+            Snackbar.Add($"{action} thành công!", Severity.Success);
+            await LoadAmenities();
+            CloseModal();
+        }
+        else
+        {
+            Snackbar.Add(res?.Message ?? $"{action} thất bại.", Severity.Error);
+        }
+    }
+
+    private void CloseModal()
+    {
+        isModalOpen = false;
+        isEditMode = false;
+        SelectedAmenity = new();
+    }
+}

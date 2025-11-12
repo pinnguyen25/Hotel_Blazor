@@ -17,15 +17,25 @@ public partial class RoomType
 
     public int? Capacity { get; set; }
 
-    public bool? IsDeleted { get; set; }
-
-    public string? Additional { get; set; }
-
     public int? AdultCapacity { get; set; }
 
     public int? ChildCapacity { get; set; }
 
+    public bool? IsDeleted { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
+    public int? CreatedBy { get; set; }
+
+    public int? UpdatedBy { get; set; }
+
+    public string? Additional { get; set; }
+
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+
+    public virtual User? CreatedByNavigation { get; set; }
 
     public virtual Hotel Hotel { get; set; } = null!;
 
@@ -34,4 +44,6 @@ public partial class RoomType
     public virtual ICollection<RoomImage> RoomImages { get; set; } = new List<RoomImage>();
 
     public virtual ICollection<Room> Rooms { get; set; } = new List<Room>();
+
+    public virtual User? UpdatedByNavigation { get; set; }
 }

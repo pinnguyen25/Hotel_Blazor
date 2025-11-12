@@ -1,0 +1,91 @@
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Text.Json
+@inject IHttpClientFactory _httpClientFactory
+@inject ISnackbar Snackbar
+
+<div class="container mt-15">
+    <h2 class="text-center fw-bold mb-5 text-primary-gradient">Loại hình lưu trú</h2>
+
+    @if (accommodations == null)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Đang tải danh sách...</p>
+        </div>
+    }
+    else if (!accommodations.Any())
+    {
+        <div class="text-center my-5 text-muted">
+            <i class="bi bi-inbox fs-1"></i>
+            <p class="mt-2">Chưa có loại hình lưu trú nào</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4 justify-content-center text-center">
+            @foreach (var acc in accommodations)
+            {
+                <div class="col-6 col-md-4 col-lg-2">
+                    <a href="@($"/Hotels?accTypeId={acc.Id}")" class="accommodation-link accommodation-type-link">
+                        <div class="accommodation-card transition-hover">
+                            @if (!string.IsNullOrEmpty(acc.ImagePath))
+                            {
+                                <img src="@acc.ImagePath" alt="@acc.Name" class="accommodation-icon" />
+                            }
+                            else
+                            {
+                                <img src="images/accommodation/default.png" alt="@acc.Name" class="accommodation-icon opacity-50" />
+                            }
+
+                            <h5 class="accommodation-title">@acc.Name</h5>
+                            <span class="accommodation-count">@(GetRandomCount()) chỗ ở</span>
+                        </div>
+                    </a>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<AdminAccommodationTypeVM>? accommodations;
+    private HttpClient? _httpClient;
+    private readonly Random _rand = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+        await LoadAccommodation();
+    }
+
+    private async Task LoadAccommodation()
+    {
+        try
+        {
+            var response = await _httpClient!.GetAsync("hotel/get-all-accommodations");
+            if (!response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Không thể tải danh sách loại lưu trú.", Severity.Error);
+                accommodations = new();
+                return;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<List<AdminAccommodationTypeVM>>>(json,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            accommodations = apiResponse?.StatusCode == StatusCodeResponse.Success
+                ? apiResponse.Content ?? new()
+                : new();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi khi tải dữ liệu: {ex.Message}", Severity.Error);
+            accommodations = new();
+        }
+        StateHasChanged();
+    }
+
+    // Demo: sinh ngẫu nhiên số lượng chỗ ở
+    private string GetRandomCount() => $"{_rand.Next(100, 1500):N0}";
+}

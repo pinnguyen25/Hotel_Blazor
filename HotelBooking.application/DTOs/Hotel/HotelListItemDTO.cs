@@ -18,10 +18,12 @@ public class HotelListItemDTO
     public decimal? MinPricePerNight { get; set; }
     public decimal? MaxPricePerNight { get; set; }  
     public decimal? AvgPricePerNight { get; set; }
-    public double AverageRating { get; set; } = 0;
+    public decimal AverageRating { get; set; }
     public int ReviewCount { get; set; } = 0;
     // Phòng trống
     public int? AvailableRooms { get; set; }
+    // Khả năng đặt phòng
+    public bool IsBookable { get; set; }
     // Bổ sung cho search
     public int? MaxAdultCapacity { get; set; }
     public int? MaxChildCapacity { get; set; }
