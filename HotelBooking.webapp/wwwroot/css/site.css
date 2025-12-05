@@ -1045,3 +1045,71 @@ h3 {
   border-color: #0d6efd !important;
   box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .25);
 }
+
+/* owner */
+/* form post hotel */
+/* step image */
+.hover-scale:hover { transform: scale(1.05); }
+
+/* filter */
+.custom-range {
+    height: 8px;
+    background: linear-gradient(to right, #0d6efd 0%, #0d6efd calc(var(--value, 0) * 1%), #e9ecef calc(var(--value, 0) * 1%), #e9ecef 100%);
+    border-radius: 50px;
+    appearance: none;
+}
+
+.custom-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #0d6efd;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.custom-range::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #0d6efd;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.unselected-amenity {
+    @apply border rounded-3 p-3 text-center small bg-light text-dark cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+}
+
+.selected-amenity {
+    @apply border rounded-3 p-3 text-center small bg-primary text-white border-primary cursor-pointer shadow-sm relative;
+}
+
+/* Nếu không dùng Tailwind, dùng CSS thường */
+.unselected-amenity {
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 10px;
+    font-size: 0.875rem;
+    color: #212529;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.unselected-amenity:hover {
+    background-color: #e9ecef;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.selected-amenity {
+    border: 2px solid #54a9ffff !important;
+    border-radius: 12px;
+    padding: 10px;
+    font-size: 0.875rem;
+    background-color: #54a9ffff;
+    color: white;
+    cursor: pointer;
+    /* box-shadow: 0 2px 8px rgba(13,110,253,0.25); */
+}

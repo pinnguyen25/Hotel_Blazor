@@ -1,0 +1,27 @@
+@inject HotelFormState FormState
+@inject NavigationManager _nav
+
+<MudAlert Severity="Severity.Success" Class="mb-6">
+    @if (FormState.IsDraftCreated)
+    {
+        <MudText Typo="Typo.h5">Chúc mừng! Bạn đã hoàn thành đăng ký</MudText>
+        <MudText>Khách sạn <strong>@FormState.BasicInfo.Name</strong> đã được gửi đi xét duyệt.</MudText>
+        <MudText>Chúng tôi sẽ thông báo qua email trong vòng 24h.</MudText>
+        <MudText Class="mt-2">
+            Bây giờ bạn cần <strong>thêm ít nhất 1 loại phòng</strong> để có thể gửi duyệt.
+        </MudText>
+        
+    }
+
+</MudAlert>
+
+<div class="d-flex justify-center">
+    <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Large"
+        OnClick="@(() => _nav.NavigateTo("/owner/hotels"))">
+        Về trang chủ Owner
+    </MudButton>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnPrev { get; set; }
+}

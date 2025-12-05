@@ -1,6 +1,7 @@
 public static class StatusCodeResponse
 {
     public const string Success = "Success";
+    public const string Created = "Created";
     public const string Error = "Error";
     public const string NotFound = "Not Found";
     public const string BadRequest = "Bad Request";

@@ -17,7 +17,7 @@ public partial class Hotel
 
     public int OwnerId { get; set; }
 
-    public int? CityId { get; set; }
+    public int CityId { get; set; }
 
     public int? AccommodationTypeId { get; set; }
 
@@ -31,19 +31,31 @@ public partial class Hotel
 
     public bool? IsVerified { get; set; }
 
-    public string? Status { get; set; }
-
     public bool? IsDeleted { get; set; }
 
     public string? NameUnaccented { get; set; }
 
     public string? Additional { get; set; }
 
+    public int? ChainId { get; set; }
+
+    public string? Status { get; set; }
+
+    public string? ContactName { get; set; }
+
+    public string? ContactPhone { get; set; }
+
+    public string? ContactEmail { get; set; }
+
+    public bool IsActive { get; set; }
+
     public virtual AccommodationType? AccommodationType { get; set; }
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
-    public virtual City? City { get; set; }
+    public virtual Chain? Chain { get; set; }
+
+    public virtual City City { get; set; } = null!;
 
     public virtual User? CreatedByNavigation { get; set; }
 
@@ -62,6 +74,8 @@ public partial class Hotel
     public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
 
     public virtual ICollection<RoomType> RoomTypes { get; set; } = new List<RoomType>();
+
+    public virtual ICollection<Staff> Staff { get; set; } = new List<Staff>();
 
     public virtual User? UpdatedByNavigation { get; set; }
 

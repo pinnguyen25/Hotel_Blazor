@@ -53,6 +53,10 @@ public partial class User
 
     public virtual ICollection<Booking> BookingUpdatedByNavigations { get; set; } = new List<Booking>();
 
+    public virtual ICollection<Chain> ChainCreatedByNavigations { get; set; } = new List<Chain>();
+
+    public virtual ICollection<Chain> ChainUpdatedByNavigations { get; set; } = new List<Chain>();
+
     public virtual User? CreatedByNavigation { get; set; }
 
     public virtual ICollection<EventBooking> EventBookingCreatedByNavigations { get; set; } = new List<EventBooking>();
@@ -116,6 +120,8 @@ public partial class User
     public virtual ICollection<Service> ServiceCreatedByNavigations { get; set; } = new List<Service>();
 
     public virtual ICollection<Service> ServiceUpdatedByNavigations { get; set; } = new List<Service>();
+
+    public virtual ICollection<Staff> Staff { get; set; } = new List<Staff>();
 
     public virtual User? UpdatedByNavigation { get; set; }
 

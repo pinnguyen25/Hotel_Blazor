@@ -1,159 +1,364 @@
-@* @page "/admin/manages/manage-policies"
+@page "/admin/manages/manage-policies"
+@using Blazored.LocalStorage
 @using HotelBooking.webapp.ViewModels.Hotel
-@inject IHttpClientFactory _httpClientFactory
-@inject IToastService ToastService
+@using HotelBooking.webapp.Components.Policy
+@layout AdminLayout
+@inject IHttpClientFactory HttpClientFactory
+@inject ILocalStorageService _localStorage
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
-<div class="container-fluid p-4">
-    <h2 class="text-primary mb-4">Manage Policies</h2>
+<PageTitle>Quản lý chính sách khách sạn</PageTitle>
 
-    <div class="row">
-        <!-- Form thêm/sửa bên trái -->
-        <div class="col-md-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        @(SelectedPolicy.Id == 0 ? "Add New Policy" : "Edit Policy")
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <EditForm Model="@SelectedPolicy" OnValidSubmit="SaveOrUpdatePolicy">
-                        <DataAnnotationsValidator />
-                        <ValidationSummary />
-
-                        <div class="mb-3">
-                            <label class="form-label">Policy Name</label>
-                            <InputText class="form-control" @bind-Value="SelectedPolicy.Name" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Description</label>
-                            <InputTextArea class="form-control" @bind-Value="SelectedPolicy.Description" />
-                        </div>
-
-                        <div class="d-flex">
-                            <button type="submit" class="btn btn-success me-2 w-50">
-                                @(SelectedPolicy.Id == 0 ? "SAVE" : "UPDATE")
-                            </button>
-                        </div>
-                    </EditForm>
-                </div>
-            </div>
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-1 fw-bold text-primary">Quản lý chính sách khách sạn</h3>
         </div>
+        <button class="btn btn-primary d-flex align-items-center gap-2" @onclick="OpenAddPolicyTypeModal">
+            <i class="bi bi-plus-circle"></i> Thêm loại mới
+        </button>
+    </div>
 
-        <!-- Bảng danh sách bên phải -->
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">Policies List</h5>
-                </div>
-                <div class="card-body">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width:60px;">Id</th>
-                                <th>Name</th>
-                                <th>Description</th>
-                                <th style="width:160px;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (Policies.Count == 0)
+    @if (policyTypes == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-3">Đang tải...</p>
+        </div>
+    }
+    else if (!policyTypes.Any())
+    {
+        <div class="text-center py-5">
+            <i class="bi bi-journal-text display-1 text-muted opacity-50"></i>
+            <p class="mt-4 fs-4">Chưa có loại chính sách nào</p>
+            <button class="btn btn-primary btn-lg" @onclick="OpenAddPolicyTypeModal">
+                Tạo loại đầu tiên
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="accordion" id="policyAccordion">
+            @foreach (var type in policyTypes)
+            {
+                var accordionId = $"collapse-{type.Id}";
+                var isOpen = OpenAccordions.Contains(type.Id);
+
+                <div class="accordion-item border-0 shadow-sm mb-3 rounded">
+
+                    <h2 class="accordion-header" id="heading-@type.Id">
+                        <button class="accordion-button @(isOpen ? "" : "collapsed") fw-medium bg-white" type="button"
+                            @onclick="() => ToggleAccordion(type.Id)">
+                            <div class="d-flex justify-content-between w-100 align-items-center pe-3">
+                                <div>
+                                    <i class="bi bi-tag-fill text-primary me-2"></i>
+                                    <strong>@type.Name</strong>
+                                    <span class="ms-3 text-muted small">
+                                        @type.PolicyCount chính sách
+                                    </span>
+                                    @if (!string.IsNullOrEmpty(type.Code))
+                                    {
+                                        <code class="ms-2 small">@type.Code</code>
+                                    }
+                                </div>
+                            </div>
+                        </button>
+                    </h2>
+
+                    <div id="@accordionId" class="accordion-collapse collapse @(isOpen ? "show" : "")"
+                        data-bs-parent="#policyAccordion">
+                        <div class="accordion-body pt-2">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0 fw-medium">Danh sách chính sách
+                                    @if (type.PolicyCount > 0)
+                                    {
+                                        <small class="text-muted ms-2">(có @type.PolicyCount chính sách đang được sử dụng)</small>
+                                    }
+                                </h6>
+
+
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="form-check form-switch form-switch-lg d-flex align-items-center">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="switch-@type.Id"
+                                            checked="@type.IsActive" disabled="@(type.PolicyCount > 0 || isToggling)"
+                                            @onchange="() => TogglePolicyTypeActive(type.Id)" />
+                                        @if (isToggling && togglingId == type.Id)
+                                        {
+                                            <div class="spinner-border spinner-border-sm ms-2" role="status"></div>
+                                        }
+                                    </div>
+
+                                    <button class="btn btn-sm btn-outline-primary me-2"
+                                        @onclick="() => OpenAddPolicyModal(type.Id)" @onclick:stopPropagation>
+                                        <i class="bi bi-plus"></i> Thêm
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-warning me-1" @onclick="() => EditPolicyType(type)"
+                                        @onclick:stopPropagation>
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeletePolicyType(type.Id)"
+                                        disabled="@(type.PolicyCount > 0)" @onclick:stopPropagation>
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            @if (!type.Policies?.Any() ?? true)
                             {
-                                <tr>
-                                    <td colspan="4" class="text-center text-muted">
-                                        No policies found
-                                    </td>
-                                </tr>
+                                <div class="text-center py-4 text-muted">
+                                    <i class="bi bi-inbox fs-3"></i>
+                                    <p class="mt-2 small">Chưa có chính sách nào</p>
+                                </div>
                             }
                             else
                             {
-                                @foreach (var policy in Policies)
-                                {
-                                    <tr>
-                                        <td>@policy.Id</td>
-                                        <td>@policy.Name</td>
-                                        <td>@policy.Description</td>
-                                        <td>
-                                            <button class="btn btn-warning btn-sm me-2" @onclick="() => EditPolicy(policy)">
-                                                EDIT
-                                            </button>
-                                            <button class="btn btn-danger btn-sm" @onclick="() => DeletePolicy(policy.Id)">
-                                                DELETE
-                                            </button>
-                                        </td>
-                                    </tr>
-                                }
+                                <ul class="list-group list-group-flush">
+                                    @foreach (var p in type.Policies.OrderBy(x => x.CreatedAt))
+                                    {
+                                        <li
+                                            class="list-group-item px-0 py-3 border-0 border-bottom d-flex justify-content-between align-items-start">
+                                            <div class="flex-fill">
+                                                <div class="fw-medium">@p.Name</div>
+                                                @if (!string.IsNullOrWhiteSpace(p.Description))
+                                                {
+                                                    <small class="text-muted">@p.Description</small>
+                                                }
+                                            </div>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-warning" @onclick="() => EditPolicy(p)"
+                                                    @onclick:stopPropagation>
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger" @onclick="() => DeletePolicy(p.Id ?? 0)"
+                                                    @onclick:stopPropagation>
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </li>
+                                    }
+                                </ul>
                             }
-                        </tbody>
-                    </table>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            }
         </div>
-    </div>
+    }
 </div>
 
+<!-- Modal loại chính sách -->
+@if (showTypeModal)
+{
+    <PolicyTypeForm PolicyType="currentType" OnSubmit="SavePolicyType" OnCancel="CloseModals" />
+}
+
+<!-- Modal chính sách con -->
+@if (showPolicyModal)
+{
+    <PolicyForm Model="currentPolicy" PolicyTypes="policyTypes!" IsSubmitting="isSubmitting" OnSubmit="SavePolicy"
+        OnCancel="CloseModals" />
+}
+
 @code {
-    private List<PolicyVM> Policies = new();
-    private PolicyVM SelectedPolicy = new();
+    private List<PolicyTypeVM>? policyTypes;
+    private PolicyTypeVM currentType = new();
+    private PolicyVM currentPolicy = new();
+    private bool showTypeModal = false;
+    private bool showPolicyModal = false;
+    private bool isSubmitting = false;
+    private HttpClient? http;
+    private HashSet<int> OpenAccordions { get; set; } = new();
 
-    HttpClient? _httpClient;
-
+    private bool isToggling = false;
+    private int togglingId = 0;
     protected override async Task OnInitializedAsync()
     {
-        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
-        await GetAllPolicies();
+        http = HttpClientFactory.CreateClient("HotelBookingAPI");
+        await LoadPolicies();
     }
 
-    private async Task GetAllPolicies()
+    private void ToggleAccordion(int typeId)
     {
-        var apiResponse = await _httpClient.GetFromJsonAsync<ApiResponse<List<PolicyVM>>>("hotel/get-all-policies");
-        if (apiResponse != null && apiResponse.StatusCode == StatusCodeResponse.Success && apiResponse.Content != null)
-        {
-            Policies = apiResponse.Content;
-        }
+        if (OpenAccordions.Contains(typeId))
+            OpenAccordions.Remove(typeId);
         else
-        {
-            Policies = new List<PolicyVM>();
-            ToastHelper.Show(ToastService, apiResponse?.StatusCode ?? "Error", apiResponse?.Message ?? "Failed to load policies.");
-        }
+            OpenAccordions.Add(typeId);
     }
 
-    private void EditPolicy(PolicyVM policy)
+    private async Task LoadPolicies()
     {
-        SelectedPolicy = new PolicyVM
+        try
         {
-            Id = policy.Id,
-            Name = policy.Name,
-            Description = policy.Description
+            await SetAuthHeader();
+            var resp = await http!.GetAsync("hotel/get-all-policy");
+            var result = await resp.Content.ReadFromJsonAsync<ApiResponse<List<PolicyTypeVM>>>();
+
+            policyTypes = result?.StatusCode == StatusCodeResponse.Success
+            ? result.Content ?? new()
+            : new();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi tải dữ liệu: {ex.Message}", Severity.Error);
+            policyTypes = new();
+        }
+        StateHasChanged();
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            http!.DefaultRequestHeaders.Authorization = new("Bearer", token);
+    }
+
+    private void OpenAddPolicyTypeModal() { currentType = new(); showTypeModal = true; }
+    private void EditPolicyType(PolicyTypeVM type)
+    {
+        currentType = new PolicyTypeVM { Id = type.Id, Name = type.Name, Code = type.Code };
+        showTypeModal = true;
+    }
+
+    private void OpenAddPolicyModal(int policyTypeId)
+    {
+        currentPolicy = new PolicyVM { PolicyTypeId = policyTypeId };
+        showPolicyModal = true;
+    }
+
+    private void EditPolicy(PolicyVM p)
+    {
+        currentPolicy = new PolicyVM
+        {
+            Id = p.Id,
+            Name = p.Name,
+            Description = p.Description,
+            PolicyTypeId = p.PolicyTypeId
         };
+        showPolicyModal = true;
     }
 
-    private async Task SaveOrUpdatePolicy()
+    private async Task SavePolicyType()
     {
-        if (SelectedPolicy.Id == 0)
+        isSubmitting = true;
+        try
         {
-            var response = await _httpClient.PostAsJsonAsync("hotel/create-policy", SelectedPolicy);
-            var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<PolicyVM>>();
-            ToastHelper.Show(ToastService, apiResponse?.StatusCode ?? "Error", apiResponse?.Message ?? "Failed to create policy.");
-        }
-        else
-        {
-            var response = await _httpClient.PutAsJsonAsync($"hotel/update-policy/{SelectedPolicy.Id}", SelectedPolicy);
-            var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<PolicyVM>>();
-            ToastHelper.Show(ToastService, apiResponse?.StatusCode ?? "Error", apiResponse?.Message ?? "Failed to update policy.");
-        }
+            await SetAuthHeader();
+            var resp = currentType.Id > 0
+            ? await http!.PutAsJsonAsync($"hotel/update-policyType/{currentType.Id}", currentType)
+            : await http!.PostAsJsonAsync("hotel/create-policyType", currentType);
 
-        await GetAllPolicies();
-        SelectedPolicy = new PolicyVM(); // reset form
+            if (resp.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Thành công!", Severity.Success);
+                CloseModals();
+                await LoadPolicies();
+            }
+            else
+            {
+                var msg = await resp.Content.ReadAsStringAsync();
+                Snackbar.Add($"Lỗi: {msg}", Severity.Error);
+            }
+        }
+        finally { isSubmitting = false; }
+    }
+
+    private async Task SavePolicy()
+    {
+        isSubmitting = true;
+        try
+        {
+            await SetAuthHeader();
+            var resp = currentPolicy.Id > 0
+            ? await http!.PutAsJsonAsync($"hotel/update-policy/{currentPolicy.Id}", currentPolicy)
+            : await http!.PostAsJsonAsync("hotel/create-policy", currentPolicy);
+
+            if (resp.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Thành công!", Severity.Success);
+                CloseModals();
+                await LoadPolicies();
+            }
+        }
+        finally { isSubmitting = false; }
+    }
+
+    private async Task DeletePolicyType(int id)
+    {
+        bool? confirm = await DialogService.ShowMessageBox(
+        "Bạn muốn xóa loại chính sách?",
+        "Không thể khôi phục sau khi xóa!",
+        yesText: "Xóa", cancelText: "Hủy");
+
+        if (confirm == true)
+        {
+            await SetAuthHeader();
+            var resp = await http!.DeleteAsync($"hotel/delete-policyType/{id}");
+            Snackbar.Add(resp.IsSuccessStatusCode ? "Đã xóa!" : "Không thể xóa!",
+            resp.IsSuccessStatusCode ? Severity.Success : Severity.Error);
+            if (resp.IsSuccessStatusCode) await LoadPolicies();
+        }
     }
 
     private async Task DeletePolicy(int id)
     {
-        var response = await _httpClient.DeleteAsync($"hotel/delete-policy/{id}");
-        var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
-        ToastHelper.Show(ToastService, apiResponse?.StatusCode ?? "Error", apiResponse?.Message ?? "Failed to delete policy.");
+        bool? confirm = await DialogService.ShowMessageBox(
+        "Xóa chính sách?",
+        "Không thể khôi phục sau khi xóa!",
+        yesText: "Xóa", cancelText: "Hủy");
 
-        await GetAllPolicies();
-        SelectedPolicy = new PolicyVM(); // reset form
+        if (confirm == true)
+        {
+            await SetAuthHeader();
+            var resp = await http!.DeleteAsync($"hotel/delete-policy/{id}");
+            Snackbar.Add(resp.IsSuccessStatusCode ? "Đã xóa!" : "Không thể xóa!",
+            resp.IsSuccessStatusCode ? Severity.Success : Severity.Error);
+            if (resp.IsSuccessStatusCode) await LoadPolicies();
+        }
     }
-} *@
+
+    private async Task TogglePolicyTypeActive(int id)
+    {
+        if (isToggling) return;
+
+        var type = policyTypes!.First(x => x.Id == id);
+        var oldState = type.IsActive;
+
+        isToggling = true;
+        togglingId = id;
+        StateHasChanged();
+
+        try
+        {
+            await SetAuthHeader();
+            var resp = await http!.PutAsync($"hotel/toggle-policyType-active/{id}", null);
+
+            if (resp.IsSuccessStatusCode)
+            {
+                var result = await resp.Content.ReadFromJsonAsync<ApiResponse<PolicyTypeVM>>();
+                type.IsActive = result?.Content?.IsActive ?? !oldState;
+
+                Snackbar.Add(
+                type.IsActive ? "Đã bật loại chính sách" : $"Đã tắt {type.Name}",
+                Severity.Info);
+            }
+            else
+            {
+                type.IsActive = oldState; // rollback
+                Snackbar.Add("Lỗi khi thay đổi trạng thái", Severity.Error);
+            }
+        }
+        catch
+        {
+            type.IsActive = oldState;
+            Snackbar.Add("Lỗi kết nối", Severity.Error);
+        }
+        finally
+        {
+            isToggling = false;
+            togglingId = 0;
+            StateHasChanged();
+        }
+    }
+    private void CloseModals() { showTypeModal = showPolicyModal = false; }
+}

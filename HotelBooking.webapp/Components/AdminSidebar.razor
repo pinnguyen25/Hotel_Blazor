@@ -1,27 +1,27 @@
 <ul class="nav flex-column gap-1 p-3">
     <li class="nav-item">
-        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded"
-                 href="/admin" activeClass="bg-primary text-white">
+        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded" href="/admin"
+            activeClass="bg-primary text-white">
             <i class="fa-solid fa-home"></i> Home
         </NavLink>
     </li>
 
     <li class="nav-item">
         <button class="btn btn-toggle align-items-center rounded collapsed text-white w-100 text-start px-2 py-2"
-                data-bs-toggle="collapse" data-bs-target="#requests-collapse" aria-expanded="false">
+            data-bs-toggle="collapse" data-bs-target="#requests-collapse" aria-expanded="false">
             <i class="fa-solid fa-envelope-open-text me-2"></i> Requests
         </button>
         <div class="collapse ms-3" id="requests-collapse">
             <ul class="btn-toggle-nav list-unstyled fw-normal small">
                 <li>
                     <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1"
-                             href="/admin/requests/requests-overview" activeClass="text-primary fw-semibold">
+                        href="/admin/requests/requests-overview" activeClass="text-primary fw-semibold">
                         <i class="fa-solid fa-chart-bar"></i> Request Dashboard
                     </NavLink>
                 </li>
                 <li>
                     <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1"
-                             href="/admin/requests/upgrade-owner" activeClass="text-primary fw-semibold">
+                        href="/admin/requests/upgrade-owner" activeClass="text-primary fw-semibold">
                         <i class="fa-solid fa-user-up"></i> Upgrade to Owner
                     </NavLink>
                 </li>
@@ -31,27 +31,41 @@
 
     <li class="nav-item">
         <button class="btn btn-toggle align-items-center rounded collapsed text-white w-100 text-start px-2 py-2"
-                data-bs-toggle="collapse" data-bs-target="#management-collapse" aria-expanded="false">
+            data-bs-toggle="collapse" data-bs-target="#management-collapse" aria-expanded="false">
             <i class="fa-solid fa-gear me-2"></i> Management
         </button>
         <div class="collapse ms-3" id="management-collapse">
             <ul class="btn-toggle-nav list-unstyled fw-normal small">
                 <li>
                     <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1"
-                             href="/admin/manages/manage-amenities" activeClass="text-primary fw-semibold">
+                        href="/admin/manages/manage-amenities" activeClass="text-primary fw-semibold">
                         <i class="fa-solid fa-wifi"></i> Amenities
                     </NavLink>
                 </li>
                 <li>
                     <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1"
-                             href="/admin/manages/manage-policies" activeClass="text-primary fw-semibold">
+                        href="/admin/manages/manage-policies" activeClass="text-primary fw-semibold">
                         <i class="fa-solid fa-scroll"></i> Policies
                     </NavLink>
                 </li>
                 <li>
                     <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1"
-                             href="/admin/manages/manage-accommodations" activeClass="text-primary fw-semibold">
+                        href="/admin/manages/manage-accommodations" activeClass="text-primary fw-semibold">
                         <i class="fa-solid fa-bed"></i> Accommodation
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink href="admin/manages/manage-bedtypes" class="nav-link text-white-50 d-flex align-items-center gap-2 py-1" 
+                    activeClass="text-primary fw-semibold"
+                    Match="NavLinkMatch.Prefix">
+                        <i class="bi bi-bed"></i> Quản lý loại giường
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink href="admin/manages/manage-viewtypes" class="nav-link text-white-50 d-flex align-items-center gap-2 py-1" 
+                    activeClass="text-primary fw-semibold"
+                    Match="NavLinkMatch.Prefix">
+                        <i class="bi bi-eye"></i> Quản lý cảnh quan
                     </NavLink>
                 </li>
             </ul>

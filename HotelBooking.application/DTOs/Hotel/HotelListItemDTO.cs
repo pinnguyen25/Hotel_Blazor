@@ -1,14 +1,7 @@
-public class HotelListItemDTO
+public class HotelListItemDTO : HotelBaseDTO
 {
-    public int HotelId { get; set; }
-    public string HotelName  { get; set; } = string.Empty;
-    public string Address { get; set; } = string.Empty;
-    public string City { get; set; } = string.Empty;
-    public string Country { get; set; } = string.Empty;
     // Mô tả ngắn 
     public string ShortDescription { get; set; } = string.Empty;
-    // Ảnh 
-    public string CoverImageUrl { get; set; } = string.Empty;
     public List<string> ImageUrls { get; set; } = new();
     // 2–3 tiện ích nổi bật
     public List<AmenityDTO> HighlightAmenities { get; set; } = new();

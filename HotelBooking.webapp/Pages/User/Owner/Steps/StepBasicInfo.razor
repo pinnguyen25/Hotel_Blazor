@@ -1,0 +1,46 @@
+@inject HotelFormState FormState
+@inject ISnackbar Snackbar
+<div class="d-flex flex-column flex-lg-row gap-4 gap-lg-8 mt-4">
+    <div class="flex-grow-1" style="max-width: 100%; flex-basis: 62%;">
+        <MudTextField @bind-Value="FormState.BasicInfo.Name" @oninput="NotifyChange" Label="Tên khách sạn *"
+            Required="true" RequiredError="Tên khách sạn không được để trống!" Class="mb-4" />
+
+        <MudTextField @bind-Value="FormState.BasicInfo.Address" @oninput="NotifyChange" Label="Địa chỉ chi tiết *"
+            Required="true" RequiredError="Địa chỉ không được để trống!" Class="mb-4" />
+        <MudSelect T="int" Label="Thành phố *" @bind-Value="FormState.BasicInfo.CityId" @oninput="NotifyChange"
+            Required="true" Class="mb-4">
+            @if (!FormState.Cities.Any())
+            {
+                <MudSelectItem Value="0" Disabled="true">Đang tải thành phố...</MudSelectItem>
+            }
+            else
+            {
+                @foreach (var city in FormState.Cities)
+                {
+                    <MudSelectItem Value="@city.Id">@city.Name</MudSelectItem>
+                }
+            }
+        </MudSelect>
+
+        <MudTextField @bind-Value="FormState.BasicInfo.Description" @oninput="NotifyChange"
+            Label="Mô tả khách sạn (tối đa 1000 ký tự)" Lines="5" Class="mb-4" />
+    </div>
+
+    <div style="flex-basis: 35%; min-width: 280px;">
+        <MudTextField @bind-Value="FormState.BasicInfo.ContactName" @oninput="NotifyChange" Label="Tên người liên hệ"
+            Class="mb-4" />
+        <MudTextField @bind-Value="FormState.BasicInfo.ContactPhone" @oninput="NotifyChange"
+            Label="Số điện thoại liên hệ *" Required="true" RequiredError="Vui lòng nhập số điện thoại" Class="mb-4" />
+        <MudTextField @bind-Value="FormState.BasicInfo.ContactEmail" @oninput="NotifyChange" Label="Email liên hệ"
+            Class="mb-4" />
+    </div>
+</div>
+
+@code
+{
+    private void NotifyChange(ChangeEventArgs e)
+    {
+        FormState.Notify();
+        StateHasChanged();
+    }
+}

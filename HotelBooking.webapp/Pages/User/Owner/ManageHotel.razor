@@ -1,0 +1,211 @@
+@page "/owner/hotels"
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.ViewModels.Hotel
+@layout OwnerLayout
+@attribute [Authorize(Roles = "Owner")]
+@inject IHttpClientFactory _httpClientFactory
+@inject ISnackbar Snackbar
+@inject ILocalStorageService _localStorage
+@inject NavigationManager _nav
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Quản lý khách sạn</PageTitle>
+
+<div class="container-fluid py-4">
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0 fw-bold">
+            Khách sạn của tôi
+        </h3>
+        <a href="/owner/hotel-wizard" class="btn btn-primary shadow-sm">
+            <i class="bi bi-plus-circle me-1"></i>Thêm khách sạn
+        </a>
+    </div>
+
+    <!-- LOADING & EMPTY -->
+    @if (hotels == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+            <p class="mt-3 text-muted">Đang tải danh sách...</p>
+        </div>
+    }
+    else if (!hotels.Any())
+    {
+        <div class="text-center py-5">
+            <i class="bi bi-building fs-1 text-muted"></i>
+            <p class="mt-3 text-muted fs-5">Chưa có khách sạn nào</p>
+            <a href="/owner/hotels/add" class="btn btn-outline-primary mt-2">
+                <i class="bi bi-plus"></i> Tạo khách sạn đầu tiên
+            </a>
+        </div>
+    }
+    else
+    {
+        <!-- HOTEL GRID -->
+        <div class="row g-4">
+            @foreach (var h in hotels)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm border-0 transition-all">
+                        <!-- IMAGE -->
+                        <div class="position-relative overflow-hidden rounded-top" style="height: 180px;">
+                            <img src="@(h.CoverImageUrl ?? "/images/no-hotel.png")" class="card-img-top w-100 h-100"
+                                style="object-fit: cover; transition: transform 0.3s;" alt="@h.HotelName" />
+                            <div class="position-absolute top-0 end-0 p-2">
+                                <span class="badge @(h.IsVerified ? "bg-success" : "bg-warning text-dark")">
+                                    @(h.IsVerified ? "Đã xác minh" : "Chưa xác minh")
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- BODY -->
+                        <div class="card-body d-flex flex-column p-4">
+                            <!-- TITLE -->
+                            <h5 class="card-title fw-bold mb-1 text-truncate">@h.HotelName</h5>
+                            <p class="text-muted small mb-3">
+                                <i class="bi bi-geo-alt-fill"></i>
+                                <span class="ms-1">@h.Address, @h.City</span>
+                            </p>
+
+                            <!-- STATS -->
+                            <div class="row g-3 mb-3 text-center small">
+                                <div class="col-4">
+                                    <div class="fw-bold text-primary fs-5">@h.TotalRooms</div>
+                                    <div class="text-muted">Phòng</div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="fw-bold @(h.AvailableRooms > 0 ? "text-success" : "text-danger") fs-5">
+                                        @h.AvailableRooms
+                                    </div>
+                                    <div class="text-muted">Còn trống</div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="fw-bold text-info fs-5">@h.RoomTypeCount</div>
+                                    <div class="text-muted">Loại</div>
+                                </div>
+                            </div>
+
+                            <!-- RATING & BOOKINGS -->
+                            <div class="d-flex justify-content-between align-items-center mb-3 small">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-star-fill text-warning me-1"></i>
+                                    <span class="fw-bold">@h.AvgRating.ToString("F1")</span>
+                                    <span class="text-muted ms-1">(@h.ReviewCount)</span>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold text-danger">@h.TotalBookings</div>
+                                    <div class="text-muted">Đơn đặt</div>
+                                </div>
+                            </div>
+
+                            <!-- STATUS BADGE -->
+                            <div class="d-flex justify-content-between align-items-center mt-auto">
+                                <span class="badge fs-6 px-3 py-2
+                                            @(h.Status == "Active" ? "bg-success" :
+                                                                            h.Status == "Suspended" ? "bg-danger" :
+                                                                            h.Status == "PendingVerification" ? "bg-warning text-dark" :
+                                                                            h.Status == "Draft" ? "bg-secondary" :
+                                                                            "bg-light text-dark")">
+                                    @GetStatusText(h.Status)
+                                </span>
+
+                                <!-- ACTIONS -->
+                                <div class="btn-group" role="group">
+                                    @if (h.Status == "Draft")
+                                    {
+                                        <a href="/owner/hotel-wizard/@h.HotelId" class="btn btn-sm btn-outline-success"
+                                            title="Tiếp tục tạo">
+                                            <i class="bi bi-arrow-right-circle"></i>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a href="/Hotel/@h.HotelId" class="btn btn-sm btn-outline-primary" title="Xem chi tiết">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    }
+
+                                    <button @onclick="() => Delete(h.HotelId)" class="btn btn-sm btn-outline-danger"
+                                        title="Xóa">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .card-img-top:hover {
+        transform: scale(1.05);
+    }
+
+    .transition-all {
+        transition: all 0.3s ease;
+    }
+</style>
+
+@code {
+    private List<HotelOwnerSummaryVM>? hotels;
+    private HttpClient? _httpClient;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+        await SetAuthHeader();
+        await LoadHotels();
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            _httpClient!.DefaultRequestHeaders.Authorization = new("Bearer", token);
+    }
+
+    private async Task LoadHotels()
+    {
+        try
+        {
+            var res = await _httpClient!.GetFromJsonAsync<ApiResponse<List<HotelOwnerSummaryVM>>>("hotel/owner/summary");
+            hotels = res?.Content ?? new();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi tải dữ liệu: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Delete(int id)
+    {
+        if (!await JSRuntime.InvokeAsync<bool>("confirm", "Xóa khách sạn này? Dữ liệu sẽ bị xóa vĩnh viễn.")) return;
+
+        var res = await _httpClient!.DeleteAsync($"hotel/owner/delete-hotel/{id}");
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Xóa khách sạn thành công!", Severity.Success);
+            await LoadHotels();
+        }
+        else
+        {
+            var error = await res.Content.ReadAsStringAsync();
+            Snackbar.Add($"Xóa thất bại: {error}", Severity.Error);
+        }
+    }
+
+    private string GetStatusText(string status) => status switch
+    {
+        "Active" => "Đang hoạt động",
+        "Suspended" => "Tạm ngừng",
+        "PendingVerification" => "Chờ duyệt",
+        "Verified" => "Đã duyệt",
+        "Rejected" => "Bị từ chối",
+        "Draft" => "Bản nháp",
+        _ => "Không xác định"
+    };
+}

@@ -1,0 +1,65 @@
+@using HotelBooking.webapp.ViewModels.Hotel
+@inject ISnackbar Snackbar
+
+@if (PolicyType == null) { return; }
+
+<div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold">
+                    @(PolicyType.Id > 0 ? "Sửa loại chính sách" : "Thêm loại chính sách mới")
+                </h5>
+                <button type="button" class="btn-close" @onclick="OnCancel"></button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="PolicyType" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="text-danger small mb-3" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Tên loại chính sách <span class="text-danger">*</span></label>
+                        <InputText @bind-Value="PolicyType.Name" class="form-control" placeholder="VD: Chính sách hủy phòng,..." />
+                        <ValidationMessage For="() => PolicyType.Name" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Mã code (tùy chọn)</label>
+                        <InputText @bind-Value="PolicyType.Code" class="form-control" placeholder="huy phong, nhan phong,.." />
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="OnCancel" disabled="@isSubmitting">
+                            Hủy
+                        </button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                            @if (isSubmitting) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                            @(PolicyType.Id > 0 ? "Cập nhật" : "Tạo mới")
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isSubmitting = false;
+
+    [Parameter] public PolicyTypeVM PolicyType { get; set; } = new();
+    [Parameter] public EventCallback OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(PolicyType.Name)) 
+        { 
+            Snackbar.Add("Vui lòng nhập tên.", Severity.Error); 
+            return; 
+        }
+
+        isSubmitting = true;
+        try { await OnSubmit.InvokeAsync(); }
+        finally { isSubmitting = false; }
+    }
+}

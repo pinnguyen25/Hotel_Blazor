@@ -1,0 +1,53 @@
+@inject HotelFormState FormState
+@using MudBlazor
+
+<MudText Typo="Typo.h6" Class="mb-6">Chọn tiện ích khách sạn</MudText>
+
+@if (!FormState.AllAmenities.Any())
+{
+    <div class="d-flex justify-center my-12">
+        <MudProgressCircular Indeterminate="true" Size="Size.Medium" />
+    </div>
+}
+else
+{
+    <div class="d-flex flex-wrap gap-4">
+        @foreach (var amenity in FormState.AllAmenities)
+        {
+            var isSelected = FormState.SelectedAmenityIds.Contains(amenity.Id);
+
+            <MudChip T="string" @key="amenity.Id" Variant="@(isSelected? Variant.Filled: Variant.Outlined)"
+                Color="@(isSelected ? Color.Primary : Color.Default)" Size="Size.Large"
+                OnClick="() => ToggleAmenity(amenity.Id)" Class="px-5 py-4 cursor-pointer transition-all hover:shadow-md"
+                Style="border-radius: 16px; min-width: 180px;">
+
+                <div class="d-flex align-center gap-2">
+                    @if (!string.IsNullOrEmpty(amenity.IconClass))
+                    {
+                        <i class="@amenity.IconClass @(isSelected ? "text-white" : "text-primary")" style="font-size: 1.6rem;"></i>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="@(isSelected? Color.Surface: Color.Primary)" />
+                    }
+
+                    <MudText Typo="Typo.subtitle2" Class="@(isSelected ? "text-white font-medium" : "font-medium")">
+                        @amenity.Name
+                    </MudText>
+                </div>
+            </MudChip>
+        }
+    </div>
+}
+
+@code {
+    private void ToggleAmenity(int id)
+    {
+        if (FormState.SelectedAmenityIds.Contains(id))
+            FormState.SelectedAmenityIds.Remove(id);
+        else
+            FormState.SelectedAmenityIds.Add(id);
+
+        FormState.Notify();
+    }
+}

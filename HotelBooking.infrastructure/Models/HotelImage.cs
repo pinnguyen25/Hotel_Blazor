@@ -23,6 +23,10 @@ public partial class HotelImage
 
     public string? Additional { get; set; }
 
+    public bool? IsCover { get; set; }
+
+    public int? SortOrder { get; set; }
+
     public virtual User? CreatedByNavigation { get; set; }
 
     public virtual Hotel Hotel { get; set; } = null!;

@@ -41,6 +41,8 @@ builder.Services.AddScoped<IHotelAmenityRepository, HotelAmenityRepository>();
 builder.Services.AddScoped<IBookingRoomRepository, BookingRoomRepository>();
 builder.Services.AddScoped<IAccommodationRepository, AccommodationRepository>();
 builder.Services.AddScoped<IFileUploadService, FileUploadService>();
+builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
+builder.Services.AddScoped<IPolicyTypeRepository, PolicyTypeRepository>();
 
 // DI for UnitOfWork
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();

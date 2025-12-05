@@ -1,19 +1,25 @@
-// MESSAGE CRUD AMENITY
-
 public static class MessageResponse
 {
-    public static string SUCCESS = "Success";
-    public static string CREATE_SUCCESSFULLY = "Tạo thành công!";
-    public static string CREATE_FAILED = "Tạo thất bại!";
-    public static string UPDATE_SUCCESSFULLY = "Cập nhật thành công!";
-    public static string UPDATE_FAILED = "Cập nhật thất bại!";
-    public static string DELETE_SUCCESSFULLY = "Xóa thành công!";
-    public static string DELETE_FAILED = "Xóa thất bại!";
-    public static string NOT_FOUND = "Không tìm thấy khách sạn nào!";
-    public static string NAME_ALREADY_EXISTS = "Tên đã tồn tại!";
-    public static string EMPTY_LIST = "Danh sách rỗng!";
-    public static string ERROR_IN_SERVER = "Lỗi ở phía máy chủ!";
-    public static string ERROR_IN_DB = "Lỗi cơ sở dữ liệu khi truy xuất thông tin khách sạn!";
-    public static string SUCCESS_FIND_HOTEL = "Lấy thông tin chi tiết khách sạn thành công.";
-    public static string INVALID_ID = "Id không hợp lệ!";
+    public const string SUCCESS = "Thành công";
+    public const string CREATE_SUCCESSFULLY = "Tạo thành công!";
+    public const string CREATE_FAILED = "Tạo thất bại!";
+    public const string UPDATE_SUCCESSFULLY = "Cập nhật thành công!";
+    public const string UPDATE_FAILED = "Cập nhật thất bại!";
+    public const string DELETE_SUCCESSFULLY = "Xóa thành công!";
+    public const string DELETE_FAILED = "Xóa thất bại!";
+
+    public const string NOT_FOUND = "Không tìm thấy dữ liệu!";
+    public const string NAME_ALREADY_EXISTS = "Tên đã tồn tại!";
+    public const string SLUG_ALREADY_EXISTS = "Slug đã tồn tại!";
+    public const string EMPTY_LIST = "Danh sách rỗng!";
+    public const string ERROR_IN_SERVER = "Lỗi hệ thống, vui lòng thử lại sau!";
+    public const string ERROR_IN_DB = "Lỗi cơ sở dữ liệu!";
+    public const string INVALID_ID = "ID không hợp lệ!";
+    public const string FORBIDDEN = "Bạn không có quyền thực hiện hành động này!";
+    public const string CONFLICT = "Dữ liệu đã tồn tại hoặc xung đột!";
+    public const string BAD_REQUEST = "Yêu cầu không hợp lệ!";
+    public const string IMAGE_UPLOAD_FAILED = "Tải ảnh thất bại!";
+    public const string IMAGE_DELETE_FAILED = "Xóa ảnh thất bại!";
+    public const string HOTEL_NOT_BELONG_TO_OWNER = "Khách sạn không thuộc về bạn!";
+    public const string ROOM_NOT_AVAILABLE = "Không có phòng trống!";
 }

@@ -1,0 +1,459 @@
+@page "/owner/hotels/{HotelId:int}/room-types/add"
+@page "/owner/hotels/{HotelId:int}/room-types/edit/{RoomTypeId:int}"
+@using Blazored.LocalStorage
+@using System.Net.Http.Headers
+@using System.Text.Json
+@layout OwnerLayout
+@attribute [Authorize(Roles = "Owner")]
+@inject IHttpClientFactory _httpClientFactory
+@inject ISnackbar Snackbar
+@inject ILocalStorageService _localStorage
+@inject NavigationManager _nav
+@inject IJSRuntime JSRuntime
+
+<PageTitle>@(isEditMode ? "Chỉnh sửa loại phòng" : "Thêm loại phòng")</PageTitle>
+
+<style>
+    .preview-img {
+        height: 120px;
+        object-fit: cover;
+    }
+
+    .form-check-input:checked {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+</style>
+
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        @(isEditMode ? "Cập nhật loại phòng" : "Thêm loại phòng mới")
+                        <small class="ms-2 text-white-50">Khách sạn ID: @HotelId</small>
+                    </h4>
+                    <a href="/owner/hotels/@HotelId/room-types" class="btn-close btn-close-white"></a>
+                </div>
+
+                <EditForm Model="model" OnValidSubmit="HandleSubmit" class="card-body">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-danger" />
+
+                    <!-- Thông tin cơ bản -->
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-medium">Tên loại phòng *</label>
+                            <InputText @bind-Value="model.Name" class="form-control" placeholder="VD: Deluxe Suite" />
+                            <ValidationMessage For="() => model.Name" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-medium">Giá mỗi đêm (₫) *</label>
+                            <InputNumber @bind-Value="model.PricePerNight" class="form-control" />
+                            <ValidationMessage For="() => model.PricePerNight" />
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-4">
+                            <label class="form-label fw-medium">Người lớn *</label>
+                            <InputNumber @bind-Value="model.AdultCapacity" class="form-control" min="1" />
+                            <ValidationMessage For="() => model.AdultCapacity" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-medium">Trẻ em</label>
+                            <InputNumber @bind-Value="model.ChildCapacity" class="form-control" min="0" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-medium">Tổng số phòng *</label>
+                            <InputNumber @bind-Value="model.TotalRooms" class="form-control" min="1" />
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-4">
+                            <label class="form-label fw-medium">Diện tích (m²)</label>
+                            <InputNumber @bind-Value="model.Area" class="form-control" placeholder="VD: 25.5" />
+                            <ValidationMessage For="() => model.Area" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-medium">Loại giường *</label>
+                            <div class="input-group mb-2">
+                                <InputSelect @bind-Value="selectedBedTypeId" class="form-select">
+                                    <option value="0">-- Chọn loại giường --</option>
+                                    @foreach (var bed in BedTypes)
+                                    {
+                                        <option value="@bed.Id">@bed.Name</option>
+                                    }
+                                </InputSelect>
+                                <InputNumber @bind-Value="bedQuantity" class="form-control" min="1" max="5"
+                                    style="width:80px;" />
+                                <button type="button" class="btn btn-outline-primary" @onclick="AddBed"
+                                    disabled="@(selectedBedTypeId <= 0 || bedQuantity < 1)">
+                                    Thêm
+                                </button>
+                            </div>
+
+                            @if (model.Beds.Any())
+                            {
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var b in model.Beds)
+                                    {
+                                        var bed = BedTypes.FirstOrDefault(x => x.Id == b.BedTypeId);
+                                        <span class="badge bg-info">
+                                            @(bed?.Name ?? "Không rõ") × @b.Quantity
+                                            <button type="button" class="btn-close btn-close-white ms-1"
+                                                @onclick="() => model.Beds.Remove(b)"></button>
+                                        </span>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <small class="text-muted">Chưa chọn giường</small>
+                            }
+                        </div>
+
+                        <!-- Cảnh quang -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-medium">Cảnh quang</label>
+                            <InputSelect @bind-Value="selectedViewTypeId" class="form-select">
+                                <option value="0">-- Không có --</option>
+                                @foreach (var view in ViewTypes)
+                                {
+                                    <option value="@view.Id">@view.Name</option>
+                                }
+                            </InputSelect>
+                            @if (selectedViewTypeId > 0)
+                            {
+                                var v = ViewTypes.FirstOrDefault(x => x.Id == selectedViewTypeId);
+                                <small class="text-success">Đã chọn: @v?.Name</small>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label fw-medium">Mô tả</label>
+                        <InputTextArea @bind-Value="model.Description" class="form-control" rows="3" />
+                    </div>
+
+                    <!-- Tiện ích -->
+                    <div class="mt-4">
+                        <label class="form-label fw-medium">Tiện ích phòng</label>
+                        <div class="row g-2">
+                            @foreach (var a in amenities)
+                            {
+                                var id = $"amenity-{a.Id}";
+                                var isChecked = model.SelectedAmenityIds.Contains(a.Id);
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="@id" checked="@isChecked"
+                                            @onchange="() => ToggleAmenity(a.Id)" />
+                                        <label class="form-check-label" for="@id">
+                                            @if (!string.IsNullOrEmpty(a.IconClass))
+                                            {
+                                                <i class="@a.IconClass me-1" style="color:@a.IconColor"></i>
+                                            }
+    @a.Name
+                                        </label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Ảnh -->
+                    <div class="mt-4">
+                        <label class="form-label fw-medium">Ảnh phòng (tối đa 5)</label>
+                        <InputFile OnChange="OnFilesSelected" multiple class="form-control" accept="image/*" />
+                        <small class="text-muted">Tối đa 5MB/ảnh</small>
+
+                        <div class="row g-3 mt-3">
+                            @foreach (var (img, i) in imagePreviews.Select((p, i) => (p, i)))
+                            {
+                                <div class="col-md-3 position-relative">
+                                    <img src="@img.Url" class="img-fluid rounded preview-img" />
+                                    <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-1"
+                                        @onclick="() => RemoveImage(i)">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex justify-content-end gap-2">
+                        <a href="/owner/hotels/@HotelId/room-types" class="btn btn-secondary">Hủy</a>
+                        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                            @(isEditMode ? "Cập nhật" : "Tạo mới")
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int HotelId { get; set; }
+    [Parameter] public int? RoomTypeId { get; set; }
+    private List<IconItemVM> BedTypes = new();
+    private List<IconItemVM> ViewTypes = new();
+    private int selectedBedTypeId = 0;
+    private int bedQuantity = 1;
+    private int selectedViewTypeId = 0;
+
+    private RoomTypeCreateOrUpdateVM model = new();
+    private List<AmenityVM> amenities = new();
+    private readonly List<IBrowserFile> ImageFiles = new();
+    private readonly List<ImagePreview> imagePreviews = new();
+    private HttpClient? _httpClient;
+    private bool isEditMode => RoomTypeId.HasValue;
+    private bool isSubmitting = false;
+    private const long MaxFileSize = 5 * 1024 * 1024;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+        await SetAuthHeader();
+        await Task.WhenAll(LoadAmenities(), LoadBedTypes(), LoadViewTypes());
+        if (isEditMode) await LoadRoomType();
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            _httpClient!.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        else
+            _nav.NavigateTo("/login");
+    }
+
+    private async Task LoadAmenities()
+    {
+        try
+        {
+            var response = await _httpClient!.GetFromJsonAsync<ApiResponse<List<AmenityVM>>>("hotel/get-all-amenities");
+            amenities = response?.Content ?? new();
+            // Parse icon nếu cần
+            foreach (var a in amenities)
+            {
+                if (!string.IsNullOrWhiteSpace(a.Additional))
+                {
+                    try
+                    {
+                        var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(a.Additional);
+                        a.IconClass = dict?.GetValueOrDefault("IconClass") ?? "fa-bed";
+                        a.IconColor = dict?.GetValueOrDefault("IconColor") ?? "#666";
+                    }
+                    catch { }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi kết nối: {ex.Message}", Severity.Error);
+            amenities = new();
+        }
+    }
+
+    private async Task LoadBedTypes() => BedTypes = (await
+    _httpClient!.GetFromJsonAsync<ApiResponse<List<IconItemVM>>>("hotel/get-all-bedtypes"))?.Content ?? new();
+    private async Task LoadViewTypes() => ViewTypes = (await
+    _httpClient!.GetFromJsonAsync<ApiResponse<List<IconItemVM>>>("hotel/get-all-viewtypes"))?.Content ?? new();
+
+    private async Task LoadRoomType()
+    {
+        if (!RoomTypeId.HasValue) return;
+
+        var res = await _httpClient!.GetFromJsonAsync<ApiResponse<RoomTypeForOwnerVM>>(
+        $"hotel/owner/roomtype-detail/{RoomTypeId}");
+
+        if (res?.StatusCode == StatusCodeResponse.Success && res.Content != null)
+        {
+            var rt = res.Content;
+            model = new()
+            {
+                Name = rt.Name,
+                Description = rt.Description,
+                PricePerNight = rt.PricePerNight,
+                AdultCapacity = rt.AdultCapacity,
+                ChildCapacity = rt.ChildCapacity,
+                Area = rt.Area,
+                TotalRooms = rt.TotalRooms,
+                Beds = rt.Beds?.Select(b => new RoomBedRequestVM
+                {
+                    BedTypeId = b.BedTypeId,
+                    Quantity = b.Quantity
+                }).ToList() ?? new(),
+                Views = rt.Views?.Select(v => new RoomViewRequestVM
+                {
+                    ViewTypeId = v.ViewTypeId
+                }).ToList() ?? new(),
+                SelectedAmenityIds = rt.Amenities.Select(a => a.Id).ToList(),
+                ImageUrls = rt.RoomImages.ToList()
+            };
+            selectedViewTypeId = rt.Views?.FirstOrDefault()?.ViewTypeId ?? 0;
+            imagePreviews.Clear();
+            foreach (var url in model.ImageUrls)
+                imagePreviews.Add(new ImagePreview { Url = url, IsExisting = true });
+            StateHasChanged();
+        }
+        else
+        {
+            Snackbar.Add("Không tải được dữ liệu loại phòng.", Severity.Error);
+        }
+    }
+
+    private async Task AddBed()
+    {
+        if (selectedBedTypeId <= 0 || bedQuantity < 1) return;
+
+        var existing = model.Beds.FirstOrDefault(x => x.BedTypeId == selectedBedTypeId);
+        if (existing != null)
+            existing.Quantity += bedQuantity;
+        else
+            model.Beds.Add(new RoomBedRequestVM { BedTypeId = selectedBedTypeId, Quantity = bedQuantity });
+
+        selectedBedTypeId = 0;
+        bedQuantity = 1;
+        StateHasChanged();
+    }
+
+    private async Task OnFilesSelected(InputFileChangeEventArgs e)
+    {
+        var existingCount = imagePreviews.Count(p => p.IsExisting);
+        var maxNewFiles = 5 - existingCount;
+
+        if (maxNewFiles <= 0)
+        {
+            Snackbar.Add("Đã đạt tối đa 5 ảnh", Severity.Warning);
+            return;
+        }
+
+        var newFiles = e.GetMultipleFiles(maxNewFiles);
+        foreach (var file in newFiles)
+        {
+            if (file.Size > MaxFileSize)
+            {
+                Snackbar.Add($"Ảnh {file.Name} > 5MB", Severity.Error);
+                continue;
+            }
+
+            var buffer = new byte[file.Size];
+            await file.OpenReadStream(MaxFileSize).ReadAsync(buffer);
+            var base64 = Convert.ToBase64String(buffer);
+            var url = $"data:{file.ContentType};base64,{base64}";
+
+            imagePreviews.Add(new ImagePreview
+            {
+                File = file,
+                Url = url,
+                IsExisting = false
+            });
+
+            ImageFiles.Add(file); // LƯU VÀO BIẾN RIÊNG
+        }
+
+        StateHasChanged();
+    }
+
+    private void RemoveImage(int index)
+    {
+        var img = imagePreviews[index];
+        if (img.IsExisting && img.Url != null)
+            model.ImagesToDelete.Add(img.Url);
+
+        if (!img.IsExisting && img.File != null)
+        {
+            ImageFiles.Remove(img.File);
+        }
+        imagePreviews.RemoveAt(index);
+        StateHasChanged();
+    }
+
+    private void ToggleAmenity(int id)
+    {
+        if (model.SelectedAmenityIds.Contains(id))
+            model.SelectedAmenityIds.Remove(id);
+        else
+            model.SelectedAmenityIds.Add(id);
+    }
+
+    private async Task HandleSubmit()
+    {
+        Console.WriteLine("HandleSubmit được gọi!");
+        isSubmitting = true;
+
+        try
+        {
+            var dto = new
+            {
+                model.Name,
+                model.Description,
+                model.PricePerNight,
+                model.AdultCapacity,
+                model.ChildCapacity,
+                model.Area,
+                model.TotalRooms,
+                Beds = model.Beds,
+                Views = model.Views.Any() ? model.Views : null
+            };
+
+            int roomTypeId;
+            if (isEditMode)
+            {
+                var res = await _httpClient!.PutAsJsonAsync($"hotel/owner/roomtype/{RoomTypeId}", dto);
+                if (!res.IsSuccessStatusCode) throw new Exception("Cập nhật thất bại");
+                roomTypeId = RoomTypeId!.Value;
+            }
+            else
+            {
+                var res = await _httpClient!.PostAsJsonAsync($"hotel/owner/{HotelId}/roomtype", dto);
+                Console.WriteLine($"POST Status: {res.StatusCode}");
+                if (!res.IsSuccessStatusCode) throw new Exception("Tạo thất bại");
+
+                var apiRes = await res.Content.ReadFromJsonAsync<ApiResponse<int>>();
+                roomTypeId = apiRes?.Content ?? 0;
+                if (roomTypeId == 0) throw new Exception("Không lấy được ID");
+            }
+
+            // Upload ảnh mới
+            foreach (var file in ImageFiles)
+            {
+                using var content = new MultipartFormDataContent();
+                var stream = file!.OpenReadStream(MaxFileSize);
+                var fileContent = new StreamContent(stream);
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+                content.Add(fileContent, "image", file.Name);
+
+                var uploadRes = await _httpClient!.PostAsync($"hotel/owner/roomtype/{roomTypeId}/image", content);
+                if (!uploadRes.IsSuccessStatusCode)
+                    Snackbar.Add($"Upload {file.Name} ảnh thất bại", Severity.Warning);
+            }
+
+            // 3. Xóa ảnh cũ
+            foreach (var url in model.ImagesToDelete)
+            {
+                await _httpClient!.DeleteAsync($"hotel/owner/roomtype/{roomTypeId}/image?imageUrl={Uri.EscapeDataString(url)}");
+            }
+
+            // 4. Gán tiện ích
+            if (model.SelectedAmenityIds.Any())
+            {
+                await _httpClient!.PostAsJsonAsync($"hotel/owner/roomtype/{roomTypeId}/select-amenity", model.SelectedAmenityIds);
+            }
+            Snackbar.Add(isEditMode ? "Cập nhật thành công!" : "Tạo thành công!", Severity.Success);
+            _nav.NavigateTo($"/owner/hotel/{HotelId}/room-types");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

@@ -67,7 +67,7 @@
 @code {
     private UserLoginVM userLogin = new UserLoginVM();
     private string? errorMessage;
-    private HttpClient _httpClient;
+    private HttpClient? _httpClient;
     protected override void OnInitialized()
     {
         _httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");

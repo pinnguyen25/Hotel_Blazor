@@ -1,61 +1,325 @@
-@* @page "/hotel-wizard"
+@page "/owner/hotel-wizard"
+@page "/owner/hotel-wizard/{hotelId:int?}"
 @layout OwnerLayout
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.Pages.User.Owner.Steps
+@using MudBlazor
+@using System.Net.Http.Headers
+@inject HotelFormState FormState
+@inject NavigationManager _nav
+@inject IHttpClientFactory _httpClientFactory
+@inject ILocalStorageService _localStorage
+@inject ISnackbar Snackbar
 
-<div class="d-flex justify-content-center mt-4">
+<MudPaper Class="pa-8" Elevation="10" Style="max-width:1100px;margin:auto;border-radius:16px;">
+    <MudText Typo="Typo.h4" Class="mb-4 text-center" Color="Color.Primary">
+        Đăng ký khách sạn mới
+    </MudText>
 
+    <MudStepper @bind-ActiveStepIndex="@ActiveStep" Linear="false" Class="mb-6">
+        <ChildContent>
+            <MudStep Title="Thông tin cơ bản" Completed="@(ActiveStep > 0)" Active="@(ActiveStep == 0)" />
+            <MudStep Title="Ảnh khách sạn" Completed="@(ActiveStep > 1)" Active="@(ActiveStep == 1)" />
+            <MudStep Title="Tiện ích" Completed="@(ActiveStep > 2)" Active="@(ActiveStep == 2)" />
+            <MudStep Title="Chính sách" Completed="@(ActiveStep > 3)" Active="@(ActiveStep == 3)" />
+            <MudStep Title="Loại phòng" Completed="@(ActiveStep > 4)" Active="@(ActiveStep == 4)" />
+        </ChildContent>
+        <ActionContent>
+            @* ĐỂ TRỐNG ĐỂ ẨN NÚT MẶC ĐỊNH *@
+        </ActionContent>
+    </MudStepper>
 
-    <MudPaper Style="width:900px" Class="pa-4">
-        <MudStepper NonLinear ShowResetButton OnPreviewInteraction="OnPreviewInteraction">
-            <MudStep Title="Basic Info" SecondaryText="Thông tin cơ bản">
-                <StepBasicInfo @ref="_stepBasic" />
-            </MudStep>
-
-            <MudStep Title="Amenities" SecondaryText="Tiện ích">
-                <StepAmenities @ref="_stepAmenities" />
-            </MudStep>
-
-            <MudStep Title="Policies" SecondaryText="Chính sách">
-                <StepPolicies @ref="_stepPolicy" />
-            </MudStep>
-
-            <MudStep Title="Images" SecondaryText="Ảnh khách sạn">
-                <StepImages @ref="_stepImages" />
-            </MudStep>
-        </MudStepper>
-    </MudPaper>
-</div>
-
-@code {
-    private StepBasicInfo? _stepBasic;
-    private StepAmenities? _stepAmenities;
-    private StepPolicies? _stepPolicy;
-    private StepImages? _stepImages;
-
-    private async Task OnPreviewInteraction(StepperInteractionEventArgs arg)
-    {
-        if (arg.Action == StepAction.Complete)
+    <!-- Nội dung từng bước -->
+    <div class="my-6">
+        @if (IsGlobalLoading)
         {
-            switch (arg.StepIndex)
+            <div class="d-flex justify-center my-12">
+                <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+                <MudText Class="ml-4">Đang tải dữ liệu...</MudText>
+            </div>
+        }
+        else
+        {
+            @if (ActiveStep == 0)
             {
-                case 0:
-                    if (!(_stepBasic?.Validate() ?? false))
-                        arg.Cancel = true;
-                    break;
-                case 1:
-                    if (!(_stepAmenities?.Validate() ?? false))
-                        arg.Cancel = true;
-                    break;
-                case 2:
-                    if (!(_stepPolicy?.Validate() ?? false))
-                        arg.Cancel = true;
-                    break;
-                case 3:
-                    if (!(_stepImages?.Validate() ?? false))
-                        arg.Cancel = true;
-                    break;
+                <StepBasicInfo />
+            }
+            else if (ActiveStep == 1)
+            {
+                <StepImages />
+            }
+            else if (ActiveStep == 2)
+            {
+                <StepAmenities />
+            }
+            else if (ActiveStep == 3)
+            {
+                <StepPolicies />
+            }
+            else if (ActiveStep == 4)
+            {
+                <StepRoomTypes RoomTypes="RoomTypes" IsLoadingRoomTypes="IsLoadingRoomTypes"
+                    OnRoomTypeChanged="LoadRoomTypesAsync" />
             }
         }
-        await Task.CompletedTask;
+    </div>
+
+    <!-- Nút điều hướng chung -->
+    <div class="d-flex justify-space-between mt-10">
+        <MudButton OnClick="PrevStep" Disabled="@(ActiveStep == 0)" StartIcon="@Icons.Material.Filled.ArrowBack"
+            Size="Size.Large">
+            Quay lại
+        </MudButton>
+
+        <div>
+            @if (ActiveStep < 4)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NextStep" Size="Size.Large"
+                    Disabled="@IsNextDisabled">
+                    @NextButtonText
+                </MudButton>
+            }
+            else if (ActiveStep == 4)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="SubmitForReview" Size="Size.Large"
+                    Disabled="@(IsSubmitting || RoomTypes.Count == 0)">
+                    @(IsSubmitting ? "Đang gửi..." : "Gửi duyệt khách sạn")
+                </MudButton>
+            }
+        </div>
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter] public int? hotelId { get; set; }
+    private int ActiveStep = 0;
+    private bool IsSubmitting = false;
+    private List<RoomTypeForOwnerVM> RoomTypes = new();
+    private long _lastRoomTypeUpdate = 0;
+    private int _lastUpdatedHotelId = 0;
+    private bool IsLoadingRoomTypes = true;
+    private HttpClient? _httpClient;
+    private bool IsGlobalLoading = true;
+
+    private string NextButtonText => ActiveStep switch
+    {
+        0 => "→ Ảnh khách sạn",
+        1 => "→ Tiện ích",
+        2 => "→ Chính sách",
+        3 => "→ Loại phòng",
+        _ => "Tiếp tục"
+    };
+
+    private bool IsNextDisabled => ActiveStep switch
+    {
+        0 => !FormState.BasicInfoIsValid,
+        1 => !FormState.ImagesIsValid,
+        2 => FormState.SelectedAmenityIds.Count == 0,
+        3 => FormState.SelectedPolicyByType.Count == 0 && FormState.CustomPolicies.Count == 0,
+        _ => false
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+
+        FormState.OnChange += OnFormStateChanged;
+        // load draft
+        await FormState.LoadFromStorageAsync();
+
+        await Task.WhenAll(
+        FormState.LoadCitiesAsync(),
+        FormState.LoadAmenitiesAsync(),
+        FormState.LoadPoliciesAsync()
+        );
+        StateHasChanged();
+        
+        // 1. Khôi phục ActiveStep từ localStorage (nếu có)
+        var savedStep = await _localStorage.GetItemAsync<int?>("WizardActiveStep");
+        if (savedStep.HasValue && FormState.IsDraftCreated)
+        {
+            ActiveStep = savedStep.Value;
+        }
+
+        if (FormState.IsDraftCreated && ActiveStep >= 3)
+        {
+            await LoadRoomTypesAsync();
+            if (RoomTypes.Any())
+            {
+                ActiveStep = 4;
+                await _localStorage.SetItemAsync("WizardActiveStep", 4);
+            }
+        }
+
+        if (!savedStep.HasValue && FormState.IsDraftCreated && FormState.BasicInfoIsValid)
+        {
+            Snackbar.Add($"Tải lại bản nháp thành công! ID: {FormState.DraftHotelId}", Severity.Info);
+
+            ActiveStep = 1;
+            if (FormState.Images.IsComplete) ActiveStep = 2;
+            if (FormState.SelectedAmenityIds.Any()) ActiveStep = 3;
+            if (FormState.SelectedPolicyByType.Any() || FormState.CustomPolicies.Any()) ActiveStep = 4;
+
+            if (ActiveStep == 4) await LoadRoomTypesAsync();
+        }
+
+        IsGlobalLoading = false;
+        StateHasChanged();
+        _nav.LocationChanged += OnLocationChanged;
     }
 
-} *@
+    protected override async Task OnParametersSetAsync()
+    {
+        // Tạo mới → xóa draft cũ
+        if (!hotelId.HasValue)
+        {
+            await FormState.ClearDraftAsync();
+        }
+        // Có hotelId → load draft
+        else if (FormState.DraftHotelId != hotelId.Value)
+        {
+            await FormState.ClearDraftAsync();
+            var loaded = await FormState.LoadDraftAsync(hotelId.Value);
+            if (!loaded) _nav.NavigateTo("/owner/hotels");
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            var updatedAt = await _localStorage.GetItemAsync<long?>("RoomType_Updated_At");
+            var updatedHotelId = await _localStorage.GetItemAsync<int?>("RoomType_Updated_HotelId");
+
+            if (updatedAt.HasValue && updatedHotelId.HasValue &&
+            updatedAt > _lastRoomTypeUpdate &&
+            updatedHotelId == FormState.DraftHotelId &&
+            ActiveStep == 4)
+            {
+                _lastRoomTypeUpdate = updatedAt.Value;
+                _lastUpdatedHotelId = updatedHotelId.Value;
+
+                await LoadRoomTypesAsync();
+                Snackbar.Add("Danh sách loại phòng đã được cập nhật!", Severity.Info);
+            }
+        }
+    }
+    // QUAN TRỌNG: Gọi khi state thay đổi → cập nhật UI realtime
+    private void OnFormStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void PrevStep()
+    {
+        if (ActiveStep > 0) ActiveStep--;
+    }
+
+    private async Task NextStep()
+    {
+        if (IsNextDisabled)
+        {
+            Snackbar.Add("Vui lòng hoàn thiện thông tin trước khi tiếp tục!", Severity.Warning);
+            return;
+        }
+
+        // Bước 0: Tạo draft
+        if (ActiveStep == 0)
+        {
+            var created = await FormState.CreateDraftAsync();
+            if (!created)
+            {
+                Snackbar.Add("Không thể tạo draft! Vui lòng kiểm tra thông tin.", Severity.Error);
+                return;
+            }
+        }
+
+        // Lưu dữ liệu từng bước
+        @* if (ActiveStep == 2) await FormState.SaveAmenitiesAsync(); *@
+        if (ActiveStep == 3) await FormState.SavePoliciesAsync();
+
+        ActiveStep++;
+
+        if (ActiveStep == 2 && !FormState.AllAmenities.Any())
+        {
+            await FormState.LoadAmenitiesAsync(); // Retry nếu chưa load
+        }
+
+        if (ActiveStep == 4)
+        {
+            await LoadRoomTypesAsync();
+        }
+        await _localStorage.SetItemAsync("WizardActiveStep", ActiveStep);
+    }
+
+    private async Task LoadRoomTypesAsync()
+    {
+        IsLoadingRoomTypes = true;
+        StateHasChanged();
+
+        try
+        {
+            await SetAuthHeader();
+            var resp = await _httpClient!.GetFromJsonAsync<ApiResponse<List<RoomTypeForOwnerVM>>>(
+            $"hotel/owner/{FormState.DraftHotelId}/roomtypes");
+            RoomTypes = resp?.Content ?? new();
+        }
+        catch { RoomTypes = new(); }
+        finally
+        {
+            IsLoadingRoomTypes = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            _httpClient!.DefaultRequestHeaders.Authorization = new("Bearer", token);
+    }
+
+    private async Task SubmitForReview()
+    {
+        if (RoomTypes.Count == 0)
+        {
+            Snackbar.Add("Vui lòng thêm ít nhất 1 loại phòng trước khi gửi duyệt!", Severity.Warning);
+            return;
+        }
+
+        IsSubmitting = true;
+        StateHasChanged();
+
+        var success = await FormState.SubmitForReviewAsync();
+        if (success)
+        {
+            Snackbar.Add("Gửi duyệt thành công! Chúng tôi sẽ phản hồi trong 24h", Severity.Success);
+            await _localStorage.RemoveItemAsync("WizardActiveStep");
+            await FormState.ClearDraftAsync();
+            _nav.NavigateTo("/owner/hotels");
+        }
+        else
+        {
+            Snackbar.Add("Gửi duyệt thất bại!", Severity.Error);
+        }
+
+        IsSubmitting = false;
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (ActiveStep == 4 && FormState.IsDraftCreated)
+        {
+            await LoadRoomTypesAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        FormState.OnChange -= OnFormStateChanged;
+        _nav.LocationChanged -= OnLocationChanged;
+    }
+
+}

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using HotelBooking.application.Helpers;
 
-namespace HotelBooking.api.Helpers
+namespace HotelBooking.application.Helpers
 {
     public static class ApiResponseHandlerHelper
     {
@@ -12,6 +12,7 @@ namespace HotelBooking.api.Helpers
             result.StatusCode = response.StatusCode switch
             {
                 StatusCodeResponse.Success => StatusCodes.Status200OK,
+                StatusCodeResponse.Created => StatusCodes.Status201Created,
                 StatusCodeResponse.NotFound => StatusCodes.Status404NotFound,
                 StatusCodeResponse.Conflict => StatusCodes.Status409Conflict,
                 StatusCodeResponse.BadRequest => StatusCodes.Status400BadRequest,

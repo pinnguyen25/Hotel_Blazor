@@ -3,8 +3,9 @@ using CloudinaryDotNet.Actions;
 
 public interface IFileUploadService
 {
-    public Task<string?> SaveImageAsync(IFormFile img, string folderName);
-    public Task DeleteImage(string? imagePath);
+    public Task<string?> SaveImageAsync(IFormFile img, string folderName, string? publicIdHint = null);
+    public Task DeleteImageAsync(string? imageUrl);
+    Task DeleteFolderAsync(string folderName);
 }
 
 public class FileUploadService : IFileUploadService
@@ -15,12 +16,9 @@ public class FileUploadService : IFileUploadService
         _cloudinary = cloudinary;
     }
 
-    public async Task<string?> SaveImageAsync(IFormFile imageFile, string folderName)
+    public async Task<string?> SaveImageAsync(IFormFile imageFile, string folderName, string? publicIdHint = null)
     {
-        if (imageFile == null || imageFile.Length == 0)
-        {
-            return null; // Hoặc string.Empty
-        }
+        if (imageFile == null || imageFile.Length == 0) return null;
 
         await using var stream = imageFile.OpenReadStream();
 
@@ -28,66 +26,89 @@ public class FileUploadService : IFileUploadService
         {
             File = new FileDescription(imageFile.FileName, stream),
             Folder = folderName, // Tự động tạo folder trên Cloudinary
-            // Thêm logic biến đổi ảnh, ví dụ: resize
-            // Transformation = new Transformation().Width(800).Height(600).Crop("fill")
+            UseFilename = false,
+            UniqueFilename = true,
+            Overwrite = true,
+            PublicId = publicIdHint
         };
 
         var uploadResult = await _cloudinary.UploadAsync(uploadParams);
 
-        if (uploadResult.Error != null)
-        {
-            // Xử lý lỗi (ví dụ: log lại)
-            return null;
-        }
-
         // Trả về URL an toàn (https) của ảnh
-        return uploadResult.SecureUrl.ToString();
+        return uploadResult.Error == null
+            ? uploadResult.SecureUrl.ToString()
+            : null;
     }
 
-    public async Task DeleteImage(string? imagePath)
+    public async Task DeleteImageAsync(string? imageUrl)
     {
-        if (string.IsNullOrWhiteSpace(imagePath))
+        if (string.IsNullOrWhiteSpace(imageUrl))
         {
             return;
         }
-        
+        var publicId = ExtractPublicIdFromUrl(imageUrl);
+        if (string.IsNullOrEmpty(publicId))
+            return;
+
         try
         {
-            Uri uri = new Uri(imagePath);
-            // Lấy phần path, loại bỏ / và phần mở rộng file
-            string path = uri.AbsolutePath;
-            // Bắt đầu từ tên folder
-            var segments = uri.Segments;
-            string? folderName = null;
-            for(int i = 0; i < segments.Length; i++)
-            {
-                if(segments[i].Contains("upload") && i + 2 < segments.Length)
-                {
-                    folderName = segments[i+1].Replace("/", ""); // Ví dụ: lấy "accommodation"
-                    break;
-                }
-            }
-
-            if(folderName == null) return; // Không tìm thấy folder hợp lệ
-
-            int startIndex = path.IndexOf(folderName);
-            if (startIndex == -1) return; // Không tìm thấy folder
-
-            string publicIdWithExtension = path.Substring(startIndex);
-            string publicId = Path.ChangeExtension(publicIdWithExtension, null);
-
-            var deletionParams = new DeletionParams(publicId)
+            var deletionResult = await _cloudinary.DestroyAsync(new DeletionParams(publicId)
             {
                 ResourceType = ResourceType.Image
-            };
+            });
 
-            // Gọi API xóa của Cloudinary
-            await _cloudinary.DestroyAsync(deletionParams);
+            // Optional: log if result.Result != "ok"
+            if (deletionResult.Result != "ok")
+            {
+                Console.WriteLine($"Cloudinary delete failed: {deletionResult.Error?.Message}");
+            }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Xử lý lỗi (ví dụ: log lại, URL không hợp lệ)
+            Console.WriteLine($"DeleteImage error: {ex.Message}");
+            // Không throw để không làm crash API
         }
 
+    }
+
+    public async Task DeleteFolderAsync(string folderName)
+    {
+        try
+        {
+            var result = await _cloudinary.DeleteResourcesAsync( new DelResParams
+            {
+                ResourceType = ResourceType.Image,
+                All = true,
+                Prefix = folderName
+            });
+
+            Console.WriteLine($"Deleted {result?.Deleted?.Count ?? 0} images in folder: {folderName}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DeleteFolder error: {ex.Message}");
+        }
+    }
+
+    private static string? ExtractPublicIdFromUrl(string url)
+    {
+        try
+        {
+            var uri = new Uri(url);
+            var path = uri.AbsolutePath;
+
+            // Tìm vị trí sau /upload/
+            // /v1234567890/hotels/1/2/cover.jpg → hotels/1/2/cover
+            int start = path.IndexOf("upload/", StringComparison.Ordinal) + 8;
+            if (start <= 7) return null;
+
+            var publicId = path.Substring(start);
+            publicId = publicId.Split('?')[0]; // bỏ query string
+            return Path.ChangeExtension(publicId.Trim('/'), null); // bỏ .jpg
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

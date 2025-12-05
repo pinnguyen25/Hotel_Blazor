@@ -7,6 +7,7 @@
 @inject IHttpClientFactory _httpClientFactory
 @inject ISnackbar Snackbar
 @inject ILocalStorageService _localStorage
+@inject IDialogService DialogService
 
 <PageTitle>Quản lý loại hình lưu trú</PageTitle>
 
@@ -121,8 +122,8 @@
 }
 
 @code {
-    private List<AdminAccommodationTypeVM>? accommodations;
-    private AdminAccommodationTypeVM selectedAccommodation = new();
+    private List<AccommodationTypeVM>? accommodations;
+    private AccommodationTypeVM selectedAccommodation = new();
     private bool isModalOpen = false;
     private bool isEditMode = false;
     private HttpClient? _httpClient;
@@ -138,10 +139,10 @@
 
     private async Task SetAuthHeader()
     {
-        var token = await _localStorage.GetItemAsync<string>("accessToken"); 
-        if(!string.IsNullOrEmpty(token))
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
         {
-            _httpClient!.DefaultRequestHeaders.Authorization = 
+            _httpClient!.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         }
     }
@@ -160,7 +161,7 @@
                 return;
             }
 
-            var apiResponse = JsonSerializer.Deserialize<ApiResponse<List<AdminAccommodationTypeVM>>>(json,
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<List<AccommodationTypeVM>>>(json,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             accommodations = apiResponse?.StatusCode == StatusCodeResponse.Success
             ? apiResponse.Content ?? new()
@@ -175,15 +176,15 @@
 
     private void OpenAddModal()
     {
-        selectedAccommodation = new AdminAccommodationTypeVM();
+        selectedAccommodation = new AccommodationTypeVM();
         isEditMode = false;
         isModalOpen = true;
         StateHasChanged();
     }
 
-    private void EditAccommodation(AdminAccommodationTypeVM acc)
+    private void EditAccommodation(AccommodationTypeVM acc)
     {
-        selectedAccommodation = new AdminAccommodationTypeVM
+        selectedAccommodation = new AccommodationTypeVM
         {
             Id = acc.Id,
             Name = acc.Name,
@@ -225,7 +226,7 @@
         var response = await _httpClient!.PostAsJsonAsync("hotel/create-accommodation", accData);
         if (!response.IsSuccessStatusCode) { await HandleErrorResponse(response); return; }
 
-        var result = await response.Content.ReadFromJsonAsync<ApiResponse<AdminAccommodationTypeVM>>();
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<AccommodationTypeVM>>();
         if (result?.StatusCode != StatusCodeResponse.Success || result.Content == null)
         {
             SnackbarHelper.Show(Snackbar, result?.StatusCode ?? "Error", result?.Message ?? "Lỗi tạo mới");
@@ -258,7 +259,7 @@
         var response = await _httpClient!.PutAsJsonAsync($"hotel/update-accommodation/{id}", accData);
         if (!response.IsSuccessStatusCode) { await HandleErrorResponse(response); return; }
 
-        var result = await response.Content.ReadFromJsonAsync<ApiResponse<AdminAccommodationTypeVM>>();
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<AccommodationTypeVM>>();
         if (result?.StatusCode != StatusCodeResponse.Success)
         {
             SnackbarHelper.Show(Snackbar, result?.StatusCode ?? "Error", result?.Message ?? "Lỗi cập nhật");
@@ -279,18 +280,51 @@
 
     private async Task DeleteAccommodation(int id)
     {
+        // Bước 1: Hiện dialog xác nhận đẹp của MudBlazor
+        bool? confirm = await DialogService.ShowMessageBox(
+        title: "Xóa loại hình lưu trú?",
+        markupMessage: new MarkupString("Bạn có chắc chắn muốn <strong>xóa loại lưu trú này</strong>?<br><small>Dữ liệu sẽ bị xóa vĩnh viễn.</small>"),
+        yesText: "Xóa ngay",
+        cancelText: "Hủy",
+        options: new DialogOptions()
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            CloseOnEscapeKey = true,
+            BackdropClick = false
+        }
+        );
+
+        // Nếu người dùng bấm "Hủy" → thoát luôn
+        if (confirm != true) return;
+
+        // Bước 2: Thực hiện xóa
         await SetAuthHeader();
         var response = await _httpClient!.DeleteAsync($"hotel/delete-accommodation/{id}");
-        if (!response.IsSuccessStatusCode)
-        {
-            var msg = await response.Content.ReadAsStringAsync();
-            Snackbar.Add($"Lỗi: {msg}", Severity.Error);
-            return;
-        }
 
-        var apiRes = await response.Content.ReadFromJsonAsync<ApiResponse<bool>>();
-        Snackbar.Add(apiRes?.Message ?? "Xóa thành công!", Severity.Success);
-        await LoadAccommodation();
+        // Bước 3: Dùng Snackbar để thông báo kết quả (đẹp hơn alert 1000 lần)
+        if (response.IsSuccessStatusCode)
+        {
+            var apiRes = await response.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+            Snackbar.Add(
+            message: apiRes?.Message ?? "Đã xóa loại hình lưu trú!",
+            severity: Severity.Success,
+            config =>
+            {
+                config.ShowCloseIcon = true;
+                config.VisibleStateDuration = 4000;
+            });
+
+            await LoadAccommodation(); // Refresh danh sách
+        }
+        else
+        {
+            var errorMsg = await response.Content.ReadAsStringAsync();
+            Snackbar.Add(
+            message: $"Không thể xóa: {errorMsg}",
+            severity: Severity.Error,
+            config => config.RequireInteraction = true);
+        }
     }
 
     private async Task<HttpResponseMessage> UploadImageAsync(int accId, IBrowserFile file)
@@ -307,7 +341,7 @@
     private void CloseModal()
     {
         isModalOpen = false;
-        selectedAccommodation = new AdminAccommodationTypeVM();
+        selectedAccommodation = new AccommodationTypeVM();
         isEditMode = false;
     }
 

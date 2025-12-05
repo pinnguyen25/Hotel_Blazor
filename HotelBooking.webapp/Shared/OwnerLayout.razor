@@ -1,12 +1,23 @@
 
 @inherits LayoutComponentBase
+@using MudBlazor
 
 <MudThemeProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 <MudPopoverProvider />
 
-<OwnerHeader />
-<main>
-    @Body
-</main>
+<div class=" d-flex flex-column min-vh-100">
+    <OwnerHeader />
+    <div class="d-flex flex-grow-1">
+        <!-- Sidebar -->
+        <aside class=" bg-dark text-white" style="width: 250px;">
+            <OwnerSidebar />
+        </aside>
+
+        <!-- Nội dung -->
+        <main class="flex-grow-1">
+            @Body
+        </main>
+    </div>
+</div>

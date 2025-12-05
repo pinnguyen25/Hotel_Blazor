@@ -1,0 +1,261 @@
+@page "/admin/manages/manage-{ItemType}s"
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Text.Json
+
+@layout AdminLayout
+
+@inject IHttpClientFactory _httpClientFactory
+@inject ILocalStorageService _localStorage
+@inject ISnackbar Snackbar
+@inject IJSRuntime js
+@implements IDisposable
+
+<PageTitle>Quản lý @PageTitle</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0 fw-semibold">Quản lý @PageTitle</h3>
+        <button class="btn btn-primary d-flex align-items-center gap-2" @onclick="OpenAddModal">
+            <i class="bi bi-plus-circle"></i> Thêm mới
+        </button>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:80px;">Icon</th>
+                            <th>Tên</th>
+                            <th>Mô tả</th>
+                            <th>Class Icon</th>
+                            <th>Màu</th>
+                            <th class="text-end pe-3">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Items == null)
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <div class="spinner-border spinner-border-sm"></div>
+                                </td>
+                            </tr>
+                        }
+                        else if (!Items.Any())
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-5 text-muted">Chưa có dữ liệu</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var item in Items)
+                            {
+                                <tr>
+                                    <td><i class="@item.IconClass fa-2x" style="color:@item.IconColor"></i></td>
+                                    <td class="fw-medium">@item.Name</td>
+                                    <td>@(string.IsNullOrWhiteSpace(item.Description) ? "-" : item.Description)</td>
+                                    <td><code class="small">@item.IconClass</code></td>
+                                    <td><span class="badge" style="background:@item.IconColor">@item.IconColor</span></td>
+                                    <td class="text-end pe-3">
+                                        <button class="btn btn-sm btn-outline-warning" @onclick="() => EditItem(item)">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger ms-1" @onclick="() => DeleteItem(item.Id)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (isModalOpen)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header border-0 pb-2">
+                    <h5 class="modal-title fw-bold">
+                        @(isEditMode ? $"Cập nhật {SingularName}" : $"Thêm {SingularName} mới")
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <RoomForm FormModel="@SelectedItem" DefaultIconClass="@DefaultIconClass" DefaultColor="@DefaultColor"
+                        ItemName="@SingularName" OnValidSubmit="HandleValidSubmit" OnCancel="CloseModal" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string ItemType { get; set; } = ""; // bedtype / viewtype
+    private string PageTitle => ItemType == "bedtype" ? "loại giường" : "hướng nhìn";
+    private string SingularName => ItemType == "bedtype" ? "loại giường" : "hướng nhìn";
+    private string DefaultIconClass => ItemType == "bedtype" ? "fa-bed" : "fa-eye";
+    private string DefaultColor => ItemType == "bedtype" ? "#8B4513" : "#2196F3";
+
+    private List<IconItemVM> Items = new();
+    private IconItemVM SelectedItem = new();
+    private bool isModalOpen = false;
+    private bool isEditMode = false;
+    private HttpClient? _httpClient;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+        await SetAuthHeader();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            _httpClient!.DefaultRequestHeaders.Authorization = new("Bearer", token);
+    }
+
+    private async Task LoadData()
+    {
+        if (string.IsNullOrEmpty(ItemType))
+        {
+            Items = new();
+            return;
+        }
+
+        try
+        {
+            var endpoint = ItemType.ToLower() switch
+            {
+                "bedtype" => "hotel/get-all-bedtypes",
+                "viewtype" => "hotel/get-all-viewtypes",
+                _ => throw new InvalidOperationException("Invalid ItemType")
+            };
+
+            await SetAuthHeader();
+            var res = await _httpClient!.GetFromJsonAsync<ApiResponse<List<IconItemVM>>>(endpoint);
+            Items = res?.StatusCode == StatusCodeResponse.Success ? res.Content ?? new() : new();
+            StateHasChanged(); // Đảm bảo UI cập nhật
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi tải dữ liệu: {ex.Message}", Severity.Error);
+            Items = new();
+        }
+    }
+
+    private void OpenAddModal()
+    {
+        SelectedItem = new IconItemVM()
+        {
+            IconClass = DefaultIconClass,
+            IconColor = DefaultColor
+        };
+        isEditMode = false;
+        isModalOpen = true;
+    }
+
+    private void EditItem(IconItemVM item)
+    {
+        SelectedItem = new IconItemVM
+        {
+            Id = item.Id,
+            Name = item.Name,
+            Description = item.Description,
+            IconClass = item.IconClass,
+            IconColor = item.IconColor
+        };
+        isEditMode = true;
+        isModalOpen = true;
+    }
+
+    private async Task HandleValidSubmit(IconItemVM model)
+    {
+        if (isEditMode)
+            await UpdateItem(model);
+        else
+            await CreateItem(model);
+    }
+
+    private async Task CreateItem(IconItemVM model)
+    {
+        var endpoint = ItemType == "bedtype" ? "hotel/create-bedtype" : "hotel/create-viewtype";
+        var res = await _httpClient!.PostAsJsonAsync(endpoint, model);
+        await HandleResponse(res, "Tạo mới");
+    }
+
+    private async Task UpdateItem(IconItemVM model)
+    {
+        var endpoint = ItemType == "bedtype"
+        ? $"hotel/update-bedtype/{model.Id}"
+        : $"hotel/update-viewtype/{model.Id}";
+
+        var res = await _httpClient!.PutAsJsonAsync(endpoint, model);
+        await HandleResponse(res, "Cập nhật");
+    }
+
+    private async Task DeleteItem(int id)
+    {
+        if (!await js.InvokeAsync<bool>("confirm", "Xóa vĩnh viễn mục này?")) return;
+
+        var endpoint = ItemType == "bedtype"
+        ? $"hotel/delete-bedtype/{id}"
+        : $"hotel/delete-viewtype/{id}";
+
+        var res = await _httpClient!.DeleteAsync(endpoint);
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Xóa thành công!", Severity.Success);
+            await LoadData();
+        }
+        else
+        {
+            Snackbar.Add("Xóa thất bại!", Severity.Error);
+        }
+    }
+
+    private async Task HandleResponse(HttpResponseMessage res, string action)
+    {
+        if (!res.IsSuccessStatusCode)
+        {
+            Snackbar.Add($"{action} thất bại!", Severity.Error);
+            return;
+        }
+        var apiRes = await res.Content.ReadFromJsonAsync<ApiResponse<IconItemVM>>();
+        if (apiRes?.StatusCode == StatusCodeResponse.Success)
+        {
+            Snackbar.Add($"{action} thành công!", Severity.Success);
+            await LoadData();
+            CloseModal();
+        }
+        else
+        {
+            Snackbar.Add(apiRes?.Message ?? $"{action} thất bại!", Severity.Error);
+        }
+    }
+
+    private void CloseModal()
+    {
+        isModalOpen = false;
+        isEditMode = false;
+        SelectedItem = new();
+    }
+    public void Dispose()
+    {
+
+    }
+}

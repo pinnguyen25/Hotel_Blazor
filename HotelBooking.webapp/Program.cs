@@ -41,6 +41,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IHotelServices, HotelServices>();
+builder.Services.AddScoped<HotelFormState>();
 // builder.Services.AddScoped<IToastService, ToastService>();
 builder.Services.AddAuthorizationCore();
 

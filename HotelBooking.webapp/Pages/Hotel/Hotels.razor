@@ -12,9 +12,7 @@
 <!-- Hero Section -->
 <section class="hero-section position-relative min-vh-100">
     <div class="hero-bg">
-        <img src="https://your-cdn-link/hero-banner.jpg" 
-             alt="Hero Background" 
-             class="w-100 vh-100 object-fit-cover" />
+        <img src="https://your-cdn-link/hero-banner.jpg" alt="Hero Background" class="w-100 vh-100 object-fit-cover" />
     </div>
 
     <div class="hero-overlay"></div>
@@ -33,69 +31,220 @@
 <section class="container my-5">
     <div class="row">
         <!-- Sidebar / Filters -->
-        <div class="col-lg-3 mb-4">
-            <div class="p-3 bg-white rounded shadow-sm">
-                <h5 class="fw-bold mb-3">Your Search</h5>
-                <SearchForm SearchResult="currentSearchQuery" />
-
-                <hr />
-
-                <h5 class="fw-bold mb-3">Loại chỗ ở</h5>
-                <MudCheckbox Label="Free Cancellation" />
-                <MudCheckbox Label="Breakfast Included" />
-
-                <hr />
-
-                <h5 class="fw-bold mb-3">Price per Night</h5>
-                <MudSlider Min="500000" Max="10000000" Step="100000" @bind-Value="_priceRangeValue" 
-                   @bind-Value:after="ApplyFilters" ThumbLabel="true" Class="mt-4">
-                Giá: @(_priceRangeValue.ToString("#,##0")) ₫
-                </MudSlider>
-
-                <hr />
-
-                <h5 class="fw-bold mb-3">Guest Rating</h5>
-                <MudCheckbox Checked="@_selectedRatings.Contains(8)" Label="Excellent 8+"
-                     CheckedChanged="(isChecked) => OnRatingFilterChanged(isChecked, 8)" />
-                <MudCheckbox Checked="@_selectedRatings.Contains(6)" Label="Good 6+"
-                     CheckedChanged="(isChecked) => OnRatingFilterChanged(isChecked, 6)" />
-                <MudCheckbox Checked="@_selectedRatings.Contains(4)" Label="Average 4+"
-                     CheckedChanged="(isChecked) => OnRatingFilterChanged(isChecked, 4)" />
-            </div>
+        <div class="col-lg-3">
+        <HotelsFilter OnFilterChanged="ApplyFilters" />
         </div>
+        @* <div class="col-lg-3">
+            <div class="filter-sidebar rounded-4 p-4">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-funnel me-2"></i>Bộ lọc tìm kiếm
+                    </h5>
+                    <button type="button" class="btn btn-link text-danger btn-reset p-0 text-decoration-none">
+                        Xóa
+                    </button>
+                </div>
 
+                <hr class="text-muted">
+
+                <!-- Thành phố -->
+                <div class="mb-4">
+                    <h6 class="fw-semibold text-dark mb-3">Thành phố</h6>
+                    <div class="vstack gap-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="city1">
+                            <label class="form-check-label" for="city1">Hà Nội <span class="text-muted">(248)</span></label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="city2" checked>
+                            <label class="form-check-label" for="city2">TP. Hồ Chí Minh <span class="text-muted">(512)</span></label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="city3">
+                            <label class="form-check-label" for="city3">Đà Nẵng <span class="text-muted">(189)</span></label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="city4">
+                            <label class="form-check-label" for="city4">Nha Trang <span class="text-muted">(97)</span></label>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="text-muted">
+
+                <!-- Loại hình lưu trú -->
+                <div class="mb-4">
+                    <h6 class="fw-semibold text-dark mb-3">Loại hình lưu trú</h6>
+                    <select class="form-select form-select-sm" multiple aria-label="Loại hình" style="height: 150px;">
+                        <option selected>Khách sạn</option>
+                        <option>Resort</option>
+                        <option selected>Homestay</option>
+                        <option>Villa</option>
+                        <option>Hostel</option>
+                        <option>Căn hộ</option>
+                    </select>
+                    <small class="text-muted">Giữ Ctrl để chọn nhiều</small>
+                </div>
+
+                <hr class="text-muted">
+
+                <!-- Khoảng giá -->
+                <div class="mb-4">
+                    <h6 class="fw-semibold text-dark mb-3">Giá mỗi đêm</h6>
+                    <div class="px-2">
+                        <input type="range" class="form-range" min="0" max="10000000" step="100000" value="2000000">
+                        <div class="d-flex justify-content-between text-muted small mt-2">
+                            <span>0 đ</span>
+                            <span class="fw-bold text-dark">2.000.000 đ</span>
+                            <span>10.000.000+ đ</span>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <input type="text" class="form-control form-control-sm text-center" value="500.000" placeholder="Từ">
+                        <span class="mx-2 text-muted">→</span>
+                        <input type="text" class="form-control form-control-sm text-center" value="5.000.000" placeholder="Đến">
+                    </div>
+                </div>
+
+                <hr class="text-muted">
+
+                <!-- Điểm đánh giá -->
+                <div class="mb-4">
+                    <h6 class="fw-semibold text-dark mb-3">Điểm đánh giá</h6>
+                    <div class="vstack gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="rating" id="rating5">
+                            <label class="form-check-label d-flex align-items-center" for="rating5">
+                                <span class="me-2">5 sao</span>
+                                <div class="text-warning small">★★★★★</div>
+                                <span class="ms-auto text-muted">(89)</span>
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="rating" id="rating4" checked>
+                            <label class="form-check-label d-flex align-items-center" for="rating4">
+                                <span class="me-2">4 sao trở lên</span>
+                                <div class="text-warning small">★★★★☆</div>
+                                <span class="ms-auto text-muted">(312)</span>
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="rating" id="rating3">
+                            <label class="form-check-label d-flex align-items-center" for="rating3">
+                                <span class="me-2">3 sao trở lên</span>
+                                <div class="text-warning small">★★★☆☆</div>
+                                <span class="ms-auto text-muted">(567)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="text-muted">
+
+                <!-- Tiện nghi phổ biến -->
+                <div class="mb-4">
+                    <h6 class="fw-semibold text-dark mb-3">Tiện nghi phổ biến</h6>
+                    <div class="row g-2">
+                        <div class="col-6"><div class="border rounded-3 p-3 text-center bg-light">WiFi miễn phí</div></div>
+                        <div class="col-6"><div class="border rounded-3 p-3 text-center bg-primary text-white">Hồ bơi</div></div>
+                        <div class="col-6"><div class="border rounded-3 p-3 text-center bg-light">Bãi đỗ xe</div></div>
+                        <div class="col-6"><div class="border rounded-3 p-3 text-center bg-light">Nhà hàng</div></div>
+                        <div class="col-6"><div class="border rounded-3 p-3 text-center bg-light">Gym</div></div>
+                        <div class="col-6"><div class="border rounded-3 p-3 text-center bg-light">Spa</div></div>
+                    </div>
+                </div>
+
+                <hr class="text-muted">
+
+                <!-- Kiểu giường & View -->
+                <div class="mb-4">
+                    <h6 class="fw-semibold text-dark mb-3">Kiểu giường</h6>
+                    <select class="form-select form-select-sm" multiple style="height: 100px;">
+                        <option>Giường đôi (Double)</option>
+                        <option selected>Giường king</option>
+                        <option>2 giường đơn</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="fw-semibold text-dark mb-3">View phòng</h6>
+                    <div class="hstack gap-2 flex-wrap">
+                        <span class="badge badge-filter border rounded-pill px-3 py-2">Hướng biển</span>
+                        <span class="badge bg-light text-dark border rounded-pill px-3 py-2">Hướng thành phố</span>
+                        <span class="badge bg-light text-dark border rounded-pill px-3 py-2">Hướng hồ bơi</span>
+                    </div>
+                </div>
+
+                <hr class="text-muted">
+
+                <!-- Chuỗi khách sạn & Chính sách -->
+                <div class="mb-4">
+                    <h6 class="fw-semibold text-dark mb-3">Chuỗi khách sạn</h6>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="chain1" checked>
+                        <label class="form-check-label" for="chain1">Vinpearl</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="chain2">
+                        <label class="form-check-label" for="chain2">Marriott</label>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="fw-semibold text-dark mb-3">Chính sách</h6>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="policy1" checked>
+                        <label class="form-check-label" for="policy1">Miễn phí hủy phòng</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="policy2">
+                        <label class="form-check-label" for="policy2">Không cần thanh toán trước</label>
+                    </div>
+                </div>
+
+                <!-- Nút áp dụng -->
+                <div class="d-grid">
+                    <button class="btn btn-primary btn-lg rounded-pill shadow-sm">
+                        <i class="bi bi-check2-all me-2"></i>Xem 1.248 khách sạn
+                    </button>
+                </div>
+
+            </div>
+        </div> *@
+    
         <!-- Hotels List -->
         <div class="col-lg-9">
-            <h2 class="mb-4 text-center">@(isSearchResult ? $"Tất cả các địa điểm cho {searchDestination}" : "Tất cả địa điểm")</h2>
+            <h2 class="mb-4 text-center">@(isSearchResult ? $"Tất cả các địa điểm cho {searchDestination}" : "Tất cả địa                điểm")</h2>
             @if (!string.IsNullOrEmpty(errorMessage))
             {
                 <MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
             }
             @if (isLoading)
-    {
-        <div class="text-center mt-5">
-            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
-            <p class="mt-2">Đang tải dữ liệu khách sạn...</p>
-        </div>
-    }
-    else if (!FilterHotelList.Any())
-    {
-        <MudAlert Severity="Severity.Info">Không tìm thấy khách sạn nào phù hợp với tiêu chí của bạn.</MudAlert>
-    }
-    else
-    {
-        <div class="d-flex justify-content-between align-items-center mb-3">
-             <MudText>Tìm thấy <b>@FilterHotelList.Count</b> chỗ ở phù hợp.</MudText>
-             </div>
-        <div class="row">
-            @foreach (var hotel in FilterHotelList)
             {
-                <div class="col-12 mb-4">
-                    <HotelListCard Hotel="@hotel" OnWishlistToggle="HandleWishlistToggle" />
+                <div class="text-center mt-5">
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+                    <p class="mt-2">Đang tải dữ liệu khách sạn...</p>
                 </div>
             }
-        </div>
-    }
+            else if (!FilterHotelList.Any())
+            {
+                <MudAlert Severity="Severity.Info">Không tìm thấy khách sạn nào phù hợp với tiêu chí của bạn.</MudAlert>
+            }
+            else
+            {
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <MudText>Tìm thấy <b>@FilterHotelList.Count</b> chỗ ở phù hợp.</MudText>
+                </div>
+                <div class="row">
+                    @foreach (var hotel in FilterHotelList)
+                    {
+                        <div class="col-12 mb-4">
+                            <HotelListCard Hotel="@hotel" OnWishlistToggle="HandleWishlistToggle" />
+                        </div>
+                    }
+                </div>
+            }
         </div>
     </div>
 </section>
@@ -150,10 +299,10 @@
             Rooms = int.TryParse(query["rooms"], out var r) ? r : 1,
         };
         currentSearchQuery = queryParams;
-    
+
         try
         {
-            if(accTypeId >0)
+            if (accTypeId > 0)
             {
                 var response = await httpClient.GetAsync($"Hotel/get-hotel-by-accTypeId/{accTypeId}");
                 if (!response.IsSuccessStatusCode)
@@ -165,18 +314,18 @@
 
                 var json = await response.Content.ReadAsStringAsync();
                 var apiResponse = JsonSerializer.Deserialize<ApiResponse<List<HotelListItemVM>>>(json,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
                 originHotelList = apiResponse?.StatusCode == StatusCodeResponse.Success
                 ? apiResponse.Content ?? new List<HotelListItemVM>()
                 : new List<HotelListItemVM>();
             }
-            else if(!string.IsNullOrEmpty(queryParams.Destination))
+            else if (!string.IsNullOrEmpty(queryParams.Destination))
             {
                 // truyền dữ liệu tìm kiếm vào searchform
                 isSearchResult = true;
                 searchDestination = queryParams.Destination;
-                var queryDict = new Dictionary<string,string?>
+                var queryDict = new Dictionary<string, string?>
                 {
                     ["destination"] = queryParams.Destination,
                     ["checkIn"] = queryParams.CheckIn?.ToString("yyyy-MM-dd"),
@@ -186,14 +335,15 @@
                     ["rooms"] = queryParams.Rooms.ToString(),
                 };
 
-                var apiUrl = QueryHelpers.AddQueryString("Hotel/get-search-options",queryDict);
+                var apiUrl = QueryHelpers.AddQueryString("Hotel/get-search-options", queryDict);
                 originHotelList = await httpClient.GetFromJsonAsync<List<HotelListItemVM>>(apiUrl) ?? new List<HotelListItemVM>();
             }
             else
             {
                 // dữ liệu tìm kiếm null
                 isSearchResult = false;
-                originHotelList = await httpClient.GetFromJsonAsync<List<HotelListItemVM>>("Hotel/get-all") ?? new List<HotelListItemVM>();
+                originHotelList = await httpClient.GetFromJsonAsync<List<HotelListItemVM>>("Hotel/get-all") ?? new
+                List<HotelListItemVM>();
             }
         }
         catch (Exception ex)
@@ -221,16 +371,16 @@
         if (_selectedRatings.Any())
         {
             query = query.Where(h =>
-                _selectedRatings.Any(rating => h.AverageRating >= (decimal)rating && h.AverageRating < (decimal)rating + 2)
+            _selectedRatings.Any(rating => h.AverageRating >= (decimal)rating && h.AverageRating < (decimal)rating + 2)
             );
         }
-        
+
         // 3. (Tùy chọn) Lọc theo các tiêu chí khác (Free Cancellation, etc.)
         // if (freeCancellation) { query = query.Where(h => h.HasFreeCancellation); }
 
         // Cập nhật danh sách hiển thị
         FilterHotelList = query.ToList();
-        
+
         // render lại giao diện
         StateHasChanged();
     }
@@ -250,31 +400,31 @@
     @* private HashSet<int> loadingHotels = new(); *@
     private async Task HandleWishlistToggle(int hotelId)
     {
-        if(loadingHotels.Contains(hotelId)) return;
+        if (loadingHotels.Contains(hotelId)) return;
         loadingHotels.Add(hotelId);
 
         try
         {
-            var hotel = originHotelList.FirstOrDefault(h=>h.HotelId == hotelId);
-            if(hotel != null)
+            var hotel = originHotelList.FirstOrDefault(h => h.HotelId == hotelId);
+            if (hotel != null)
             {
                 var prevState = hotel.IsWishlist;
                 hotel.IsWishlist = !hotel.IsWishlist;
 
                 var httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
-                var res = await httpClient.PostAsync($"Wishlist/toggle/{hotelId}",null);
+                var res = await httpClient.PostAsync($"Wishlist/toggle/{hotelId}", null);
 
-                if(!res.IsSuccessStatusCode)
+                if (!res.IsSuccessStatusCode)
                 {
                     hotel.IsWishlist = prevState;
                 }
                 await InvokeAsync(StateHasChanged);
             }
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             Console.WriteLine($"Error:{ex.Message}");
-        } 
+        }
         finally
         {
             loadingHotels.Remove(hotelId);

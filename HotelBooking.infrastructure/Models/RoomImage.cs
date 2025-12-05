@@ -23,6 +23,10 @@ public partial class RoomImage
 
     public string? Additional { get; set; }
 
+    public bool? IsDefault { get; set; }
+
+    public int? SortOrder { get; set; }
+
     public virtual User? CreatedByNavigation { get; set; }
 
     public virtual RoomType RoomType { get; set; } = null!;

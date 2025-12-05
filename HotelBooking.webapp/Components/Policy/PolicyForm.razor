@@ -1,0 +1,74 @@
+@using HotelBooking.webapp.ViewModels.Hotel
+
+@if (PolicyTypes == null || !PolicyTypes.Any())
+{
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-exclamation-triangle fs-1"></i>
+        <p>Không có loại chính sách nào để chọn.</p>
+    </div>
+    return;
+}
+
+<div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold">
+                    @(Model?.Id > 0 ? "Sửa chính sách" : "Thêm chính sách mới")
+                </h5>
+                <button type="button" class="btn-close" @onclick="OnCancel"></button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="Model" OnValidSubmit="OnSubmit">
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Loại chính sách <span class="text-danger">*</span></label>
+                        <InputSelect @bind-Value="Model.PolicyTypeId" class="form-select">
+                            <option value="0">-- Chọn loại --</option>
+                            @foreach (var t in PolicyTypes)
+                            {
+                                <option value="@t.Id">@t.Name</option>
+                            }
+                        </InputSelect>
+                        @if (Model.PolicyTypeId == 0)
+                        {
+                            <div class="text-danger small mt-1">Vui lòng chọn loại chính sách</div>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Tên chính sách <span class="text-danger">*</span></label>
+                        <InputText @bind-Value="Model.Name" class="form-control" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Mô tả</label>
+                        <InputTextArea @bind-Value="Model.Description" class="form-control" rows="4" />
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-success flex-fill" disabled="@IsSubmitting">
+                            @if (IsSubmitting) 
+                            { 
+                                <span class="spinner-border spinner-border-sm me-2"></span> 
+                            }
+                            @(Model?.Id > 0 ? "Cập nhật" : "Tạo mới")
+                        </button>
+                        <button type="button" class="btn btn-secondary flex-fill" @onclick="OnCancel">
+                            Hủy
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public PolicyVM Model { get; set; } = new();
+    [Parameter] public List<PolicyTypeVM>? PolicyTypes { get; set; } // có thể null
+    [Parameter] public bool IsSubmitting { get; set; }
+    [Parameter] public EventCallback OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+}

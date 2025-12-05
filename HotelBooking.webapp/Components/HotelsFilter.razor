@@ -1,51 +1,285 @@
+@using System.Text.Json
 @* @using MudBlazor
+@inject Snackbar Snackbar *@
+@inject IHttpClientFactory _httpClientFactory
+<div class="container-fluid">
+    <div class="filter-sidebar bg-white rounded-4 shadow-sm p-4 sticky-top"
+        style="top: 90px; max-height: calc(100vh - 110px); overflow-y: auto;">
 
-<MudPaper Class="p-4 rounded-3 shadow-sm">
-    <h6 class="fw-bold mb-3 text-primary">Bộ lọc</h6>
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="fw-bold text-dark mb-0">
+                <i class="bi bi-funnel-fill text-primary me-2"></i>
+                Bộ lọc tìm kiếm
+            </h5>
+            <button type="button" class="btn btn-link text-danger p-0 text-decoration-none fw-medium"
+                @onclick="ResetAllFilters">
+                Xóa
+            </button>
+        </div>
 
-    <!-- Thành phố -->
-    <MudSelect T="string" Label="Thành phố" @bind-Value="SelectedCity" Class="mb-3">
-        <MudSelectItem Value="Hà Nội">Hà Nội</MudSelectItem>
-        <MudSelectItem Value="Hồ Chí Minh">Hồ Chí Minh</MudSelectItem>
-        <MudSelectItem Value="Đà Nẵng">Đà Nẵng</MudSelectItem>
-    </MudSelect>
+        <hr class="text-muted opacity-75">
 
-    <!-- Giá -->
-    <MudSlider @bind-Value="MaxPrice" Min="500000" Max="5000000" Step="500000" 
-               ValueLabel="true" Label="Giá tối đa" Class="mb-3" />
+        <!-- Giá mỗi đêm -->
+        <div class="mb-4">
+            <h6 class="fw-semibold text-dark mb-3">Giá mỗi đêm</h6>
 
-    <!-- Xếp hạng -->
-    <MudRating @bind-SelectedValue="MinRating" MaxValue="5" Color="Color.Primary" Size="Size.Medium" />
-    <div class="text-muted small mb-3">Tối thiểu: @MinRating sao</div>
+            <div class="px-3">
+                <input type="range" class="form-range custom-range" min="0" max="10000000" step="100000"
+                    @bind="_maxPrice" @bind:event="oninput" />
 
-    <!-- Nút -->
-    <MudButton Variant="Filled" Color="Primary" Class="w-100" OnClick="ApplyFilter">
-        Áp dụng
-    </MudButton>
-</MudPaper>
+                <div class="d-flex justify-content-between text-muted small mt-2">
+                    <span>0đ</span>
+                    <span class="fw-bold text-primary">@FormatPrice(_maxPrice)đ</span>
+                    <span>10tr+</span>
+                </div>
+            </div>
+
+            <div class="row g-2 mt-3">
+                <div class="col-6">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light">Từ</span>
+                        <input type="text" class="form-control text-end" value="@FormatPrice(_minPrice)"
+                            @onchange="OnMinPriceChange" />
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light">Đến</span>
+                        <input type="text" class="form-control text-end" value="@FormatPrice(_maxPrice)"
+                            @onchange="OnMaxPriceChange" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="text-muted opacity-75">
+
+        <!-- Loại hình lưu trú -->
+        <div class="mb-4">
+            <h6 class="fw-semibold text-dark mb-3">Loại hình lưu trú</h6>
+            <div class="vstack gap-2">
+                @foreach (var type in AccommodationTypes)
+                {
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="@($"acc-{type.Id}")"
+                            checked="@SelectedAccTypes.Contains(type.Id)"
+                            @onchange="() => ToggleItem(SelectedAccTypes, type.Id)" />
+                        <label class="form-check-label d-flex justify-content-between" for="@($"acc-{type.Id}")">
+                            <span>@type.Name</span>
+                            @* <span class="text-muted small">(@type.Count)</span> *@
+                        </label>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Điểm đánh giá -->
+        <div class="mb-4">
+            <h6 class="fw-semibold text-dark mb-3">Điểm đánh giá</h6>
+            <div class="vstack gap-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="rating" id="rate-all"
+                        checked="@(_selectedRating == 0)" @onchange="() => SetRating(0)" />
+                    <label class="form-check-label" for="rate-all">Tất cả</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="rating" id="rate-8"
+                        checked="@(_selectedRating == 8)" @onchange="() => SetRating(8)" />
+                    <label class="form-check-label d-flex align-items-center gap-2" for="rate-8">
+                        <span>Xuất sắc</span>
+                        <span class="text-warning fw-bold">8+</span>
+                        <div class="text-warning small">★★★★★</div>
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="rating" id="rate-7"
+                        checked="@(_selectedRating == 7)" @onchange="() => SetRating(7)" />
+                    <label class="form-check-label d-flex align-items-center gap-2" for="rate-7">
+                        <span>Rất tốt</span>
+                        <span class="text-success fw-bold">7+</span>
+                        <div class="text-warning small">★★★★☆</div>
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="rating" id="rate-6"
+                        checked="@(_selectedRating == 6)" @onchange="() => SetRating(6)" />
+                    <label class="form-check-label d-flex align-items-center gap-2" for="rate-6">
+                        <span>Tốt</span>
+                        <span class="text-info fw-bold">6+</span>
+                        <div class="text-warning small">★★★☆☆</div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tiện nghi phổ biến -->
+        <div class="mb-4">
+            <h6 class="fw-semibold text-dark mb-3">Tiện nghi phổ biến</h6>
+            @if (Amenities == null || !Amenities.Any())
+            {
+                <div class="text-center py-3 text-muted small">Đang tải tiện nghi...</div>
+            }
+            else
+            {
+                <div class="row g-2">
+                    @foreach (var amenity in Amenities)
+                    {
+                        <div class="col-6">
+                            <div class="@(SelectedAmenities.Contains(amenity.Id) ? "selected-amenity" : "unselected-amenity")"
+                                style="cursor: pointer; transition: all 0.2s"
+                                @onclick="() => ToggleItem(SelectedAmenities, amenity.Id)">
+                                @if (!string.IsNullOrEmpty(amenity.IconClass))
+                                {
+                                    <i class="@amenity.IconClass me-1"></i>
+                                }
+                                @amenity.Name
+
+                                @if (SelectedAmenities.Contains(amenity.Id))
+                                {
+                                    <i class="bi bi-check-lg float-end mt-1 text-white"></i>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Chính sách -->
+        <div class="mb-4">
+            <h6 class="fw-semibold text-dark mb-3">Chính sách</h6>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="free-cancel" checked="@FreeCancellation"
+                    @onchange="() => { FreeCancellation = !FreeCancellation; TriggerFilter(); }" />
+                <label class="form-check-label text-success fw-medium" for="free-cancel">
+                    Miễn phí hủy phòng
+                </label>
+            </div>
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="no-prepay" checked="@NoPrepayment"
+                    @onchange="() => { NoPrepayment = !NoPrepayment; TriggerFilter(); }" />
+                <label class="form-check-label text-primary fw-medium" for="no-prepay">
+                    Không cần thanh toán trước
+                </label>
+            </div>
+        </div>
+
+        <!-- Nút áp dụng -->
+        <div class="d-grid mt-4">
+            <button class="btn btn-primary btn-lg rounded-pill shadow-sm py-3 fw-bold" @onclick="ApplyFilters">
+                <i class="bi bi-check2-all me-2"></i>
+                Xem @_filteredCount khách sạn
+            </button>
+        </div>
+    </div>
+</div>
+
 
 @code {
-    [Parameter] public EventCallback<FilterOptions> OnFilterChanged { get; set; }
+    [Parameter] public EventCallback OnFilterChanged { get; set; }
 
-    private string? SelectedCity;
-    private double MaxPrice = 5000000;
-    private int MinRating = 0;
+    private decimal _minPrice = 0;
+    private decimal _maxPrice = 10000000m;
+    private int _selectedRating = 0;
+    private HashSet<int> SelectedAccTypes { get; set; } = new() { 1, 3 };
+    private HashSet<int> SelectedAmenities { get; set; } = new() { 2 };
+    private bool FreeCancellation = true;
+    private bool NoPrepayment = false;
+    private int _filteredCount = 1248;
 
-    private async Task ApplyFilter()
+    private HttpClient? _httpClient;
+    private List<AmenityVM> Amenities { get; set; } = new();
+    private List<AccommodationTypeVM> AccommodationTypes { get; set; } = new();
+    private List<CityVM> Cities { get; set; } = new();
+    protected override async Task OnInitializedAsync()
     {
-        var options = new FilterOptions
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+        await LoadDataAsync();
+    }
+    private async Task LoadAmenitiesAsync()
+    {
+        try
         {
-            City = SelectedCity,
-            MaxPrice = (int)MaxPrice,
-            MinRating = MinRating
-        };
-        await OnFilterChanged.InvokeAsync(options);
+            var response = await _httpClient!.GetAsync("hotel/get-all-amenities");
+            var json = await response.Content.ReadAsStringAsync();
+            var apiRes = JsonSerializer.Deserialize<ApiResponse<List<AmenityVM>>>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            Amenities = apiRes?.StatusCode == StatusCodeResponse.Success
+            ? apiRes.Content ?? new()
+            : new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Lỗi khi tải dữ liệu: {ex.Message}", Severity.Error);
+            Amenities = new();
+        }
+        StateHasChanged();
+    }
+    private async Task LoadDataAsync()
+    {
+        AccommodationTypes = await _httpClient!.GetFromJsonAsync<List<AccommodationTypeVM>>("hotel/get-all-accommodations") ??
+        new();
+        Amenities = await _httpClient!.GetFromJsonAsync<List<AmenityVM>>("hotel/get-all-amenities") ?? new();
+    }
+
+    private string FormatPrice(decimal? price) => price?.ToString("#,##0") ?? "0";
+
+    private void OnMinPriceChange(ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), out var val))
+        {
+            _minPrice = Math.Max(0, Math.Min(val, _maxPrice));
+            TriggerFilter();
+        }
+    }
+
+    private void OnMaxPriceChange(ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), out var val))
+        {
+            _maxPrice = Math.Min(10000000m, Math.Max(val, _minPrice));
+            TriggerFilter();
+        }
+    }
+
+    // Helper chung để toggle bất kỳ HashSet<int> nào
+    private void ToggleItem(HashSet<int> set, int id)
+    {
+        if (set.Contains(id)) set.Remove(id);
+        else set.Add(id);
+        TriggerFilter();
+    }
+
+    private void SetRating(int rating)
+    {
+        _selectedRating = rating;
+        TriggerFilter();
+    }
+
+    private async Task ApplyFilters()
+    {
+        await OnFilterChanged.InvokeAsync();
+    }
+
+    // Đã sửa: async Task thay vì async void
+    private async Task TriggerFilter()
+    {
+        _filteredCount = 400 + Random.Shared.Next(800); // giả lập
+        StateHasChanged();
+        await OnFilterChanged.InvokeAsync();
+    }
+
+    private async Task ResetAllFilters()
+    {
+        _minPrice = 0;
+        _maxPrice = 10000000m;
+        _selectedRating = 0;
+        SelectedAccTypes.Clear();
+        SelectedAmenities.Clear();
+        FreeCancellation = false;
+        NoPrepayment = false;
+        await TriggerFilter();
     }
 }
-
-public class FilterOptions
-{
-    public string? City { get; set; }
-    public int MaxPrice { get; set; }
-    public int MinRating { get; set; }
-} *@

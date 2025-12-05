@@ -24,17 +24,17 @@ public class HotelListItemVM
     public decimal? AvgPricePerNight { get; set; }
 
     // Phòng & Sức chứa
-    public int? AvailableRooms { get; set; }
-    // Khả năng đặt phòng
-    public bool IsBookable { get; set; }
+    public bool IsBookable => AvailableRooms > 0;
+    public int AvailableRooms { get; set; } = 0;
     public int? MaxAdultCapacity { get; set; }
     public int? MaxChildCapacity { get; set; }
 
     // Tiện nghi nổi bật
     public List<AmenityVM> HighlightAmenities { get; set; } = new();
-
+    public string? AccommodationType { get; set; }
+    public string? ChainName { get; set; }
     // Wishlist
-    public bool IsWishlist { get; set; }
+    public bool IsWishlist { get; set; } = false;
     public bool IsVerified { get; set; } = false;
     public string Status { get; set; } = "PendingVerification";
 }

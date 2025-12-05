@@ -15,8 +15,6 @@ public partial class RoomType
 
     public decimal PricePerNight { get; set; }
 
-    public int? Capacity { get; set; }
-
     public int? AdultCapacity { get; set; }
 
     public int? ChildCapacity { get; set; }
@@ -33,6 +31,26 @@ public partial class RoomType
 
     public string? Additional { get; set; }
 
+    public bool? IsActive { get; set; }
+
+    public string? DefaultImageUrl { get; set; }
+
+    public int? SortOrder { get; set; }
+
+    public decimal? WeekendPrice { get; set; }
+
+    public int? MinStayNights { get; set; }
+
+    public int? MaxStayNights { get; set; }
+
+    public int? MaxGuests { get; set; }
+
+    public int Quantity { get; set; }
+
+    public decimal? Area { get; set; }
+
+    public virtual ICollection<BookingRoom> BookingRooms { get; set; } = new List<BookingRoom>();
+
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
     public virtual User? CreatedByNavigation { get; set; }
@@ -41,7 +59,11 @@ public partial class RoomType
 
     public virtual ICollection<RoomAmenity> RoomAmenities { get; set; } = new List<RoomAmenity>();
 
+    public virtual ICollection<RoomBedType> RoomBedTypes { get; set; } = new List<RoomBedType>();
+
     public virtual ICollection<RoomImage> RoomImages { get; set; } = new List<RoomImage>();
+
+    public virtual ICollection<RoomViewType> RoomViewTypes { get; set; } = new List<RoomViewType>();
 
     public virtual ICollection<Room> Rooms { get; set; } = new List<Room>();
 

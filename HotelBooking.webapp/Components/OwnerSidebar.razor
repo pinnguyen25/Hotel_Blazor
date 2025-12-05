@@ -1,0 +1,133 @@
+@* OwnerSidebar.razor *@
+
+<ul class="nav flex-column gap-1 p-3">
+
+    <!-- Dashboard -->
+    <li class="nav-item">
+        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded" href="/owner/dashboard"
+            activeClass="bg-primary text-white">
+            <i class="fa-solid fa-home"></i> Dashboard
+        </NavLink>
+    </li>
+
+    <!-- Properties -->
+    <li class="nav-item">
+        <button class="btn btn-toggle align-items-center rounded collapsed text-white w-100 text-start px-2 py-2"
+            data-bs-toggle="collapse" data-bs-target="#property-collapse" aria-expanded="false">
+            <i class="fa-solid fa-building me-2"></i> Quản lý khách sạn
+        </button>
+        <div class="collapse ms-3" id="property-collapse">
+            <ul class="btn-toggle-nav list-unstyled fw-normal small">
+                <li>
+                    <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1"
+                        href="/owner/hotels" activeClass="text-primary fw-semibold">
+                        <i class="fa-solid fa-list"></i> My Hotels
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1"
+                        href="/owner/property/create" activeClass="text-primary fw-semibold">
+                        <i class="fa-solid fa-plus"></i> Add New Hotel
+                    </NavLink>
+                </li>
+            </ul>
+        </div>
+    </li>
+
+    <!-- Room Management -->
+    <li class="nav-item">
+        <button class="btn btn-toggle align-items-center rounded collapsed text-white w-100 text-start px-2 py-2"
+            data-bs-toggle="collapse" data-bs-target="#rooms-collapse" aria-expanded="false">
+            <i class="fa-solid fa-bed me-2"></i> Rooms & Pricing
+        </button>
+        <div class="collapse ms-3" id="rooms-collapse">
+            <ul class="btn-toggle-nav list-unstyled fw-normal small">
+                <li>
+                    <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1"
+                        href="/owner/rooms/types" activeClass="text-primary fw-semibold">
+                        <i class="fa-solid fa-door-open"></i> Room Types
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1"
+                        href="/owner/rooms/inventory" activeClass="text-primary fw-semibold">
+                        <i class="fa-solid fa-calendar"></i> Availability
+                    </NavLink>
+                </li>
+            </ul>
+        </div>
+    </li>
+
+    <!-- Photos -->
+    <li class="nav-item">
+        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded"
+            href="/owner/property/photos" activeClass="bg-primary text-white">
+            <i class="fa-solid fa-images"></i> Photos
+        </NavLink>
+    </li>
+
+    <!-- Facilities & Services -->
+    <li class="nav-item">
+        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded"
+            href="/owner/property/facilities" activeClass="bg-primary text-white">
+            <i class="fa-solid fa-wifi"></i> Facilities
+        </NavLink>
+    </li>
+
+    <!-- Policies -->
+    <li class="nav-item">
+        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded"
+            href="/owner/property/policies" activeClass="bg-primary text-white">
+            <i class="fa-solid fa-scroll"></i> Policies
+        </NavLink>
+    </li>
+
+    <!-- Inbox -->
+    <li class="nav-item">
+        <button class="btn btn-toggle align-items-center rounded collapsed text-white w-100 text-start px-2 py-2"
+            data-bs-toggle="collapse" data-bs-target="#inbox-collapse" aria-expanded="false">
+            <i class="fa-solid fa-envelope me-2"></i> Inbox
+        </button>
+        <div class="collapse ms-3" id="inbox-collapse">
+            <ul class="btn-toggle-nav list-unstyled fw-normal small">
+                <li>
+                    <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1" href="/owner/messages"
+                        activeClass="text-primary fw-semibold">
+                        <i class="fa-solid fa-comment"></i> Messages
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1"
+                        href="/owner/notifications" activeClass="text-primary fw-semibold">
+                        <i class="fa-solid fa-bell"></i> Notifications
+                    </NavLink>
+                </li>
+            </ul>
+        </div>
+    </li>
+
+    <!-- Guest Reviews -->
+    <li class="nav-item">
+        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded" href="/owner/reviews"
+            activeClass="bg-primary text-white">
+            <i class="fa-solid fa-star"></i> Guest Reviews
+        </NavLink>
+    </li>
+
+    <!-- Finance -->
+    <li class="nav-item">
+        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded" href="/owner/finance"
+            activeClass="bg-primary text-white">
+            <i class="fa-solid fa-dollar-sign"></i> Finance
+        </NavLink>
+    </li>
+
+    <!-- Analytics -->
+    <li class="nav-item">
+        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded" href="/owner/analytics"
+            activeClass="bg-primary text-white">
+            <i class="fa-solid fa-chart-line"></i> Analytics
+        </NavLink>
+    </li>
+
+</ul>

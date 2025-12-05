@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Components.Forms;
 
-public class AdminAccommodationTypeVM
+public class AccommodationTypeVM
 {
     public int Id { get; set; }
     [Required(ErrorMessage = "Name is required")]

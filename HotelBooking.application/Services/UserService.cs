@@ -6,6 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 public interface IUserService
 {
+    //admin
+    
+
     public Task<User?> GetByIdAsync(int id);
     public Task<RegisterResponseDTO> RegisterAdmin(RegisterAdminDTO newAdmin);
     public Task<RegisterResponseDTO> RegisterCustomer(RegisterCustomerDTO newCustomer);
@@ -234,5 +237,8 @@ public class UserService : IUserService
         return false;
     }
 
+    // public async Task<RegisterResponseDTO> RegisterStaff(RegisterStaffDTO newStaff, int ownerId)
+    // {
 
+    // }
 }

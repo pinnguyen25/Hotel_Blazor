@@ -1,0 +1,144 @@
+@using HotelBooking.webapp.ViewModels.Hotel
+@inject HotelFormState FormState
+
+<MudText Typo="Typo.h6" Class="mb-6">Thiết lập chính sách khách sạn</MudText>
+
+@if (FormState.PolicyGroups == null || !FormState.PolicyGroups.Any())
+{
+    <div class="d-flex justify-center my-12">
+        <MudProgressCircular Indeterminate="true" Size="Size.Medium" />
+    </div>
+}
+else
+{
+    @foreach (var group in FormState.PolicyGroups.Where(g => g.Policies?.Any() == true))
+    {
+        // Lấy giá trị cho groupId từ cache UI (không phải biến local)
+        if (!SelectedValueCache.TryGetValue(group.Id, out int? selectedId))
+        {
+            FormState.SelectedPolicyByType.TryGetValue(group.Id, out var val);
+            selectedId = val;
+            SelectedValueCache[group.Id] = selectedId;
+        }
+
+        <div class="mb-5">
+            <MudText Typo="Typo.subtitle1" Class="mb-2">@group.Name</MudText>
+
+            <MudSelect T="int?"
+                       Value="selectedId"
+                       ValueChanged="@(v => OnSelectChanged(group.Id, v))"
+                       Dense="true"
+                       Variant="Variant.Outlined"
+                       Placeholder="Chọn chính sách..."
+                       Clearable="true"
+                       Class="max-w-lg">
+
+                <MudSelectItem Value="@((int?)null)">
+                    <em class="text-medium-emphasis">Không áp dụng</em>
+                </MudSelectItem>
+
+                @foreach (var p in group.Policies)
+                {
+                    <MudSelectItem Value="@((int?)p.Id)">
+                        <strong>@p.Name</strong>
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+    }
+
+    <!-- Nếu không có chính sách cố định nào -->
+    @if (!FormState.PolicyGroups.Any(g => g.Policies?.Any() == true))
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="rounded-lg mb-6">
+            Không có chính sách cố định. Bạn có thể thêm chính sách riêng bên dưới.
+        </MudAlert>
+    }
+
+    <!-- Thêm chính sách tùy chỉnh -->
+    <div class="d-flex align-center gap-3 flex-wrap mt-6">
+        <MudTextField @bind-Value="newCustom"
+                      Placeholder="VD: Nhận phòng sớm +300k, trẻ em dưới 6 tuổi miễn phí..."
+                      Variant="Variant.Outlined"
+                      Dense="true"
+                      Class="flex-grow-1"
+                      Style="max-width: 520px;"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.AddComment" />
+
+        <MudButton OnClick="AddCustom"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@string.IsNullOrWhiteSpace(newCustom)">
+            Thêm chính sách riêng
+        </MudButton>
+    </div>
+
+    <!-- Danh sách chính sách tùy chỉnh -->
+    @if (FormState.CustomPolicies.Any())
+    {
+        <div class="mt-4 d-flex flex-wrap gap-2">
+            @foreach (var p in FormState.CustomPolicies)
+            {
+                <MudChip T="string" Text="@p"
+                         Color="Color.Tertiary"
+                         Size="Size.Small"
+                         OnClose="() => RemoveCustom(p)"
+                         Class="my-1" />
+            }
+        </div>
+    }
+
+    <!-- Thông báo trạng thái -->
+    @if (!FormState.SelectedPolicyByType.Any(x => x.Value > 0) && !FormState.CustomPolicies.Any())
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-5 rounded-lg">
+            Chưa thiết lập chính sách nào
+        </MudAlert>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Success" Dense="true" Class="mt-5 rounded-lg">
+            Đã thiết lập chính sách rõ ràng
+        </MudAlert>
+    }
+}
+
+@code {
+    private string newCustom = "";
+
+    // Cache UI cho SelectedId theo group
+    private Dictionary<int, int?> SelectedValueCache = new();
+
+    private void OnSelectChanged(int groupId, int? value)
+    {
+        // update UI
+        SelectedValueCache[groupId] = value;
+
+        // update state
+        if (value is > 0)
+            FormState.SelectedPolicyByType[groupId] = value.Value;
+        else
+            FormState.SelectedPolicyByType.Remove(groupId);
+
+        FormState.Notify();
+    }
+
+    private void AddCustom()
+    {
+        if (string.IsNullOrWhiteSpace(newCustom)) return;
+        var text = newCustom.Trim();
+        if (!FormState.CustomPolicies.Contains(text))
+        {
+            FormState.CustomPolicies.Add(text);
+            FormState.Notify();
+        }
+        newCustom = "";
+    }
+
+    private void RemoveCustom(string policy)
+    {
+        FormState.CustomPolicies.Remove(policy);
+        FormState.Notify();
+    }
+}

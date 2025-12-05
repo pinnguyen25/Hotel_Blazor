@@ -1,0 +1,81 @@
+@inject HotelFormState FormState
+@inject NavigationManager _nav
+@inject IDialogService Dialog
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h6" Class="mb-4">Quản lý loại phòng</MudText>
+
+@if (IsLoadingRoomTypes)
+{
+    <MudProgressCircular Indeterminate="true" Class="my-8" />
+}
+else if (RoomTypes.Count == 0)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4">
+        Bạn chưa có loại phòng nào. Vui lòng thêm ít nhất 1 loại phòng để gửi duyệt.
+    </MudAlert>
+}
+else
+{
+    <MudAlert Severity="Severity.Success" Class="mb-4">
+        Đã có @RoomTypes.Count loại phòng – Sẵn sàng gửi duyệt!
+    </MudAlert>
+}
+
+<!-- Danh sách ngắn gọn -->
+@if (RoomTypes.Any())
+{
+    <MudTable Items="RoomTypes" Dense="true" Hover="true" Bordered="false" Class="mb-6">
+        <HeaderContent>
+            <MudTh>Ảnh</MudTh>
+            <MudTh>Tên</MudTh>
+            <MudTh>Giá/đêm</MudTh>
+            <MudTh>Sức chứa</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Ảnh">
+                <MudAvatar Size="Size.Small" Square="true">
+                    <MudImage Src="@(context.DefaultImageUrl ?? "/images/no-image.png")" />
+                </MudAvatar>
+            </MudTd>
+            <MudTd DataLabel="Tên">@context.Name</MudTd>
+            <MudTd DataLabel="Giá">@context.PricePerNight ₫</MudTd>
+            <MudTd DataLabel="Sức chứa">@context.AdultCapacity + @context.ChildCapacity</MudTd>
+            <MudTd DataLabel="Thao tác">
+                <MudButton Size="Size.Small" OnClick="() => OpenDetail(context.Id)">Xem</MudButton>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+<div class="d-flex gap-3 mt-6">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenAddModal">
+        Thêm loại phòng
+    </MudButton>
+
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+               OnClick="OpenManagement">
+        Quản lý tất cả loại phòng
+    </MudButton>
+</div>
+
+@code {
+    [Parameter] public List<RoomTypeForOwnerVM> RoomTypes { get; set; } = new();
+    [Parameter] public bool IsLoadingRoomTypes { get; set; } = true;
+    [Parameter] public EventCallback OnRoomTypeChanged { get; set; }
+
+    private async Task OpenAddModal()
+    {
+        _nav.NavigateTo($"/owner/hotels/{FormState.DraftHotelId}/room-types/add");
+    }
+
+    private void OpenDetail(int roomTypeId)
+    {
+        _nav.NavigateTo($"/owner/hotels/{FormState.DraftHotelId}/room-types/edit/{roomTypeId}");
+    }
+    private void OpenManagement()
+    {
+        _nav.NavigateTo($"/owner/hotels/{FormState.DraftHotelId}/room-types");
+    }
+}

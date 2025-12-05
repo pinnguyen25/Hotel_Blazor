@@ -48,7 +48,7 @@
 </div>
 
 @code {
-    private List<AdminAccommodationTypeVM>? accommodations;
+    private List<AccommodationTypeVM>? accommodations;
     private HttpClient? _httpClient;
     private readonly Random _rand = new();
 
@@ -71,7 +71,7 @@
             }
 
             var json = await response.Content.ReadAsStringAsync();
-            var apiResponse = JsonSerializer.Deserialize<ApiResponse<List<AdminAccommodationTypeVM>>>(json,
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<List<AccommodationTypeVM>>>(json,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
             accommodations = apiResponse?.StatusCode == StatusCodeResponse.Success

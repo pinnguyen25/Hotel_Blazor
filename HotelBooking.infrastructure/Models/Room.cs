@@ -25,7 +25,11 @@ public partial class Room
 
     public string? Additional { get; set; }
 
-    public virtual ICollection<BookingRoom> BookingRooms { get; set; } = new List<BookingRoom>();
+    public string? Floor { get; set; }
+
+    public bool? IsSmoking { get; set; }
+
+    public int? SortOrder { get; set; }
 
     public virtual User? CreatedByNavigation { get; set; }
 

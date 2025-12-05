@@ -1,0 +1,231 @@
+@page "/owner/hotels/{HotelId:int}/room-types"
+@using Blazored.LocalStorage
+@using System.Text.Json
+@layout OwnerLayout
+@using HotelBooking.webapp.ViewModels
+@attribute [Authorize(Roles = "Owner")]
+@inject IHttpClientFactory _httpClientFactory
+@inject ISnackbar Snackbar
+@inject ILocalStorageService _localStorage
+@inject NavigationManager _nav
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Quản lý loại phòng</PageTitle>
+
+<style>
+    .room-img {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+    }
+
+    .badge {
+        font-size: 0.75rem;
+    }
+</style>
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0 fw-semibold">Loại phòng - Khách sạn ID: @HotelId</h3>
+        <a href="/owner/hotels/@HotelId/room-types/add" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Thêm loại phòng
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ảnh</th>
+                            <th>Tên</th>
+                            <th>Giá/đêm</th>
+                            <th>Sức chứa</th>
+                            <th>Phòng</th>
+                            <th>Loại Giường</th>
+                            <th>View</th>
+                            <th>Tiện ích</th>
+                            <th>Trạng thái</th>
+                            <th class="text-end">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (roomTypes == null)
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <div class="spinner-border">
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        else if (!roomTypes.Any())
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center py-5 text-muted">Chưa có loại phòng</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var roomType in roomTypes)
+                            {
+                                <tr>
+                                    <td>
+                                        <img src="@(roomType.DefaultImageUrl ?? "/images/no-image.png")"
+                                            class="rounded room-img" />
+                                    </td>
+                                    <td class="fw-medium">@roomType.Name</td>
+                                    <td>@roomType.PricePerNight ₫</td>
+                                    <td>@roomType.AdultCapacity <i class="bi bi-person"></i> + @roomType.ChildCapacity <i
+                                            class="bi bi-person-heart"></i></td>
+                                    <td>@roomType.TotalRooms (còn @roomType.AvailableRooms)</td>
+
+                                    <!-- GIƯỜNG -->
+                                    <td>
+                                        @if (roomType.Beds.Any())
+                                        {
+                                            @foreach (var bed in roomType.Beds.Take(2))
+                                            {
+                                                <span class="badge bg-info small me-1">
+                                                    <i class="@bed.BedTypeIconClass"></i>
+                                                    @bed.BedTypeName × @bed.Quantity
+                                                </span>
+                                            }
+                                            @if (roomType.Beds.Count > 2)
+                                            {
+                                                <span class="badge bg-secondary small">+@(roomType.Beds.Count - 2)</span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">—</span>
+                                        }
+                                    </td>
+                                    <!-- VIEW -->
+                                    <td>
+                                        @if (roomType.Views.Any())
+                                        {
+                                            var primary = roomType.Views.FirstOrDefault(v => v.IsPrimary) ?? roomType.Views.First();
+                                            <span class="badge bg-success small">
+                                                <i class="@primary.ViewTypeIconClass"></i>
+                                                @primary.ViewTypeName
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">—</span>
+                                        }
+                                    </td>
+                                    <!-- TIỆN ÍCH -->
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach (var a in roomType.Amenities.Take(3))
+                                            {
+                                                <span class="badge bg-light text-dark border small">
+                                                    <i class="@a.IconClass"></i>
+                                                </span>
+                                            }
+                                            @if (roomType.Amenities.Count > 3)
+                                            {
+                                                <span class="badge bg-secondary small">+@(roomType.Amenities.Count - 3)</span>
+                                            }
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <span class="badge @(roomType.IsActive ? "bg-success" : "bg-secondary")">
+                                            @(roomType.IsActive ? "Hiển thị" : "Ẩn")
+                                        </span>
+                                    </td>
+
+                                    <td class="text-end">
+                                        <a href="/owner/hotels/@HotelId/room-types/edit/@roomType.Id"
+                                            class="btn btn-sm btn-outline-warning">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-danger ms-1" @onclick="() => Delete(roomType.Id)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code
+{
+    [Parameter]
+    public int HotelId { get; set; }
+    private List<RoomTypeForOwnerVM>? roomTypes = new();
+    private HttpClient? _httpClient;
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+        await SetAuthHeader();
+        await LoadRoomTypes();
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient!.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
+        else
+        {
+            Snackbar.Add("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.", Severity.Error);
+            _nav.NavigateTo("/login");
+        }
+    }
+
+    private async Task LoadRoomTypes()
+    {
+        try
+        {
+            await SetAuthHeader();
+            var response = await
+            _httpClient!.GetFromJsonAsync<ApiResponse<List<RoomTypeForOwnerVM>>>($"hotel/owner/{HotelId}/roomtypes");
+            if (response?.StatusCode == StatusCodeResponse.Success && response.Content != null)
+            {
+                roomTypes = response.Content;
+            }
+            else
+            {
+                roomTypes = new();
+                Snackbar.Add(response?.Message ?? "Không tải được dữ liệu", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi khi tải loại phòng: {ex.Message}", Severity.Error);
+            roomTypes = new List<RoomTypeForOwnerVM>();
+        }
+    }
+
+    private async Task Delete(int id)
+    {
+        var confirm = await JSRuntime.InvokeAsync<bool>("confirm", "Xóa loại phòng này?");
+        if (!confirm) return;
+
+        var res = await _httpClient!.DeleteAsync($"hotel/owner/roomtype/{id}");
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Xóa thành công!", Severity.Success);
+            await LoadRoomTypes();
+        }
+        else
+        {
+            var msg = await res.Content.ReadAsStringAsync();
+            Snackbar.Add($"Lỗi: {msg}", Severity.Error);
+        }
+    }
+
+}

@@ -15,17 +15,23 @@ public partial class Policy
 
     public DateTime? CreatedAt { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
-
     public int? CreatedBy { get; set; }
 
     public int? UpdatedBy { get; set; }
 
     public string? Additional { get; set; }
 
+    public bool? IsSystemPolicy { get; set; }
+
+    public int PolicyTypeId { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
     public virtual User? CreatedByNavigation { get; set; }
 
     public virtual ICollection<HotelPolicy> HotelPolicies { get; set; } = new List<HotelPolicy>();
+
+    public virtual PolicyType PolicyType { get; set; } = null!;
 
     public virtual User? UpdatedByNavigation { get; set; }
 }
