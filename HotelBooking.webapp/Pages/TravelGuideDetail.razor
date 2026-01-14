@@ -1,0 +1,425 @@
+@page "/travel-guide/{Id:int}"
+@inject NavigationManager _nav
+@layout MainLayout
+<Header IsFixed="false" />
+
+<div class="container my-5">
+    @if (Article != null)
+    {
+        <div class="row g-5">
+            <div class="col-lg-8">
+                <article class="blog-post">
+                    <header class="mb-4">
+                        <span class="badge bg-primary bg-opacity-10 text-primary mb-2 px-3 py-2 rounded-pill fw-bold">
+                            @Article.Category
+                        </span>
+                        <h1 class="fw-bolder display-5 mb-3 lh-sm text-dark mt-2">@Article.Title</h1>
+
+                        <div class="d-flex align-items-center text-muted gap-3 small border-bottom pb-4 mb-4">
+                            <div class="d-flex align-items-center">
+                                <img src="https://ui-avatars.com/api/?name=Chill+Editor&background=0d6efd&color=fff"
+                                    class="rounded-circle me-2 shadow-sm" width="36" height="36">
+                                <div>
+                                    <span class="fw-bold text-dark d-block">Trần Phương Nam</span>
+                                    <span class="text-muted" style="font-size: 0.75rem;">Biên tập viên</span>
+                                </div>
+                            </div>
+                            <div class="vr mx-2"></div>
+                            <span><i class="bi bi-calendar3 me-1"></i> @Article.Date</span>
+                            <div class="vr mx-2"></div>
+                            <span><i class="bi bi-clock me-1"></i> 5 phút đọc</span>
+                        </div>
+                    </header>
+
+                    <figure class="figure w-100 mb-5">
+                        <div class="rounded-4 overflow-hidden shadow-sm position-relative">
+                            <img src="@Article.ImageUrl" class="figure-img img-fluid w-100 object-fit-cover"
+                                style="max-height: 500px;" alt="@Article.Title">
+                        </div>
+                        <figcaption class="figure-caption text-center fst-italic">@Article.Title - Ảnh minh họa</figcaption>
+                    </figure>
+
+                    <div class="article-content fs-5 text-secondary lh-lg mb-5">
+                        @((MarkupString)Article.ContentHtml)
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 mb-5 border-top pt-4 align-items-center">
+                        <span class="fw-bold text-dark me-2"><i class="bi bi-tags-fill text-primary me-1"></i>Tags:</span>
+                        @foreach (var tag in new[] { "Du lịch", "Kinh nghiệm", "Review", "ChillZone" })
+                        {
+                            <a href="#"
+                                class="btn btn-light btn-sm rounded-pill text-muted border hover-bg-primary hover-text-white transition-all">#@tag</a>
+                        }
+
+                        <div class="ms-auto d-flex gap-2">
+                            <button class="btn btn-outline-primary btn-sm rounded-circle" title="Chia sẻ Facebook"><i
+                                    class="bi bi-facebook"></i></button>
+                            <button class="btn btn-outline-info btn-sm rounded-circle" title="Chia sẻ Twitter"><i
+                                    class="bi bi-twitter"></i></button>
+                            <button class="btn btn-outline-secondary btn-sm rounded-circle" title="Copy Link"><i
+                                    class="bi bi-link-45deg"></i></button>
+                        </div>
+                    </div>
+                </article>
+
+                <div class="bg-light bg-opacity-50 p-4 rounded-4 border">
+                    <h5 class="fw-bold mb-4"><i class="bi bi-chat-dots-fill text-primary me-2"></i>Bình luận (3)</h5>
+
+                    <div class="d-flex gap-3 mb-4">
+                        <div class="bg-white rounded-circle d-flex align-items-center justify-content-center shadow-sm text-primary fw-bold border"
+                            style="width: 45px; height: 45px; min-width: 45px;">Me</div>
+                        <div class="w-100">
+                            <textarea class="form-control rounded-3 border-0 shadow-sm" rows="2"
+                            placeholder="Chia sẻ cảm nghĩ của bạn..."></textarea>
+                            <div class="text-end mt-2">
+                                <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold">Gửi bình luận</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vstack gap-3">
+                        <div class="d-flex gap-3 p-3 bg-white rounded-3 shadow-sm border border-light">
+                            <img src="https://ui-avatars.com/api/?name=Minh+Anh&background=random" class="rounded-circle"
+                                width="40" height="40">
+                            <div>
+                                <div class="d-flex align-items-center mb-1">
+                                    <h6 class="fw-bold mb-0 me-2">Minh Anh</h6>
+                                    <small class="text-muted" style="font-size: 0.75rem;">• 2 giờ trước</small>
+                                </div>
+                                <p class="text-secondary small mb-0">Bài viết rất chi tiết và hữu ích. Mình sẽ thử homestay
+                                    số 2 vào dịp tới!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="sticky-top" style="top: 80px; z-index: 1;">
+
+                    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                        <h6 class="fw-bold mb-3 border-start ps-2 text-uppercase small ls-1">Bài viết khác</h6>
+                        <div class="vstack gap-3">
+                            @foreach (var item in RelatedArticles)
+                            {
+                                <div class="d-flex gap-3 cursor-pointer group-hover p-2 rounded-3 hover-bg-light transition-all"
+                                    @onclick="() => NavigateToArticle(item.Id)">
+                                    <img src="@item.ImageUrl" class="rounded-3 object-fit-cover shadow-sm" width="70"
+                                        height="70">
+                                    <div class="d-flex flex-column justify-content-center">
+                                        <h6 class="fw-bold text-dark mb-1 line-clamp-2 title-hover" style="font-size: 0.9rem;">
+                                            @item.Title</h6>
+                                        <small class="text-muted" style="font-size: 0.75rem;"><i
+                                                class="bi bi-calendar2 me-1"></i>@item.Date</small>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    @* <div class="card border-0 shadow rounded-4 mb-4 overflow-hidden position-relative bg-primary text-white cta-card">
+                        <div class="card-body p-4 position-relative z-index-2 text-center">
+                            <div class="mb-3 text-warning display-4"><i class="bi bi-tags-fill"></i></div>
+                            <h4 class="fw-bold mb-2">Ưu đãi độc quyền!</h4>
+                            <p class="mb-4 opacity-75 small">Đặt phòng ngay tại ChillZone để nhận mã giảm giá lên đến <strong>50%</strong> cho chuyến đi này.</p>
+                            <button @onclick='() => _nav.NavigateTo("/Hotels")' class="btn btn-light rounded-pill fw-bold w-100 shadow-sm text-primary transition-transform hover-scale">
+                                Tìm phòng ngay
+                            </button>
+                        </div>
+                        <div class="circle-decor-1"></div>
+                        <div class="circle-decor-2"></div>
+                    </div> *@
+
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <div class="mb-3 text-muted display-1"><i class="bi bi-journal-x"></i></div>
+            <h3 class="fw-bold text-dark">Không tìm thấy bài viết</h3>
+            <p class="text-muted">Bài viết bạn tìm kiếm có thể đã bị xóa hoặc đường dẫn không đúng.</p>
+            <button class="btn btn-primary rounded-pill px-4 mt-3" @onclick='() => _nav.NavigateTo("/")'>
+                <i class="bi bi-arrow-left me-2"></i>Về trang chủ
+            </button>
+        </div>
+    }
+</div>
+
+<style>
+    /* Styling bài viết */
+    .article-content h2 {
+        font-weight: 800;
+        color: #2c3e50;
+        margin-top: 2.5rem;
+        margin-bottom: 1.25rem;
+        font-size: 1.75rem;
+    }
+
+    .article-content p {
+        margin-bottom: 1.5rem;
+        text-align: justify;
+        color: #495057;
+    }
+
+    .article-content img {
+        border-radius: 1rem;
+        margin: 2rem 0;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        width: 100%;
+        transition: transform 0.3s;
+    }
+
+    .article-content img:hover {
+        transform: scale(1.02);
+    }
+
+    .article-content blockquote {
+        border-left: 5px solid var(--bs-primary);
+        padding: 1.5rem 2rem;
+        font-style: italic;
+        font-size: 1.1rem;
+        color: #555;
+        background: #f8f9fa;
+        border-radius: 0 1rem 1rem 0;
+        margin: 2rem 0;
+    }
+
+    .article-content ul {
+        padding-left: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .article-content li {
+        margin-bottom: 0.5rem;
+    }
+
+    /* Utilities */
+    .hover-text-white:hover {
+        color: white !important;
+    }
+
+    .hover-bg-primary:hover {
+        background-color: var(--bs-primary) !important;
+        border-color: var(--bs-primary) !important;
+    }
+
+    .hover-bg-light:hover {
+        background-color: #f8f9fa !important;
+    }
+
+    .hover-scale:hover {
+        transform: scale(1.05);
+    }
+
+    .transition-all {
+        transition: all 0.3s ease;
+    }
+
+    .title-hover {
+        transition: color 0.2s;
+    }
+
+    .group-hover:hover .title-hover {
+        color: var(--bs-primary) !important;
+    }
+
+    /* Decor cho CTA Card */
+    .cta-card {
+        background: linear-gradient(135deg, #0d6efd, #0dcaf0);
+    }
+
+    .circle-decor-1 {
+        position: absolute;
+        top: -30px;
+        right: -30px;
+        width: 120px;
+        height: 120px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+    }
+
+    .circle-decor-2 {
+        position: absolute;
+        bottom: -20px;
+        left: -20px;
+        width: 80px;
+        height: 80px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 50%;
+    }
+</style>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    // Model dữ liệu (Giống trang chủ)
+    public class GuideDetail
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = "";
+        public string ContentHtml { get; set; } = "";
+        public string ImageUrl { get; set; } = "";
+        public string Category { get; set; } = "";
+        public string Date { get; set; } = "";
+    }
+
+    private GuideDetail? Article;
+    private List<GuideDetail> RelatedArticles = new();
+
+    // Reset scroll khi chuyển bài
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Nếu có JS scroll to top thì gọi ở đây
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        LoadData(Id);
+        // Trick để scroll lên đầu trang khi đổi ID (nếu đang ở cuối trang)
+        // _nav.NavigateTo(_nav.Uri, false, true); // (Tùy chọn, đôi khi gây flick)
+    }
+
+    private void NavigateToArticle(int id)
+    {
+        _nav.NavigateTo($"/travel-guide/{id}");
+    }
+
+    private void LoadData(int id)
+    {
+        // --- DỮ LIỆU GIẢ (MOCK DATA) ---
+        // 1. Đà Lạt
+        var dalat = new GuideDetail
+        {
+            Id = 1,
+            Title = "Top 3 Homestay Đà Lạt 'săn mây' cực đỉnh, view rừng thông đẹp rụng tim.",
+            Category = "Review Chỗ Ở",
+            Date = "20/12/2025",
+            ImageUrl = "images/view/sanmay2.jpeg",
+            ContentHtml = @"
+<p>Đà Lạt không chỉ nổi tiếng với khí hậu se lạnh mà còn bởi những căn homestay ""tình bể bình"" nằm ẩn mình giữa rừng thông. Nếu bạn đang tìm kiếm một nơi để trốn khỏi khói bụi thành phố, hãy tham khảo danh sách dưới đây của ChillZone nhé.</p>
+
+<h2 class='fw-bold mt-4'>1. The Kupid - Đà Lạt</h2>
+<p>Homestay The Kupid là một điểm đến lý tưởng cho những tâm hồn yêu thiên nhiên và sự tĩnh lặng. Nằm trên đồi cao, homestay sở hữu không gian mở với thiết kế hiện đại, hòa quyện cùng cảnh quan thơ mộng đặc trưng của phố núi.</p>
+
+<p>Với sự chăm chút từ kiến trúc đến dịch vụ, The Kupid không chỉ mang đến nơi nghỉ dưỡng mà còn là nơi khơi gợi cảm hứng và kết nối cảm xúc. Đây chính là lựa chọn hoàn hảo cho những ai đang tìm kiếm sự thư thái, bình yên và một chút lãng mạn giữa lòng Đà Lạt mộng mơ.</p>
+<img src='images/view/kupid.jpg' alt='' />
+<ul>
+<li><b>Địa chỉ:</b> 47 Đặng Thái Thân, Phường 3, Thành phố Đà Lạt, Lâm Đồng.</li>
+<li><b>Giá tham khảo:</b> 550.000 – 800.000 VNĐ/đêm.</li>
+<li><b>Cách trung tâm thành phố:</b> 3km</li>
+</ul>
+
+<h2>2. Đợi Một Người Homestay - Đà Lạt</h2>
+<p>Từ cái tên thôi bạn đã thấy ngay sự dễ thương của căn homestay này rồi.</p>
+
+<p>Đợi một người homestay được thiết kế theo phong cách vintage, mộc mạc, giản dị nhưng đầy lôi cuốn. Với những khu vườn view hướng ra núi đồi Dalat thơ mộng.</p>
+<img src='images/view/doi.jpg' alt='' />
+<ul>
+<li><b>Địa chỉ:</b> Khởi Nghĩa Bắc Sơn, P10, TP Đà Lạt, Lâm Đồng.</li>
+<li><b>Giá tham khảo:</b> 650.000 VNĐ/đêm.</li>
+<li><b>Cách trung tâm thành phố:</b> 6km</li>
+</ul>
+
+<h2>3. Nhà Của Nắng Homestay - Đà Lạt</h2>
+<p>Nắng homestay Đà Lạt luôn là lựa chọn đầu tiên cho những bạn thích yên tĩnh với view rừng thông. Với thiết kế phong cách Châu Âu hiện đại lại pha chút mộc mạc bình dị của làng quê, home là sự kết hợp hoàn hảo giữa cái cũ và cái mới.</p>
+<img src='images/view/nang.webp' alt='' />
+<ul>
+<li><b>Địa chỉ:</b> 14B Đống Đa, Phường 3, Thành phố Đà Lạt, Lâm Đồng.</li>
+<li><b>Giá tham khảo:</b> 350.000 – 990.000 VNĐ/đêm.</li>
+<li><b>Cách chợ Đà Lạt:</b> 800m</li>
+</ul>
+"
+        };
+
+        // 2. Phú Quốc
+        var phuquoc = new GuideDetail
+        {
+            Id = 2,
+            Title = "Kinh nghiệm du lịch Phú Quốc 4 ngày 3 đêm cho cặp đôi",
+            Category = "Kinh Nghiệm",
+            Date = "18/12/2025",
+            ImageUrl = "images/view/exp.webp",
+            ContentHtml = @"
+<p class='lead'>Phú Quốc – Đảo Ngọc mùa này nước xanh như ngọc bích, nắng vàng ươm. Nếu bạn đang lên kế hoạch 'hâm nóng tình cảm' cùng người thương thì đây là lịch trình chi tiết từng milimet, đảm bảo vừa lãng mạn lại vừa tiết kiệm.</p>
+
+<h2 class='fw-bold mt-4'>Ngày 1: Check-in Sunset Sanato & Bún Quậy</h2>
+<p>Đáp máy bay xuống lúc trưa, sau khi về khách sạn cất đồ, hãy thuê xe máy (150k/ngày) và bắt đầu hành trình.</p>
+<ul>
+<li><b>Chiều:</b> Phi ngay ra <b>Sunset Sanato Beach Club</b> (Vé 100k). Đây là tọa độ ngắm hoàng hôn 'huyền thoại' với các tiểu cảnh đàn voi, nấc thang lên thiên đường trên mặt biển.</li>
+<li><b>Tối:</b> Nhất định phải thử <i>Bún Quậy Kiến Xây</i> (gần Dinh Cậu). Bạn sẽ được trải nghiệm tự tay làm nước chấm tắc - ớt - đường cực thú vị. Giá khoảng 65k/tô full topping.</li>
+</ul>
+<img src='images/view/hoanghon.jpg' alt='Hoàng hôn Phú Quốc' />
+
+<h2 class='fw-bold mt-4'>Ngày 2: Tour 4 đảo & Cáp treo Hòn Thơm</h2>
+<p>Đừng đi tour ghép đoàn lớn ồn ào, hãy thuê cano riêng nếu có điều kiện hoặc đi tour cano ghép nhóm nhỏ. Lịch trình 'vàng':</p>
+<ul>
+<li><b>Sáng:</b> Check-in <i>Hòn Móng Tay</i> & <i>Hòn Gầm Ghì</i>. Nước ở đây trong vắt nhìn thấy tận đáy, tha hồ lặn ngắm san hô.</li>
+<li><b>Trưa:</b> Ăn hải sản tươi sống ngay tại Hòn Mây Rút Trong.</li>
+<li><b>Chiều:</b> Trải nghiệm <b>Cáp treo Hòn Thơm</b> - cáp treo vượt biển dài nhất thế giới. View từ trên cao nhìn xuống những chiếc thuyền đánh cá bé xíu đẹp nín thở.</li>
+</ul>
+
+<h2 class='fw-bold mt-4'>Ngày 3: Rạch Vẹm & Thành phố không ngủ</h2>
+<p><b>Sáng:</b> Đi Rạch Vẹm thăm 'vương quốc sao biển'.
+
+<p><b>Chiều tối:</b> Di chuyển lên Bắc Đảo đi <b>Grand World</b>.
+<br/>- Đi thuyền trên sông Venice (như đang ở Ý).
+<br/>- Xem show nhạc nước 'Sắc màu Venice' (Miễn phí).
+<br/>- Chụp ảnh tại Nhà Tre huyền thoại.</p>
+<img src='images/view/grand.jpg' alt='Grand World Phú Quốc' />
+
+<h2 class='fw-bold mt-4'>Ngày 4: Mua quà & Tạm biệt</h2>
+<p>Ghé chợ Dương Đông mua ít đặc sản làm quà:</p>
+<ul>
+<li>Tiêu Phú Quốc (thơm nồng).</li>
+<li>Nước mắm Phụng Hưng.</li>
+<li>Rượu sim.</li>
+</ul>
+
+"
+        };
+
+        // 3. Hà Nội
+        var hanoi = new GuideDetail
+        {
+            Id = 3,
+            Title = "Food tour Hà Nội: Ăn sập phố cổ chỉ với 500k",
+            Category = "Ẩm Thực",
+            Date = "15/12/2025",
+            ImageUrl = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1000",
+            ContentHtml = @"
+<p>Hà Nội không vội được đâu, và ăn ở Hà Nội cũng thế. Cầm 500k trong tay, bạn có thể ăn gì?</p>
+<ul>
+<li><strong>Phở Bát Đàn:</strong> 50k - Hương vị truyền thống không thể bỏ qua.</li>
+<li><strong>Bún chả Hàng Quạt:</strong> 35k - Thịt nướng than hoa thơm lừng.</li>
+<li><strong>Cafe Trứng Giảng:</strong> 30k - Béo ngậy, ấm nóng.</li>
+<li><strong>Nộm bò khô Hồ Hoàn Kiếm:</strong> 40k - Ăn vặt lai rai.</li>
+</ul>
+<p>Hãy chuẩn bị một chiếc bụng đói để càn quét hết những món ngon nức tiếng này nhé!</p>
+<img src='https://images.unsplash.com/photo-1555126634-323283e090fa?q=80&w=800' alt='Hanoi Food' />
+"
+        };
+
+        // 4. Mẹo vặt (Thêm cho đủ list)
+        var tips = new GuideDetail
+        {
+            Id = 4,
+            Title = "Săn vé máy bay giá rẻ dịp Tết",
+            Category = "Mẹo Vặt",
+            Date = "10/12/2025",
+            ImageUrl = "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=1000",
+            ContentHtml = "<p>Nội dung đang cập nhật...</p>"
+        };
+
+        // Logic tìm bài
+        var allArticles = new List<GuideDetail> { dalat, phuquoc, hanoi, tips };
+        Article = allArticles.FirstOrDefault(x => x.Id == id) ?? dalat;
+
+        // Logic list liên quan (Lấy 3 bài khác bài hiện tại)
+        RelatedArticles = allArticles.Where(x => x.Id != Article.Id).Take(3).ToList();
+    }
+}

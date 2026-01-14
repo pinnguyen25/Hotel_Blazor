@@ -5,7 +5,7 @@ public class HotelOwnerSummaryVM
     public string? CoverImageUrl { get; set; }
     public string City { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
-
+    
     // Quy mô
     public int RoomTypeCount { get; set; }     // THÊM
     public int TotalRooms { get; set; }

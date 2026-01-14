@@ -1,0 +1,24 @@
+[33m6d5a78e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mpin[m[33m, [m[1;31morigin/pin[m[33m)[m HEAD@{0}: checkout: moving from web_dotnet to pin
+[33m18b1ae4[m[33m ([m[1;32mweb_dotnet[m[33m)[m HEAD@{1}: commit: dang lam
+[33m3dd56aa[m HEAD@{2}: commit: update cho web
+[33m901b5e5[m[33m ([m[1;31morigin/web_dotnet[m[33m)[m HEAD@{3}: commit: lay ket qua hoteldetail ra API, dang lam render ra UI
+[33mb9ff490[m HEAD@{4}: commit: lay dc ket qua hoteldetail api, dang render cho FE
+[33m474b084[m HEAD@{5}: commit: update lai index
+[33m4a1ac09[m HEAD@{6}: checkout: moving from pin to web_dotnet
+[33m6d5a78e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mpin[m[33m, [m[1;31morigin/pin[m[33m)[m HEAD@{7}: checkout: moving from web_dotnet to pin
+[33m4a1ac09[m HEAD@{8}: commit: update homepage va UI cho hoteldetail
+[33m05b80a1[m HEAD@{9}: checkout: moving from thanh to web_dotnet
+[33m1d32570[m[33m ([m[1;32mthanh[m[33m)[m HEAD@{10}: commit (merge): fixing
+[33m6d5a78e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mpin[m[33m, [m[1;31morigin/pin[m[33m)[m HEAD@{11}: checkout: moving from web_dotnet to thanh
+[33m05b80a1[m HEAD@{12}: commit (merge): loi Static Web Assets Compression bị duplicate key / file lock
+[33m03e9742[m HEAD@{13}: checkout: moving from pin to web_dotnet
+[33m6d5a78e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mpin[m[33m, [m[1;31morigin/pin[m[33m)[m HEAD@{14}: checkout: moving from web_dotnet to pin
+[33m03e9742[m HEAD@{15}: checkout: moving from web_dotnet to web_dotnet
+[33m03e9742[m HEAD@{16}: commit: 25/9 9:00 dang fix
+[33m6d5a78e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mpin[m[33m, [m[1;31morigin/pin[m[33m)[m HEAD@{17}: checkout: moving from pin to web_dotnet
+[33m6d5a78e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mpin[m[33m, [m[1;31morigin/pin[m[33m)[m HEAD@{18}: checkout: moving from thanh to pin
+[33m6d5a78e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mpin[m[33m, [m[1;31morigin/pin[m[33m)[m HEAD@{19}: checkout: moving from pin to thanh
+[33m6d5a78e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mpin[m[33m, [m[1;31morigin/pin[m[33m)[m HEAD@{20}: commit: da fix lai code
+[33m1c33b63[m HEAD@{21}: commit: Them chuc nang Wishlist va da fix render header khi user co role owner va customer
+[33m7063adc[m HEAD@{22}: Branch: renamed refs/heads/master to refs/heads/pin
+[33m7063adc[m HEAD@{24}: commit (initial): lay duoc thong tin user

@@ -26,4 +26,15 @@ public static class ApiResponseHelper
 
     public static ApiResponse<T> ServerError<T>(string message = MessageResponse.ERROR_IN_SERVER)
         => new() { StatusCode = StatusCodeResponse.Error, Message = message, Content = default };
+
+    // Dành cho phân trang
+    public static ApiResponse<PagedResult<T>> OkPaged<T>(PagedResult<T> pagedData, string message = MessageResponse.SUCCESS)
+    {
+        return new ApiResponse<PagedResult<T>> 
+        { 
+            StatusCode = StatusCodeResponse.Success, 
+            Message = message, 
+            Content = pagedData 
+        };
+    }
 }

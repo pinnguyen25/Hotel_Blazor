@@ -1,0 +1,237 @@
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.ViewModels.Hotel
+@inject IHttpClientFactory _clientFactory
+@inject ILocalStorageService _localStorage
+@inject ISnackbar Snackbar
+@using System.Net.Http.Headers
+@using System.Text.Json
+
+<MudOverlay Visible="true" DarkBackground="true" AutoClose="false" ZIndex="2000">
+    <MudPaper Class="mx-4 pa-0 rounded-xl overflow-hidden" Style="width: 500px; max-width: 95vw;" Elevation="4">
+        
+        <div class="d-flex justify-space-between align-center pa-4 bg-gray-50 border-b">
+            <div class="d-flex align-center gap-2">
+                <MudIcon Icon="@(isEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.AddCircle)" 
+                         Color="@(isEditMode ? Color.Warning : Color.Primary)" />
+                <MudText Typo="Typo.h6" Class="fw-bold">
+                    @(isEditMode ? "Cập Nhật Dịch Vụ" : "Thêm Dịch Vụ Mới")
+                </MudText>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="Cancel" Size="Size.Small"/>
+        </div>
+
+        <div class="pa-5">
+            <MudForm @ref="form">
+                
+                @if (isEditMode)
+                {
+                    <div class="mb-4 pa-3 bg-blue-50 rounded border border-blue-100">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="fw-bold">
+                            @Service?.ServiceName
+                        </MudText>
+                        <MudText Typo="Typo.caption" Class="text-muted">
+                            @Service?.Description
+                        </MudText>
+                    </div>
+                }
+                else
+                {
+                    @if (isLoadingList)
+                    {
+                        <div class="d-flex justify-center my-4"><MudProgressCircular Indeterminate="true" Size="Size.Small"/></div>
+                    }
+                    else if (!availableServices.Any())
+                    {
+                        <MudAlert Severity="Severity.Info" Class="mb-3">Khách sạn đã có đủ tất cả dịch vụ!</MudAlert>
+                    }
+                    else
+                    {
+                        <MudSelect T="int" Label="Chọn dịch vụ" @bind-Value="model.ServiceId" 
+                                   Variant="MudBlazor.Variant.Outlined" Required="true" AnchorOrigin="Origin.BottomCenter"
+                                   AdornmentIcon="@Icons.Material.Filled.Search" Class="mb-3">
+                            @foreach (var s in availableServices)
+                            {
+                                <MudSelectItem Value="@s.Id">@s.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                        @if(model.ServiceId > 0)
+                        {
+                            <MudText Typo="Typo.caption" Class="mb-4 d-block text-muted">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="me-1" style="vertical-align:text-bottom"/>
+                                @availableServices.FirstOrDefault(x=>x.Id == model.ServiceId)?.Description
+                            </MudText>
+                        }
+                    }
+                }
+
+                <div class="row">
+                    <div class="col-6">
+                        <MudNumericField @bind-Value="model.Price" Label="Giá tiền" 
+                                         Variant="MudBlazor.Variant.Outlined" Margin="Margin.Dense"
+                                         Min="0" Format="N0" Adornment="Adornment.End" AdornmentText="VNĐ" />
+                    </div>
+                    <div class="col-6">
+                        <MudTextField @bind-Value="model.Unit" Label="Đơn vị tính" 
+                                      Variant="MudBlazor.Variant.Outlined" Margin="Margin.Dense"
+                                      Placeholder="Lượt/Ngày..." />
+                    </div>
+                </div>
+
+                @if (isEditMode)
+                {
+                    <div class="mt-4">
+                        <MudSwitch @bind-Value="model.IsActive" Color="Color.Success" Label="Đang hoạt động" />
+                    </div>
+                }
+
+            </MudForm>
+        </div>
+
+        <div class="d-flex justify-end gap-2 pa-4 border-t bg-light">
+            <MudButton OnClick="Cancel" Variant="MudBlazor.Variant.Text">Hủy bỏ</MudButton>
+            
+            <MudButton Color="@(isEditMode ? Color.Warning : Color.Primary)" Variant="MudBlazor.Variant.Filled" 
+                       OnClick="Submit" Disabled="@(isProcessing || (!isEditMode && !availableServices.Any()))"
+                       StartIcon="@(isProcessing ? null : Icons.Material.Filled.Save)">
+                @if (isProcessing) 
+                { 
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ms-n1 me-2"/>
+                    <span>Đang xử lý...</span>
+                }
+                else 
+                { 
+                    <span>@(isEditMode ? "Cập nhật" : "Thêm mới")</span> 
+                }
+            </MudButton>
+        </div>
+
+    </MudPaper>
+</MudOverlay>
+
+@code {
+    [Parameter] public int HotelId { get; set; } // Cần cho Add
+    [Parameter] public OwnerHotelServiceVM? Service { get; set; } // Nếu != null => Edit
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<OwnerHotelServiceVM> OnSuccess { get; set; }
+
+    // Logic xác định Mode
+    private bool isEditMode => Service != null;
+
+    // Model dùng chung cho Form
+    private FormModel model = new();
+    private class FormModel
+    {
+        public int ServiceId { get; set; } // Cho Add
+        public decimal Price { get; set; }
+        public string? Unit { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+
+    // State
+    private List<AvailableServiceVM> availableServices = new();
+    private bool isLoadingList = false;
+    private bool isProcessing = false;
+    private MudForm? form;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (isEditMode)
+        {
+            // Map dữ liệu cũ vào Form
+            model.Price = Service!.Price;
+            model.Unit = Service.Unit;
+            model.IsActive = Service.IsActive;
+        }
+        else
+        {
+            // Load danh sách dropdown
+            await LoadAvailableServices();
+        }
+    }
+
+    private async Task LoadAvailableServices()
+    {
+        isLoadingList = true;
+        try
+        {
+            var client = _clientFactory.CreateClient("HotelBookingAPI");
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var res = await client.GetAsync($"hotel/owner/get-available-services/{HotelId}");
+            if (res.IsSuccessStatusCode)
+            {
+                var content = await res.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var apiRes = JsonSerializer.Deserialize<ApiResponse<List<AvailableServiceVM>>>(content, options);
+                availableServices = apiRes?.Content ?? new();
+            }
+        }
+        finally { isLoadingList = false; }
+    }
+
+    private async Task Submit()
+    {
+        await form!.Validate();
+        if (!form.IsValid) return;
+
+        isProcessing = true;
+        try
+        {
+            var client = _clientFactory.CreateClient("HotelBookingAPI");
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            HttpResponseMessage response;
+
+            if (isEditMode)
+            {
+                // UPDATE LOGIC
+                var updateDto = new OwnerUpdateServiceVM 
+                { 
+                    Price = model.Price, 
+                    Unit = model.Unit, 
+                    IsActive = model.IsActive 
+                };
+                response = await client.PutAsJsonAsync($"hotel/owner/update-service/{Service!.Id}", updateDto);
+            }
+            else
+            {
+                // ADD LOGIC
+                var addDto = new OwnerAddServiceVM 
+                { 
+                    HotelId = HotelId,
+                    ServiceId = model.ServiceId,
+                    Price = model.Price,
+                    Unit = model.Unit
+                };
+                response = await client.PostAsJsonAsync("hotel/owner/add-service", addDto);
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var apiRes = JsonSerializer.Deserialize<ApiResponse<OwnerHotelServiceVM>>(content, options);
+                
+                if (apiRes?.Content != null)
+                {
+                    Snackbar.Add(isEditMode ? "Cập nhật thành công" : "Thêm mới thành công", Severity.Success);
+                    await OnSuccess.InvokeAsync(apiRes.Content);
+                }
+            }
+            else
+            {
+                var msg = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Lỗi: {msg}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi hệ thống: {ex.Message}", Severity.Error);
+        }
+        finally { isProcessing = false; }
+    }
+
+    private Task Cancel() => OnClose.InvokeAsync();
+}

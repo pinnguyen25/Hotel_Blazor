@@ -1,0 +1,93 @@
+@using HotelBooking.webapp.ViewModels.Hotel
+@inject HotelFormState FormState
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IHttpClientFactory ClientFactory // Dùng factory để tạo client gọi API xóa/sửa
+
+<MudText Typo="Typo.h6" Class="mb-2">Danh sách dịch vụ</MudText>
+@if (FormState.HotelServices.Any())
+{
+    <MudTable Items="@FormState.HotelServices" Hover="true" Elevation="0" Outlined="true" Class="mb-4">
+        <HeaderContent>
+            <MudTh>Tên dịch vụ</MudTh>
+            <MudTh>Giá (VNĐ)</MudTh>
+            <MudTh>Đơn vị</MudTh>
+            <MudTh Style="text-align:right">Thao tác</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudText Typo="Typo.subtitle2" Class="fw-bold">@context.ServiceName</MudText>
+                <MudText Typo="Typo.caption">@context.Description</MudText>
+            </MudTd>
+            <MudTd>@context.Price.ToString("N0")</MudTd>
+            <MudTd>@context.Unit</MudTd>
+            <MudTd Style="text-align:right">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Warning"
+                    OnClick="@(() => OpenForm(context))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                    OnClick="@(() => DeleteService(context))" />
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+else
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4" Variant="MudBlazor.Variant.Outlined">
+        Chưa có dịch vụ nào. Nhấn "Thêm dịch vụ" để bắt đầu.
+    </MudAlert>
+}
+
+<MudButton Variant="MudBlazor.Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+    OnClick="@(() => OpenForm(null))">
+    Thêm Dịch vụ
+</MudButton>
+
+@if (_showForm)
+{
+    <OwnerServiceForm HotelId="@FormState.DraftHotelId" Service="_selectedService" OnClose="CloseForm"
+        OnSuccess="HandleSuccess" />
+}
+
+@code {
+    private bool _showForm = false;
+    private OwnerHotelServiceVM? _selectedService;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load dữ liệu mỗi khi vào bước này để đảm bảo mới nhất
+        await FormState.LoadHotelServicesAsync();
+    }
+
+    private void OpenForm(OwnerHotelServiceVM? service)
+    {
+        _selectedService = service;
+        _showForm = true;
+    }
+
+    private void CloseForm()
+    {
+        _showForm = false;
+        _selectedService = null;
+    }
+
+    private void HandleSuccess(OwnerHotelServiceVM result)
+    {
+        // Cập nhật State chung
+        FormState.UpdateLocalServiceList(result);
+        CloseForm();
+    }
+
+    private async Task DeleteService(OwnerHotelServiceVM item)
+    {
+        
+        var confirm = await DialogService.ShowMessageBox("Xác nhận", $"Xóa dịch vụ {item.ServiceName}?", yesText: "Xóa",
+        cancelText: "Hủy");
+        if (confirm == true)
+        {
+            var success = await FormState.DeleteServiceAsync(item.Id); 
+        
+        if(success) Snackbar.Add("Đã xóa", Severity.Success);
+        else Snackbar.Add("Xóa thất bại", Severity.Error);
+        }
+    }
+}

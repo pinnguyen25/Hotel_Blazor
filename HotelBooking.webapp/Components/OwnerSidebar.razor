@@ -1,133 +1,185 @@
-@* OwnerSidebar.razor *@
+@inject NavigationManager _nav
+<div class="d-flex flex-column h-100 sidebar-theme">
 
-<ul class="nav flex-column gap-1 p-3">
+    <div class="p-3 border-bottom border-secondary border-opacity-25">
+        @if (HotelId > 0)
+        {
+            <a href="/owner/hotels"
+                class="btn btn-link text-decoration-none text-white-50 p-0 mb-3 d-flex align-items-center hover-bright">
+                <i class="bi bi-chevron-left me-1 small"></i>
+                <span style="font-size: 0.9rem;">Danh sách Hotel</span>
+            </a>
 
-    <!-- Dashboard -->
-    <li class="nav-item">
-        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded" href="/owner/dashboard"
-            activeClass="bg-primary text-white">
-            <i class="fa-solid fa-home"></i> Dashboard
-        </NavLink>
-    </li>
+        }
+        else
+        {
+            <div class="text-center py-4 text-white-50">
+                <i class="bi bi-buildings fs-1 mb-2 d-block opacity-25"></i>
+                <small>Chọn khách sạn để bắt đầu</small>
+                <div class="mt-3">
+                    <a href="/owner/hotels" class="btn btn-outline-light btn-sm w-100">Chọn ngay</a>
+                </div>
+            </div>
+        }
+    </div>
 
-    <!-- Properties -->
-    <li class="nav-item">
-        <button class="btn btn-toggle align-items-center rounded collapsed text-white w-100 text-start px-2 py-2"
-            data-bs-toggle="collapse" data-bs-target="#property-collapse" aria-expanded="false">
-            <i class="fa-solid fa-building me-2"></i> Quản lý khách sạn
-        </button>
-        <div class="collapse ms-3" id="property-collapse">
-            <ul class="btn-toggle-nav list-unstyled fw-normal small">
-                <li>
-                    <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1"
-                        href="/owner/hotels" activeClass="text-primary fw-semibold">
-                        <i class="fa-solid fa-list"></i> My Hotels
+    <div class="flex-grow-1 overflow-auto custom-scrollbar p-3 pt-2">
+        @if (HotelId > 0)
+        {
+            <ul class="nav flex-column gap-1">
+
+                <li class="nav-label mt-2 mb-2">VẬN HÀNH</li>
+
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/dashboard")">
+                        <i class="bi bi-speedometer2"></i> <span>Dashboard</span>
                     </NavLink>
                 </li>
-                <li>
-                    <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1"
-                        href="/owner/property/create" activeClass="text-primary fw-semibold">
-                        <i class="fa-solid fa-plus"></i> Add New Hotel
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/room-map")">
+                        <i class="bi bi-grid-3x3-gap-fill"></i> <span>Sơ đồ phòng</span>
                     </NavLink>
                 </li>
-            </ul>
-        </div>
-    </li>
-
-    <!-- Room Management -->
-    <li class="nav-item">
-        <button class="btn btn-toggle align-items-center rounded collapsed text-white w-100 text-start px-2 py-2"
-            data-bs-toggle="collapse" data-bs-target="#rooms-collapse" aria-expanded="false">
-            <i class="fa-solid fa-bed me-2"></i> Rooms & Pricing
-        </button>
-        <div class="collapse ms-3" id="rooms-collapse">
-            <ul class="btn-toggle-nav list-unstyled fw-normal small">
-                <li>
-                    <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1"
-                        href="/owner/rooms/types" activeClass="text-primary fw-semibold">
-                        <i class="fa-solid fa-door-open"></i> Room Types
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/housekeeping-tasks")">
+                        <i class="bi bi-brush-fill"></i> <span>Buồng phòng</span>
                     </NavLink>
                 </li>
-                <li>
-                    <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1"
-                        href="/owner/rooms/inventory" activeClass="text-primary fw-semibold">
-                        <i class="fa-solid fa-calendar"></i> Availability
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/bookings/calendar")">
+                        <i class="bi bi-calendar-check"></i> <span>Đặt phòng</span>
                     </NavLink>
                 </li>
-            </ul>
-        </div>
-    </li>
-
-    <!-- Photos -->
-    <li class="nav-item">
-        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded"
-            href="/owner/property/photos" activeClass="bg-primary text-white">
-            <i class="fa-solid fa-images"></i> Photos
-        </NavLink>
-    </li>
-
-    <!-- Facilities & Services -->
-    <li class="nav-item">
-        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded"
-            href="/owner/property/facilities" activeClass="bg-primary text-white">
-            <i class="fa-solid fa-wifi"></i> Facilities
-        </NavLink>
-    </li>
-
-    <!-- Policies -->
-    <li class="nav-item">
-        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded"
-            href="/owner/property/policies" activeClass="bg-primary text-white">
-            <i class="fa-solid fa-scroll"></i> Policies
-        </NavLink>
-    </li>
-
-    <!-- Inbox -->
-    <li class="nav-item">
-        <button class="btn btn-toggle align-items-center rounded collapsed text-white w-100 text-start px-2 py-2"
-            data-bs-toggle="collapse" data-bs-target="#inbox-collapse" aria-expanded="false">
-            <i class="fa-solid fa-envelope me-2"></i> Inbox
-        </button>
-        <div class="collapse ms-3" id="inbox-collapse">
-            <ul class="btn-toggle-nav list-unstyled fw-normal small">
-                <li>
-                    <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1" href="/owner/messages"
-                        activeClass="text-primary fw-semibold">
-                        <i class="fa-solid fa-comment"></i> Messages
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/reviews")">
+                        <i class="bi bi-star-half"></i> <span>Đánh giá & Phản hồi</span>
                     </NavLink>
                 </li>
-                <li>
-                    <NavLink class="nav-link text-white-50 d-flex align-items-center gap-2 py-1"
-                        href="/owner/notifications" activeClass="text-primary fw-semibold">
-                        <i class="fa-solid fa-bell"></i> Notifications
+
+                <li class="nav-label mt-4 mb-2">CẤU HÌNH</li>
+
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="@($"/owner/hotel-wizard/{HotelId}")">
+                        <i class="bi bi-pencil-square"></i> <span>Thông tin & Ảnh</span>
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/room-types")">
+                        <i class="bi bi-door-open"></i> <span>Loại phòng</span>
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/services")">
+                        <i class="bi bi-cup-hot"></i> <span>Dịch vụ</span>
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/staffs")">
+                        <i class="bi bi-people"></i> <span>Nhân viên</span>
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/policies")">
+                        <i class="bi bi-file-earmark-text"></i> <span>Chính sách</span>
                     </NavLink>
                 </li>
             </ul>
-        </div>
-    </li>
+        }
+    </div>
 
-    <!-- Guest Reviews -->
-    <li class="nav-item">
-        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded" href="/owner/reviews"
-            activeClass="bg-primary text-white">
-            <i class="fa-solid fa-star"></i> Guest Reviews
-        </NavLink>
-    </li>
+</div>
 
-    <!-- Finance -->
-    <li class="nav-item">
-        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded" href="/owner/finance"
-            activeClass="bg-primary text-white">
-            <i class="fa-solid fa-dollar-sign"></i> Finance
-        </NavLink>
-    </li>
+<style>
+    /* Tổng thể Sidebar */
+    .sidebar-theme {
+        background-color: #1e2125;
+        /* Màu tối hiện đại */
+        color: #adb5bd;
+    }
 
-    <!-- Analytics -->
-    <li class="nav-item">
-        <NavLink class="nav-link text-white d-flex align-items-center gap-2 px-2 py-2 rounded" href="/owner/analytics"
-            activeClass="bg-primary text-white">
-            <i class="fa-solid fa-chart-line"></i> Analytics
-        </NavLink>
-    </li>
+    /* Card hiển thị ID Hotel */
+    .bg-gradient-primary {
+        background: linear-gradient(45deg, #0d6efd, #0a58ca);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
 
-</ul>
+    .icon-box {
+        width: 36px;
+        height: 36px;
+    }
+
+    /* Style cho các link Menu */
+    .nav-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #6c757d;
+        padding-left: 12px;
+        letter-spacing: 0.5px;
+    }
+
+    .nav-link {
+        color: #adb5bd !important;
+        padding: 10px 12px;
+        border-radius: 8px;
+        transition: all 0.2s ease-in-out;
+        display: flex;
+        align-items: center;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+
+    .nav-link i {
+        font-size: 1.1rem;
+        margin-right: 12px;
+        width: 20px;
+        text-align: center;
+        transition: transform 0.2s;
+    }
+
+    /* Hiệu ứng Hover */
+    .nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.08);
+        color: #fff !important;
+        padding-left: 16px;
+        /* Dịch nhẹ sang phải */
+    }
+
+    .nav-link:hover i {
+        transform: scale(1.1);
+        color: #fff;
+    }
+
+    .hover-bright:hover {
+        color: #fff !important;
+    }
+
+    /* Trạng thái Active */
+    .nav-link.active {
+        background-color: #0d6efd !important;
+        /* Màu xanh brand */
+        color: #fff !important;
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+    }
+
+    /* Thanh cuộn (Scrollbar) tinh tế */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #495057;
+        border-radius: 10px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #6c757d;
+    }
+</style>
+
+@code {
+    [Parameter] public int HotelId { get; set; }
+}

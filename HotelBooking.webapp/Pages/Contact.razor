@@ -1,0 +1,295 @@
+@page "/contact"
+@using MudBlazor
+@layout MainLayout
+
+<Header IsFixed="false" />
+<PageTitle>Hỗ trợ & Liên hệ - ChillZone</PageTitle>
+
+<section class="chill-hero-contact d-flex align-items-center justify-content-center text-center">
+    <div class="container z-2">
+        <span class="handwriting text-white fs-2 mb-2 d-block animate-fade">Always here for you</span>
+        <h1 class="display-3 fw-bold text-white mb-4 animate-fade delay-1">Chúng mình có thể giúp gì?</h1>
+        <p class="text-white-50 fs-5 mx-auto animate-fade delay-2" style="max-width: 600px;">
+            Dù là thắc mắc nhỏ hay vấn đề lớn, đội ngũ ChillZone luôn sẵn sàng lắng nghe để kỳ nghỉ của bạn trọn vẹn nhất.
+        </p>
+        <div class="mx-auto mt-5 animate-fade delay-3" style="max-width: 500px;">
+            <div class="input-group input-group-lg shadow-lg rounded-pill overflow-hidden">
+                <span class="input-group-text bg-white border-0 ps-4"><i class="bi bi-search text-primary"></i></span>
+                <input type="text" class="form-control border-0 ps-2" placeholder="Gõ từ khóa: hoàn tiền, đổi lịch...">
+                <button class="btn btn-primary px-4 fw-bold">Tìm kiếm</button>
+            </div>
+        </div>
+    </div>
+    <div class="overlay-gradient"></div>
+</section>
+
+<section class="py-5 section-spacious position-relative">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h5 class="text-primary fw-bold text-uppercase ls-2">Kết nối trực tiếp</h5>
+            <h2 class="fw-bold text-dark">Kênh hỗ trợ <span class="handwriting text-primary">24/7</span></h2>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-4">
+                <div class="contact-card h-100 p-5 text-center bg-white rounded-5 shadow-sm border-0 position-relative overflow-hidden">
+                    <div class="icon-box mb-4 mx-auto bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="bi bi-telephone-fill fs-3"></i>
+                    </div>
+                    <h4 class="fw-bold">Hotline</h4>
+                    <p class="text-muted mb-4">Dành cho các trường hợp khẩn cấp hoặc cần xử lý ngay lập tức.</p>
+                    <a href="tel:1900xxxx" class="text-decoration-none fs-4 fw-bold text-dark hover-text-primary">1900 1080</a>
+                    <div class="small text-success mt-2"><i class="bi bi-circle-fill" style="font-size: 8px;"></i> Đang hoạt động</div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="contact-card h-100 p-5 text-center bg-white rounded-5 shadow-sm border-0 position-relative overflow-hidden">
+                    <div class="icon-box mb-4 mx-auto bg-info-subtle text-info rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="bi bi-envelope-heart-fill fs-3"></i>
+                    </div>
+                    <h4 class="fw-bold">Email hỗ trợ</h4>
+                    <p class="text-muted mb-4">Gửi yêu cầu chi tiết, hóa đơn hoặc hợp tác kinh doanh.</p>
+                    <a href="mailto:support@chillzone.vn" class="text-decoration-none fs-5 fw-bold text-dark hover-text-primary">support@chillzone.vn</a>
+                    <div class="small text-muted mt-2">Phản hồi trong vòng 24h</div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="contact-card h-100 p-5 text-center bg-white rounded-5 shadow-sm border-0 position-relative overflow-hidden">
+                    <div class="icon-box mb-4 mx-auto bg-warning-subtle text-warning rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="bi bi-chat-dots-fill fs-3"></i>
+                    </div>
+                    <h4 class="fw-bold">Chat trực tuyến</h4>
+                    <p class="text-muted mb-4">Trò chuyện trực tiếp với nhân viên tư vấn trên website.</p>
+                    <button class="btn btn-outline-warning rounded-pill px-4 fw-bold text-dark">Bắt đầu chat ngay</button>
+                    <div class="small text-muted mt-2">8:00 AM - 10:00 PM</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="bg-primary-subtle py-5 position-relative overflow-hidden">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    
+    <div class="container position-relative z-1">
+        <div class="row justify-content-center mb-5">
+            <div class="col-lg-8 text-center">
+                <h2 class="fw-bold mb-3">Câu hỏi thường gặp</h2>
+                <p class="text-muted">Chúng mình đã tổng hợp những thắc mắc phổ biến nhất để bạn tiết kiệm thời gian.</p>
+            </div>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Transparent" SliderColor="Color.Primary" Centered="true" Class="custom-mud-tabs">
+                    
+                    <MudTabPanel Text="Đặt phòng & Thanh toán" Icon="@Icons.Material.Filled.CreditCard">
+                        <div class="mt-4 bg-white rounded-4 p-4 shadow-sm">
+                            <MudExpansionPanels MultiExpansion="true" Elevation="0">
+                                <MudExpansionPanel Text="Làm sao để tôi biết đặt phòng đã thành công?">
+                                    <MudText Typo="Typo.body2" Class="text-muted">
+                                        Sau khi hoàn tất thanh toán, bạn sẽ nhận được một <strong>Email xác nhận</strong> từ ChillZone chứa mã đặt phòng và chi tiết chuyến đi. 
+                                        Bạn cũng có thể kiểm tra trong mục <em>"Đơn đặt của tôi"</em> trên website. Nếu sau 15 phút chưa nhận được, vui lòng liên hệ Hotline.
+                                    </MudText>
+                                </MudExpansionPanel>
+                                <MudExpansionPanel Text="ChillZone chấp nhận những phương thức thanh toán nào?">
+                                    <MudText Typo="Typo.body2" Class="text-muted">
+                                        Hiện tại tụi mình hỗ trợ:
+                                        <ul class="mb-0 mt-2">
+                                            <li>Thẻ tín dụng/ghi nợ quốc tế (Visa, Mastercard).</li>
+                                            <li>Thẻ ATM nội địa (qua cổng Napas).</li>
+                                            <li>Ví điện tử (Momo, ZaloPay).</li>
+                                            <li>Chuyển khoản ngân hàng (QR Code).</li>
+                                        </ul>
+                                    </MudText>
+                                </MudExpansionPanel>
+                                <MudExpansionPanel Text="Giá hiển thị đã bao gồm thuế và phí chưa?">
+                                    <MudText Typo="Typo.body2" Class="text-muted">
+                                        <strong>Chính xác!</strong> ChillZone cam kết minh bạch về giá. Số tiền bạn nhìn thấy ở bước thanh toán cuối cùng là số tiền duy nhất bạn phải trả. Không có phí ẩn tại khách sạn.
+                                    </MudText>
+                                </MudExpansionPanel>
+                            </MudExpansionPanels>
+                        </div>
+                    </MudTabPanel>
+
+                    <MudTabPanel Text="Hủy phòng & Hoàn tiền" Icon="@Icons.Material.Filled.EventBusy">
+                        <div class="mt-4 bg-white rounded-4 p-4 shadow-sm">
+                            <MudExpansionPanels MultiExpansion="true" Elevation="0">
+                                <MudExpansionPanel Text="Tôi có thể hủy phòng và nhận lại tiền không?">
+                                    <MudText Typo="Typo.body2" Class="text-muted">
+                                        Chính sách hủy phụ thuộc vào từng khách sạn và loại phòng bạn chọn:
+                                        <ul class="mb-0 mt-2">
+                                            <li><strong>Phòng hủy miễn phí:</strong> Bạn được hoàn 100% tiền nếu hủy trước thời hạn quy định (thường là 24h-48h trước check-in).</li>
+                                            <li><strong>Phòng không hoàn hủy:</strong> Thường có giá rẻ hơn nhưng bạn sẽ không được hoàn tiền nếu thay đổi kế hoạch.</li>
+                                        </ul>
+                                        Vui lòng xem kỹ mục "Chính sách hủy" trong chi tiết đơn đặt của bạn.
+                                    </MudText>
+                                </MudExpansionPanel>
+                                <MudExpansionPanel Text="Bao lâu tôi sẽ nhận được tiền hoàn?">
+                                    <MudText Typo="Typo.body2" Class="text-muted">
+                                        Sau khi yêu cầu hủy được chấp thuận:
+                                        <ul class="mb-0 mt-2">
+                                            <li>Ví điện tử: 1 - 3 ngày làm việc.</li>
+                                            <li>Thẻ tín dụng/ATM: 7 - 14 ngày làm việc (tùy ngân hàng phát hành).</li>
+                                        </ul>
+                                    </MudText>
+                                </MudExpansionPanel>
+                            </MudExpansionPanels>
+                        </div>
+                    </MudTabPanel>
+
+                    <MudTabPanel Text="Tại điểm đến" Icon="@Icons.Material.Filled.Place">
+                        <div class="mt-4 bg-white rounded-4 p-4 shadow-sm">
+                            <MudExpansionPanels MultiExpansion="true" Elevation="0">
+                                <MudExpansionPanel Text="Tôi cần mang giấy tờ gì khi nhận phòng?">
+                                    <MudText Typo="Typo.body2" Class="text-muted">
+                                        Bạn vui lòng mang theo <strong>CCCD/Hộ chiếu</strong> (bản gốc) của tất cả người lớn lưu trú và <strong>Mã xác nhận đặt phòng</strong> (trên điện thoại hoặc bản in) để làm thủ tục check-in nhanh chóng.
+                                    </MudText>
+                                </MudExpansionPanel>
+                                <MudExpansionPanel Text="Tôi có thể check-in sớm hoặc check-out muộn không?">
+                                    <MudText Typo="Typo.body2" Class="text-muted">
+                                        Yêu cầu này tùy thuộc vào tình trạng phòng trống của khách sạn tại thời điểm đó. Bạn có thể gửi ghi chú <em>"Yêu cầu đặc biệt"</em> khi đặt phòng, hoặc liên hệ trực tiếp lễ tân khách sạn để được hỗ trợ tốt nhất. Có thể sẽ có phụ phí.
+                                    </MudText>
+                                </MudExpansionPanel>
+                            </MudExpansionPanels>
+                        </div>
+                    </MudTabPanel>
+
+                </MudTabs>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5 section-spacious">
+    <div class="container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-5">
+                <div class="pe-lg-5">
+                    <h2 class="fw-bold mb-4">Gửi lời nhắn đến <span class="text-primary handwriting">ChillZone</span></h2>
+                    <p class="text-muted fs-5 lh-base mb-4">
+                        Nếu bạn không tìm thấy câu trả lời ở trên, hãy để lại lời nhắn. Tụi mình hứa sẽ phản hồi nhanh như cách bạn chốt đơn đi Đà Lạt vậy!
+                    </p>
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-geo-alt-fill text-primary fs-4 me-3"></i>
+                        <div>
+                            <h6 class="fw-bold mb-0">Văn phòng chính</h6>
+                            <small class="text-muted">123 đường Trường Sa, quận Bình Thạnh, TP.HCM</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-clock-fill text-primary fs-4 me-3"></i>
+                        <div>
+                            <h6 class="fw-bold mb-0">Giờ làm việc</h6>
+                            <small class="text-muted">Thứ 2 - Thứ 6: 8:00 - 18:00</small>
+                        </div>
+                    </div>
+                 
+                </div>
+            </div>
+            
+            <div class="col-lg-7">
+                <div class="bg-white p-5 rounded-5 shadow-lg border animate-fade delay-2">
+                    <form>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Họ và tên</label>
+                                <input type="text" class="form-control bg-light border-0 py-3" placeholder="VD: Bạn A dễ thương">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Email liên hệ</label>
+                                <input type="email" class="form-control bg-light border-0 py-3" placeholder="name@example.com">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold small">Vấn đề cần hỗ trợ</label>
+                                <select class="form-select bg-light border-0 py-3">
+                                    <option>Vấn đề đặt phòng</option>
+                                    <option>Thanh toán & Hoàn tiền</option>
+                                    <option>Đăng ký đối tác khách sạn</option>
+                                    <option>Khác</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold small">Mã đặt phòng (Nếu có)</label>
+                                <input type="text" class="form-control bg-light border-0 py-3" placeholder="#CZ-123456">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold small">Lời nhắn chi tiết</label>
+                                <textarea class="form-control bg-light border-0 py-3" rows="5" placeholder="Hãy mô tả chi tiết vấn đề của bạn..."></textarea>
+                            </div>
+                            <div class="col-12 mt-4">
+                                <button type="button" class="btn btn-primary w-100 py-3 rounded-pill fw-bold fs-5 shadow-sm">Gửi yêu cầu</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    /* Font Setup */
+    body { font-family: 'Nunito', sans-serif; }
+    .handwriting { font-family: 'Pacifico', cursive; }
+
+    /* Hero Contact Specific */
+    .chill-hero-contact {
+        height: 50vh; /* Thấp hơn trang chủ 1 chút */
+        background-image: url('https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?q=80&w=1920&auto=format&fit=crop'); /* Ảnh người lễ tân hoặc không gian sảnh */
+        background-size: cover;
+        background-position: center;
+        position: relative;
+    }
+    .overlay-gradient {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(84, 169, 255, 0.2) 100%);
+    }
+
+    /* Contact Cards */
+    .contact-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .contact-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(84, 169, 255, 0.2) !important;
+    }
+    .icon-box {
+        width: 80px; height: 80px;
+        transition: transform 0.3s ease;
+    }
+    .contact-card:hover .icon-box {
+        transform: scale(1.1);
+    }
+    .hover-text-primary:hover { color: var(--mud-palette-primary) !important; }
+
+    /* Blobs Background */
+    .blob { position: absolute; border-radius: 50%; filter: blur(60px); z-index: 0; opacity: 0.5; }
+    .blob-1 { width: 400px; height: 400px; background: #dbeafe; top: -100px; left: -100px; }
+    .blob-2 { width: 300px; height: 300px; background: #fee2e2; bottom: -50px; right: -50px; }
+
+    /* Animation */
+    .animate-fade { animation: fadeInUp 1s ease forwards; opacity: 0; transform: translateY(30px); }
+    .delay-1 { animation-delay: 0.2s; }
+    .delay-2 { animation-delay: 0.4s; }
+    .delay-3 { animation-delay: 0.6s; }
+    @@keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+
+    /* Custom MudTabs to match theme */
+    .custom-mud-tabs .mud-tabs-toolbar {
+        background-color: transparent;
+        margin-bottom: 2rem;
+    }
+    .custom-mud-tabs .mud-tab {
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .custom-mud-tabs .mud-tab-active {
+        color: var(--mud-palette-primary) !important;
+    }
+</style>

@@ -20,4 +20,7 @@ public class HotelListItemDTO : HotelBaseDTO
     // Bổ sung cho search
     public int? MaxAdultCapacity { get; set; }
     public int? MaxChildCapacity { get; set; }
+    public string? AccommodationType { get; set; }  // ← từ act.Name
+    public string? Service {get;set;}
+    public string? ChainName { get; set; }
 }

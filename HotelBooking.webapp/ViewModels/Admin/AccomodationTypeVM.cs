@@ -20,7 +20,7 @@ public class AccommodationTypeVM
     public int? CreatedBy { get; set; }
     public DateTime? CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
-
+    public bool IsSelected {get;set;}
     public string? CreatedByName { get; set; }
 }
 

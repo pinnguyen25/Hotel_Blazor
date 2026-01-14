@@ -1,0 +1,451 @@
+@using HotelBooking.webapp.ViewModels.Hotel
+@using MudBlazor
+@using System.Text.Json
+@inject ISnackbar Snackbar
+@inject BookingState _bookingState
+@inject NavigationManager _nav
+
+<section class="w-100 py-5" style="background-color:#f0f2f5;">
+    <div class="container">
+        <h4 class="mb-4 fw-bold text-dark">Chọn phòng nghỉ</h4>
+
+        @if (RoomTypes != null && RoomTypes.Any())
+        {
+            var groupedRooms = RoomTypes.GroupBy(x => x.Name).ToList();
+            <div class="d-flex flex-column gap-4">
+                @foreach (var group in groupedRooms)
+                {
+                    var baseRoom = group.FirstOrDefault(r => !string.IsNullOrEmpty(r.DefaultImageUrl)) ?? group.First();
+                    <div class="row g-3" style="position: relative;">
+
+                        <div class="col-lg-3 col-md-5">
+                            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white"
+                                style="position: -webkit-sticky; position: sticky; top: 100px; z-index: 10;">
+
+                                <div class="position-relative rounded-3 overflow-hidden mb-3"
+                                    style="height: 220px; cursor:pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.05);"
+                                    @onclick="() => HandleOpenPopup(baseRoom.Id)">
+
+                                    @if (baseRoom.RoomImages.Any())
+                                    {
+                                        <MudCarousel Class="h-100" ShowArrows="true" ShowBullets="false" AutoCycle="false"
+                                            TData="object">
+                                            @foreach (var img in baseRoom.RoomImages.Take(5))
+                                            {
+                                                <MudCarouselItem>
+                                                    <img src="@img" style="width:100%; height:100%; object-fit:cover;" />
+                                                </MudCarouselItem>
+                                            }
+                                        </MudCarousel>
+                                    }
+                                    else
+                                    {
+                                        <img src="/images/default-room.jpg" style="width:100%; height:100%; object-fit:cover;" />
+                                    }
+
+                                </div>
+
+                                <div class="d-flex flex-column flex-grow-1">
+                                    <h5 class="fw-bold text-dark clickable-title" @onclick="() => HandleOpenPopup(baseRoom.Id)">
+                                        @baseRoom.Name
+                                    </h5>
+                                    <hr class="text-muted opacity-25 my-2" />
+
+                                    <div class="d-flex flex-column gap-2 text-secondary mb-3">
+
+                                        @* 1. Sức chứa *@
+                                                <div class="d-flex align-items-start">
+                                            @* Cố định chiều rộng icon để chữ thẳng hàng *@
+                                                    <div class="d-flex justify-content-center me-2" style="min-width: 20px;">
+                                                <i class="bi bi-people-fill text-primary fs-6"></i>
+                                            </div>
+                                            <div class="">
+                                                <span class="text-dark">Sức chứa: @baseRoom.AdultCapacity người lớn</span>
+                                                @if (baseRoom.ChildCapacity > 0)
+                                                {
+                                                    <span class="text-muted">| @baseRoom.ChildCapacity trẻ em</span>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        @* 2. Diện tích *@
+                                                @if (baseRoom.Area > 0)
+                                        {
+                                            <div class="d-flex align-items-center">
+                                                <div class="d-flex justify-content-center me-3" style="min-width: 20px;">
+                                                    <i class="bi bi-aspect-ratio text-primary fs-6"></i>
+                                                </div>
+                                                <span>@(baseRoom.Area) m²</span>
+                                            </div>
+                                        }
+
+                                        @* 3. Hướng nhìn *@
+                                        @if (baseRoom.Views != null && baseRoom.Views.Any())
+                                        {
+                                            <div class="d-flex align-items-start">
+                                                <div class="d-flex justify-content-center me-3" style="min-width: 20px;">
+                                                    <i class="bi bi-image text-primary fs-6"></i>
+                                                </div>
+                                                <span class="text-dark">
+                                                    @string.Join(", ", baseRoom.Views.Select(v => v.ViewTypeName))
+                                                </span>
+                                            </div>
+                                        }
+
+                                        @* 4. Giường (Dùng MudIcon) *@
+                                        @if (baseRoom.Beds != null && baseRoom.Beds.Any())
+                                        {
+                                            <div class="d-flex align-items-start">
+                                                <div class="d-flex justify-content-center me-3" style="min-width: 20px;">
+                                                    <MudIcon Icon="@Icons.Material.Filled.KingBed" Color="Color.Primary"
+                                                        Size="Size.Small" />
+                                                </div>
+                                                @baseRoom.Beds.First().BedTypeName
+                                            </div>
+                                        }
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-9 col-md-6 gap-3">
+                            <div class="d-flex flex-column gap-3">
+                                @foreach (var option in group)
+                                {
+                                    <div class="card h-100 border-1 shadow-sm p-0 " style="background-color: #fff;">
+                                        <div class="card-body rounded-4">
+                                            <div class="row h-100 g-0">
+
+                                                <div class="col-sm-5 border-end-sm px-2 py-1">
+                                                    <ul class="list-unstyled small text-success mb-0 d-flex flex-column gap-2">
+                                                        <div class="fw-bold text-dark mb-2">
+                                                            @(option.IsBreakfastIncluded ? "" : "Gói tiêu chuẩn")
+                                                        </div>
+
+                                                        <ul class="list-unstyled small text-success mb-0 d-flex flex-column gap-2">
+
+                                                            @if (option.IsBreakfastIncluded)
+                                                            {
+
+                                                            }
+                                                            else
+                                                            {
+                                                                <li class="d-flex align-items-start text-muted">
+                                                                    <i class="bi bi-slash-circle me-2"></i><span>Không gồm ăn
+                                                                        sáng</span>
+                                                                </li>
+                                                            }
+
+                                                            @if (option.IsFreeCancellation)
+                                                            {
+                                                                <li class="d-flex align-items-start">
+                                                                    <i class="bi bi-check-circle-fill me-2"></i><span>Hủy miễn
+                                                                        phí</span>
+                                                                </li>
+                                                            }
+                                                            else
+                                                            {
+                                                                <li class="d-flex align-items-start text-danger">
+                                                                    <i class="bi bi-info-circle-fill me-2"></i><span>Không hoàn
+                                                                        tiền</span>
+                                                                </li>
+                                                            }
+
+                                                            @if (option.RoomTypeServices != null && option.RoomTypeServices.Any())
+                                                            {
+                                                                @foreach (var sv in option.RoomTypeServices)
+                                                                {
+                                                                    <li class="d-flex align-items-start text-success">
+                                                                        <i class="bi-check-circle me-2 text-success"></i>
+                                                                        <span>
+                                                                            @sv.ServiceName
+                                                                        </span>
+                                                                    </li>
+                                                                }
+                                                            }
+                                                        </ul>
+
+                                                        @if (baseRoom.Amenities != null)
+                                                        {
+                                                            @foreach (var am in baseRoom.Amenities.Take(3)) // Lấy 3 cái thôi cho gọn
+                                                            {
+                                                                <li class="d-flex align-items-start text-secondary">
+                                                                    <i class="@(am.IconClass ?? "bi bi-check") me-2 mt-1"></i>
+                                                                    <span>@am.Name</span>
+                                                                </li>
+                                                            }
+                                                            @if (baseRoom.Amenities.Count > 4)
+                                                            {
+                                                                <span class="badge bg-light text-muted border fw-normal">
+                                                                    +@(baseRoom.Amenities.Count - 4) tiện ích khác
+                                                                </span>
+                                                            }
+                                                        }
+
+                                                    </ul>
+                                                </div>
+
+                                                <div
+                                                    class="col-sm-2 border-end-sm d-flex flex-column align-items-center justify-content-center text-muted py-3 py-sm-0">
+                                                    <div class="d-flex flex-column align-items-center">
+                                                        <i class="bi bi-person-fill fs-3 mb-1"></i>
+                                                        <span class="small text-center lh-sm">
+                                                            @SearchAdults người lớn<br />
+                                                            @if (SearchChildren > 0)
+                                                            {
+                                                                <span>& @SearchChildren trẻ em</span>
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div
+                                                    class="col-sm-5 d-flex flex-column justify-content-center align-items-end ps-3 py-1">
+                                                    <div class="mb-2 text-end">
+                                                        @if (baseRoom.AdultCapacity >= SearchAdults && (baseRoom.AdultCapacity +
+                                                                                                    baseRoom.ChildCapacity) >= (SearchAdults + SearchChildren))
+                                                        {
+                                                            // Đủ chỗ
+                                                            <span
+                                                                class="badge bg-success-subtle text-success border border-success-subtle">
+                                                                <i class="bi bi-check-circle me-1"></i> Phù hợp cho @SearchAdults người
+                                                                lớn, @SearchChildren trẻ em
+                                                            </span>
+                                                        }
+                                                        else
+                                                        {
+                                                            // Không đủ chỗ -> Cảnh báo
+                                                            <span
+                                                                class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                                                <i class="bi bi-exclamation-triangle me-1"></i> Phòng này hơi chật so
+                                                                với tìm kiếm của bạn
+                                                            </span>
+                                                            <div class="small text-muted mt-1">
+                                                                (Sức chứa tối đa: @baseRoom.AdultCapacity NL, @baseRoom.ChildCapacity
+                                                                TE)
+                                                            </div>
+                                                        }
+                                                    </div>
+
+                                                    <div class="text-end mb-3">
+                                                        <div class="small text-muted fst-italic">Giá @TotalNights đêm / 1 phòng
+                                                        </div>
+                                                        @* <div class="text-muted small text-decoration-line-through">@(
+                                                    (room.PricePerNight * 1.15m).ToString("N0") ) ₫</div> *@
+                                                                    <div class="fs-3 fw-bold text-warning-dark lh-1 my-1">
+                                                            @((baseRoom.PricePerNight * TotalNights).ToString("N0")) ₫</div>
+                                                        <div class="small text-success mt-1 fw-bold">
+                                                            <i class="bi bi-check2"></i> Đã bao gồm thuế & phí
+                                                        </div>
+                                                    </div>
+
+                                                    <div style="width: 100%; max-width: 160px;">
+                                                        @if (baseRoom.AvailableRooms > 0)
+                                                        {
+                                                            int selectedQty = GetSelectedQuantity(baseRoom.Id);
+                                                            if (selectedQty == 0)
+                                                            {
+                                                                <button class="btn btn-warning w-100 text-white fw-bold py-2 shadow-sm"
+                                                                    @onclick="() => UpdateQuantity(baseRoom.Id, 1)"
+                                                                    style="background-color: #ff6a00; border:none; border-radius: 8px;">
+                                                                    Đặt 1 phòng
+                                                                </button>
+                                                            }
+                                                            else
+                                                            {
+                                                                <div
+                                                                    class="d-flex align-items-center justify-content-between bg-white border border-warning rounded p-1 shadow-sm">
+                                                                    <button
+                                                                        class="btn btn-sm btn-link text-decoration-none text-warning fw-bold px-2"
+                                                                        @onclick="() => UpdateQuantity(baseRoom.Id, selectedQty - 1)"><i
+                                                                            class="bi bi-dash-lg"></i></button>
+                                                                    <span class="fw-bold text-dark fs-5">@selectedQty</span>
+                                                                    <button
+                                                                        class="btn btn-sm btn-link text-decoration-none text-warning fw-bold px-2"
+                                                                        disabled="@(selectedQty >= baseRoom.AvailableRooms)"
+                                                                        @onclick="() => UpdateQuantity(baseRoom.Id, selectedQty + 1)"><i
+                                                                            class="bi bi-plus-lg"></i></button>
+                                                                </div>
+                                                            }
+
+                                                            @if (baseRoom.AvailableRooms <= 3)
+                                                            {
+                                                                <div class="text-danger small fw-bold mt-2 text-center">Chỉ còn
+                                                                    @baseRoom.AvailableRooms phòng!</div>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <button class="btn btn-secondary w-100" disabled>Hết phòng</button>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                        </div>
+
+                    </div>
+                }
+            </div>
+
+            @if (HasItemsInCart)
+            {
+                <div class="fixed-bottom bg-white border-top shadow-lg p-3 animate__animated animate__slideInUp"
+                    style="z-index: 1100;">
+                    <div class="container d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted small">Tạm tính:</span>
+                            <div class="d-flex align-items-baseline gap-2">
+                                <span class="text-warning-dark fw-bold fs-3"
+                                    style="line-height: 1;">@GetEstimatedTotal().ToString("N0") ₫</span>
+                                <span class="badge bg-primary rounded-pill">@TotalRoomsInCart phòng</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-lg px-5 fw-bold rounded-pill shadow"
+                            style="background-color: #ff6a00; border: none;" @onclick="BookNow">
+                            ĐẶT NGAY <i class="bi bi-arrow-right ms-2"></i>
+                        </button>
+                    </div>
+                </div>
+                <div style="height: 100px;"></div>
+            }
+        }
+        else
+        {
+            <div class="text-center py-5 text-muted">Không có phòng trống.</div>
+        }
+    </div>
+</section>
+
+
+
+@code {
+    [Parameter] public List<RoomTypeDetailVM> RoomTypes { get; set; } = new();
+    [Parameter] public int HotelId { get; set; }
+    [Parameter] public bool IsAuthenticated { get; set; }
+
+    // Event callback để gọi ngược về cha mở popup chi tiết
+    [Parameter] public EventCallback<int> OnOpenPopup { get; set; }
+
+
+    // search
+    [Parameter] public DateTime CheckInDate { get; set; }
+    [Parameter] public DateTime CheckOutDate { get; set; }
+    [Parameter] public int SearchAdults { get; set; }
+    [Parameter] public int SearchChildren { get; set; }
+    private int TotalNights => (CheckOutDate - CheckInDate).Days > 0 ? (CheckOutDate - CheckInDate).Days : 1;
+    private int GetSelectedQuantity(int roomTypeId)
+    => _bookingState.SelectedRooms.FirstOrDefault(r => r.RoomTypeId == roomTypeId)?.Quantity ?? 0;
+    private bool HasItemsInCart => _bookingState.HasItems;
+    private int TotalRoomsInCart => _bookingState.SelectedRooms.Sum(r => r.Quantity);
+    private decimal GetEstimatedTotal() => _bookingState.TotalPrice;
+    private async Task UpdateQuantity(int roomTypeId, int newQuantity)
+    {
+        var room = RoomTypes.FirstOrDefault(r => r.Id == roomTypeId);
+        if (room == null) return;
+
+        if (newQuantity > room.AvailableRooms)
+        {
+            Snackbar.Add($"Chỉ còn {room.AvailableRooms} phòng!", Severity.Warning);
+            return;
+        }
+
+        if (newQuantity <= 0)
+        {
+            // Xóa khỏi giỏ
+            var existing = _bookingState.SelectedRooms.FirstOrDefault(r => r.RoomTypeId == roomTypeId);
+            if (existing != null)
+            {
+                _bookingState.SelectedRooms.Remove(existing);
+            }
+        }
+        else
+        {
+            var item = new CartItemVM
+            {
+                RoomTypeId = roomTypeId,
+                RoomName = room.Name,
+                PricePerNight = room.PricePerNight,
+                ImageUrl = room.DefaultImageUrl ?? room.RoomImages.FirstOrDefault() ?? "",
+                Quantity = newQuantity,
+                IncludedServices = room.RoomTypeServices?.Select(s => s.ServiceName).ToList() ?? new() // THÊM: Lấy dịch vụ đi kèm
+            };
+            await _bookingState.AddOrUpdateRoomAsync(item);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task BookNow()
+    {
+        if (!IsAuthenticated)
+        {
+            Snackbar.Add("Vui lòng đăng nhập để tiếp tục", Severity.Info);
+            _nav.NavigateTo($"/login?returnUrl={_nav.Uri}");
+            return;
+        }
+        if (!_bookingState.HasItems)
+        {
+            Snackbar.Add("Vui lòng chọn ít nhất 1 phòng", Severity.Warning);
+            return;
+        }
+
+        await _bookingState.UpdateSearchCriteriaAsync(
+        HotelId,
+        hotelName: "",
+        hotelImage: "", // hoặc lấy từ HotelDetail
+        CheckInDate,
+        CheckOutDate,
+        SearchAdults,
+        SearchChildren
+        );
+
+        _nav.NavigateTo($"/booking/create?hotelId={HotelId}");
+    }
+
+    public class AmenityConfig
+    {
+        public string IconClass { get; set; } = "bi bi-check-circle-fill"; // Icon mặc định
+        public string IconColor { get; set; }
+        public string Description { get; set; }
+    }
+
+    // 2. Hàm Helper để giải mã JSON từ chuỗi Additional
+    private AmenityConfig GetAmenityConfig(string? additional, string defaultName)
+    {
+        if (string.IsNullOrWhiteSpace(additional))
+        {
+            return new AmenityConfig { Description = defaultName };
+        }
+
+        try
+        {
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var config = JsonSerializer.Deserialize<AmenityConfig>(additional, options);
+
+            // Nếu Description trong JSON rỗng thì lấy tên Amenity làm fallback
+            if (string.IsNullOrEmpty(config?.Description))
+            {
+                if (config == null) config = new AmenityConfig();
+                config.Description = defaultName;
+            }
+            return config;
+        }
+        catch
+        {
+            return new AmenityConfig { Description = defaultName };
+        }
+    }
+    private async Task HandleOpenPopup(int id)
+    {
+        if (OnOpenPopup.HasDelegate)
+        {
+            await OnOpenPopup.InvokeAsync(id);
+        }
+    }
+}

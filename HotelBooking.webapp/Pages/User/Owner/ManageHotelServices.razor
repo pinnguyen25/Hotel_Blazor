@@ -1,0 +1,218 @@
+@page "/owner/hotels/{HotelId:int}/services"
+@using System.Net.Http.Headers
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.ViewModels.Hotel
+@layout OwnerLayout
+@inject IHttpClientFactory _clientFactory
+@inject ILocalStorageService _localStorage
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@using MudBlazor
+@using System.Text.Json
+
+<PageTitle>Quản lý Dịch vụ Khách sạn</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <MudText Typo="Typo.h5" Class="fw-bold text-primary">Dịch vụ của khách sạn</MudText>
+        </div>
+        <MudButton Variant="MudBlazor.Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+            OnClick="OpenAddForm" Class="rounded-pill px-4 shadow-sm">
+            Thêm Dịch vụ
+        </MudButton>
+    </div>
+
+    <MudTable Items="@Services" Hover="true" Loading="@isLoading" Elevation="0" Outlined="true" Class="rounded-lg">
+        <HeaderContent>
+            <MudTh>Tên dịch vụ</MudTh>
+            <MudTh>Mô tả</MudTh>
+            <MudTh>Giá (VNĐ)</MudTh>
+            <MudTh>Đơn vị</MudTh>
+            <MudTh Style="text-align:center">Trạng thái</MudTh>
+            <MudTh Style="text-align:right">Thao tác</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudText Typo="Typo.subtitle2" Class="fw-bold text-primary">@context.ServiceName</MudText>
+            </MudTd>
+            <MudTd>
+                <MudText Typo="Typo.caption" Class="text-muted">@context.Description</MudText>
+            </MudTd>
+            <MudTd>
+                <span class="fw-bold text-success">@context.Price.ToString("N0")</span>
+            </MudTd>
+            <MudTd>@context.Unit</MudTd>
+            <MudTd Style="text-align:center">
+                <MudSwitch T="bool" Value="@context.IsActive" Color="Color.Success"
+                    ValueChanged="@(val => ToggleActive(context, val))" />
+            </MudTd>
+            <MudTd Style="text-align:right">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Warning" Size="Size.Small"
+                    OnClick="@(() => OpenEditForm(context))" Class="me-2" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                    OnClick="@(() => DeleteService(context))" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Class="pa-4 text-center">Chưa có dịch vụ nào. Hãy thêm mới!</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudContainer>
+
+@if (_showServiceForm)
+{
+    <OwnerServiceForm HotelId="@HotelId" Service="_selectedService" OnClose="CloseForm" OnSuccess="HandleSuccess" />
+}
+
+@code {
+    [Parameter] public int HotelId { get; set; }
+
+    private List<OwnerHotelServiceVM> Services = new();
+    private bool isLoading = true;
+    private HttpClient? _httpClient;
+
+    private bool _showServiceForm = false;
+    private OwnerHotelServiceVM? _selectedService;// null = Add, != null = Edit
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _clientFactory.CreateClient("HotelBookingAPI");
+        await LoadData();
+        StateHasChanged();
+    }
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            _httpClient!.DefaultRequestHeaders.Authorization = new("Bearer", token);
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+            await SetAuthHeader();
+
+            var res = await _httpClient!.GetAsync($"hotel/owner/get-owner-services/{HotelId}");
+
+            if (res.IsSuccessStatusCode)
+            {
+                var content = await res.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var apiRes = JsonSerializer.Deserialize<ApiResponse<List<OwnerHotelServiceVM>>>(content, options);
+                Services = apiRes?.Content ?? new();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi: {ex.Message}", Severity.Error);
+        }
+        finally { isLoading = false; }
+    }
+
+    // FORM
+    // open create
+    private void OpenAddForm()
+    {
+        _selectedService = null;
+        _showServiceForm = true;
+    }
+    // open edit
+    private void OpenEditForm(OwnerHotelServiceVM service)
+    {
+        _selectedService = service;
+        _showServiceForm = true;
+    }
+
+    private void CloseForm()
+    {
+        _showServiceForm = false;
+        _selectedService = null;
+    }
+
+    private void HandleSuccess(OwnerHotelServiceVM result)
+    {
+        if (_selectedService == null) // Case Add
+        {
+            Services.Add(result);
+        }
+        else // Case Edit
+        {
+            var index = Services.FindIndex(x => x.Id == result.Id);
+            if (index != -1) Services[index] = result;
+        }
+        // close form
+        _showServiceForm = false;
+        _selectedService = null;
+    }
+
+    // --- TOGGLE ACTIVE ---
+    private async Task ToggleActive(OwnerHotelServiceVM item, bool newValue)
+    {
+        var oldValue = item.IsActive;
+        item.IsActive = newValue;
+        StateHasChanged();
+        try
+        {
+            var res = await _httpClient!.PatchAsync($"hotel/owner/toggle-active-service/{item.Id}", null);
+            if (!res.IsSuccessStatusCode)
+            {
+                // Nếu lỗi thì hoàn tác lại giao diện
+                item.IsActive = oldValue;
+                Snackbar.Add("Lỗi cập nhật trạng thái", Severity.Error);
+                StateHasChanged(); // Nếu cần
+            }
+            else
+            {
+                Snackbar.Add(newValue ? "Đã bật" : "Đã tắt", Severity.Success);
+            }
+        }
+        catch
+        {
+            item.IsActive = oldValue; // Hoàn tác nếu lỗi mạng
+            Snackbar.Add("Lỗi kết nối", Severity.Error);
+            StateHasChanged();
+        }
+    }
+
+    // --- DELETE ---
+
+    private async Task DeleteService(OwnerHotelServiceVM item)
+    {
+        // DialogService ở đây chỉ dùng cho MessageBox (Alert) đơn giản, không phải form phức tạp
+        var message = (MarkupString)$"Bạn có chắc chắn muốn xóa dịch vụ <b>{item.ServiceName}</b> khỏi khách sạn này ?";
+        
+        var options = new MudBlazor.DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.ExtraSmall };
+        
+        var confirm = await DialogService.ShowMessageBox(
+            "Xác nhận xóa", 
+            message, 
+            yesText: "Xóa ngay", cancelText: "Hủy", 
+            options: options);
+        if (confirm == true)
+        {
+            try
+            {
+                await SetAuthHeader();
+
+                var response = await _httpClient!.DeleteAsync($"hotel/owner/remove-service/{item.Id}");
+                if (response.IsSuccessStatusCode)
+                {
+                    Services.Remove(item);
+                    Snackbar.Add("Đã xóa thành công", Severity.Success);
+                    StateHasChanged();
+                }
+                else 
+                {
+                    var msg = await response.Content.ReadAsStringAsync();
+                    Snackbar.Add($"Không thể xóa: {msg}", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Lỗi: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

@@ -1,0 +1,517 @@
+@page "/admin/users"
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Net.Http.Headers
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@inject IHttpClientFactory _httpClientFactory
+@inject ISnackbar Snackbar
+@inject ILocalStorageService _localStorage
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-0">Quản lý người dùng</h3>
+        </div>
+        
+        <div class="d-flex gap-2 bg-white p-1 rounded shadow-sm border" style="max-width: 400px; width: 100%;">
+            <input class="form-control border-0 shadow-none" placeholder="Tìm theo tên, email, sđt..." 
+                   @bind="keyword" @bind:event="oninput" @onkeyup="@Enter" />
+            <button class="btn btn-primary px-3 rounded" @onclick="Search">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white border-bottom-0 pt-3 px-4">
+            <ul class="nav nav-tabs card-header-tabs">
+                <li class="nav-item">
+                    <a class="user-tab-link fw-bold px-4 py-2 @(activeTab == "Customer" ? "active border-top-0 border-end-0 border-start-0 border-3" : "text-muted border-0")" 
+                    style="@(activeTab == "Customer" ? "color: #54a9ffff !important; border-bottom-color: #54a9ffff !important;" : "cursor:pointer")"
+                    @onclick='() => SwitchTab("Customer")'>
+                    
+                    <i class="fas fa-user me-2"></i>Khách hàng
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="user-tab-link fw-bold px-4 py-2 @(activeTab == "Owner" ? "active border-top-0 border-end-0 border-start-0 border-3" : "text-muted border-0")" 
+                    style="@(activeTab == "Owner" ? "color: #54a9ffff !important; border-bottom-color: #54a9ffff !important;" : "cursor:pointer")"
+                    @onclick='() => SwitchTab("Owner")'>
+                    
+                    <i class="fas fa-building me-2"></i>Đối tác (Owner)
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body p-0">
+            @if (isLoading)
+            {
+                <div class="text-center p-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted">Đang tải dữ liệu...</p>
+                </div>
+            }
+            else if (activeTab == "Customer")
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light text-uppercase small text-muted">
+                            <tr>
+                                <th class="ps-4">Khách hàng</th>
+                                <th>Liên hệ</th>
+                                <th>Thống kê</th>
+                                <th>Trạng thái</th>
+                                <th class="text-end pe-4">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var cus in Customers)
+                            {
+                                <tr>
+                                    <td class="ps-4 py-3">
+                                        <div class="d-flex align-items-center">
+                                            @* <div class="position-relative">
+                                                <img src="@(cus.AvatarUrl ?? "/img/default.png")" class="rounded-circle border" width="45" height="45" style="object-fit: cover;" />
+                                                @if(cus.IsActive) { <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-1"></span> }
+                                                else { <span class="position-absolute bottom-0 end-0 bg-danger border border-white rounded-circle p-1"></span> }
+                                            </div> *@
+                                            <div class="ms-3">
+                                                <div class="fw-bold text-dark">@cus.FullName</div>
+                                                <small class="text-muted">ID: #@cus.Id</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-dark">@cus.Email</div>
+                                        <small class="text-muted"><i class="fas fa-phone-alt me-1"></i>@cus.PhoneNumber</small>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column">
+                                            <span class="badge bg-light text-dark border mb-1" style="width: fit-content;">@cus.TotalBookings đơn</span>
+                                            <span class="fw-bold text-primary">@FormatMoney(cus.TotalSpent)</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if (cus.IsActive)
+                                        {
+                                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3">Hoạt động</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3">Đã khóa</span>
+                                        }
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <button class="btn btn-sm btn-light border text-primary shadow-sm" @onclick="() => OpenDetail(cus.Id)" title="Xem chi tiết">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else // OWNER TAB
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light text-uppercase small text-muted">
+                            <tr>
+                                <th class="ps-4">Đối tác</th>
+                                <th>Pháp lý & Liên hệ</th>
+                                <th>Tài sản & Ví</th>
+                                <th>Trạng thái</th> <th class="text-end pe-4">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (OwnerVM own in Owners)
+                            {
+                                <tr>
+                                    <td class="ps-4 py-3">
+                                        <div class="d-flex align-items-center">
+                                            <div class="ms-3">
+                                                <div class="fw-bold text-dark">@own.FullName</div>
+                                                <small class="text-muted">@own.Email</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="mb-1"><span class="badge bg-light text-dark border">MST: @(own.TaxCode ?? "N/A")</span></div>
+                                        <small class="text-muted"><i class="fas fa-phone-alt me-1"></i>@own.PhoneNumber</small>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column gap-1">
+                                            <span class="small text-muted"><i class="fas fa-building me-1"></i> @own.TotalHotels địa điểm lưu trú</span>
+                                            <span class="fw-bold text-success"><i class="fas fa-wallet me-1"></i> @FormatMoney(own.WalletBalance)</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if (own.IsActive)
+                                        {
+                                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3">Hoạt động</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3">Đã khóa</span>
+                                        }
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <button class="btn btn-sm btn-light border text-primary shadow-sm" @onclick="() => OpenDetail(own.Id)">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            
+        </div>
+        
+    </div>
+
+    
+</div>
+
+@if (showModal && selectedUser != null)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg overflow-hidden">
+                
+                <div class="modal-header bg-primary text-white border-0">
+                    <h5 class="modal-title fw-bold">
+                        <i class="fas fa-id-card me-2"></i>Hồ sơ người dùng #@selectedUser.Id
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseModal"></button>
+                </div>
+
+                <div class="modal-body p-0">
+                    <div class="row g-0">
+                        <div class="col-md-4 bg-light text-center p-4 border-end">
+                            <div class="position-relative d-inline-block mb-3">
+                                <img src="@(selectedUser.AvatarUrl ?? "/img/default.png")" class="rounded-circle shadow-sm border border-3 border-white"
+                                     width="120" height="120" style="object-fit: cover;" />
+                                <span class="position-absolute bottom-0 end-0 badge rounded-pill @(selectedUser.IsActive ? "bg-success" : "bg-danger") border border-white">
+                                    @(selectedUser.IsActive ? "Active" : "Locked")
+                                </span>
+                            </div>
+                            
+                            <h5 class="fw-bold mb-1">@selectedUser.FullName</h5>
+                            <p class="text-muted small mb-3">@@@selectedUser.UserName</p>
+
+                            @if (selectedUser.Roles.Contains("Owner"))
+                            {
+                                <span class="badge bg-warning text-dark mb-4 px-3 py-2 rounded-pill"><i class="fas fa-crown me-1"></i>Đối tác (Owner)</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-info text-dark mb-4 px-3 py-2 rounded-pill"><i class="fas fa-user me-1"></i>Khách hàng</span>
+                            }
+
+                            <div class="d-grid gap-2">
+                                <button class="btn @(selectedUser.IsActive ? "btn-outline-danger" : "btn-outline-success") fw-bold"
+                                        @onclick="ToggleStatus">
+                                    <i class="fas @(selectedUser.IsActive ? "fa-lock" : "fa-unlock") me-2"></i>
+                                    @(selectedUser.IsActive ? "Khóa tài khoản" : "Mở khóa")
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="col-md-8 p-4 bg-white">
+                            <h6 class="fw-bold text-uppercase text-muted small mb-3 border-bottom pb-2">Thông tin liên hệ</h6>
+                            <div class="row g-3 mb-4">
+                                <div class="col-6">
+                                    <label class="small text-muted">Email</label>
+                                    <div class="fw-medium">@selectedUser.Email</div>
+                                </div>
+                                <div class="col-6">
+                                    <label class="small text-muted">Số điện thoại</label>
+                                    <div class="fw-medium">@selectedUser.PhoneNumber</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="small text-muted">Địa chỉ</label>
+                                    <div class="fw-medium">@(selectedUser.Address ?? "Chưa cập nhật")</div>
+                                </div>
+                            </div>
+
+                            <h6 class="fw-bold text-uppercase text-muted small mb-3 border-bottom pb-2">Dữ liệu hệ thống</h6>
+                            
+                            @if (selectedUser.Roles.Contains("Owner"))
+                            {
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="p-3 border rounded bg-success bg-opacity-10 h-100">
+                                            <div class="small text-success fw-bold mb-1">VÍ DOANH THU</div>
+                                            <div class="h4 mb-0 text-success">@FormatMoney(selectedUser.WalletBalance ?? 0)</div>
+                                            <small class="text-muted" style="font-size: 0.75rem">Số dư khả dụng</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 border rounded bg-primary bg-opacity-10 h-100">
+                                            <div class="small text-primary fw-bold mb-1">QUY MÔ</div>
+                                            <div class="h4 mb-0 text-primary">@(selectedUser.OwnedHotelsCount ?? 0)</div>
+                                            <small class="text-muted" style="font-size: 0.75rem">Khách sạn đang quản lý</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                                            <span class="small text-muted">Mã số thuế</span>
+                                            <span class="fw-bold font-monospace">@(selectedUser.TaxCode ?? "Chưa cung cấp")</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="p-3 border rounded bg-light text-center h-100">
+                                            <div class="text-primary mb-2"><i class="fas fa-shopping-bag fa-2x"></i></div>
+                                            <div class="small text-muted">Tổng chi tiêu</div>
+                                            <div class="fw-bold fs-5">@FormatMoney(selectedUser.TotalSpent ?? 0)</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 border rounded bg-light text-center h-100">
+                                            <div class="text-info mb-2"><i class="fas fa-receipt fa-2x"></i></div>
+                                            <div class="small text-muted">Tổng đơn đặt</div>
+                                            <div class="fw-bold fs-5">@(selectedUser.TotalBookings ?? 0)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+}
+
+<style>
+    /* Class tùy chỉnh cho Tab */
+    .user-tab-link {
+        font-weight: bold;
+        padding: 0.5rem 1.5rem; /* px-4 py-2 */
+        cursor: pointer;
+        border: none;
+        background-color: transparent !important;
+        color: #6c757d; /* Màu xám mặc định khi chưa chọn (text-muted) */
+        border-bottom: 3px solid transparent; /* Giữ chỗ cho viền dưới */
+        transition: all 0.3s ease;
+    }
+
+    /* Khi Hover vào: Đổi màu chữ thành xanh, không đổi nền */
+    .user-tab-link:hover {
+        color: #54a9ffff !important; 
+        background-color: transparent !important; /* Đảm bảo không bị nền trắng đè */
+        border-color: transparent;
+    }
+
+    /* Khi Active: Màu xanh và có viền dưới */
+    .user-tab-link.active {
+        color: #54a9ffff !important;
+        border-bottom-color: #54a9ffff !important;
+        background-color: transparent !important;
+    }
+</style>
+
+@code
+{
+    private string activeTab = "Customer"; // Mặc định
+    private List<CustomerVM> Customers = new();
+    private List<OwnerVM> Owners = new();
+    // Pagination & Search
+    private string keyword = "";
+    private int pageIndex = 1;
+    private int pageSize = 10;
+    private bool showModal = false;
+    private bool isLoading = false;
+    private int totalRecords = 0;
+    private int totalPages = 1;
+    private UserDetailVM? selectedUser;
+    private HttpClient? _httpClient;
+    private string FormatMoney(decimal? amount)
+    {
+        return amount.HasValue ? amount.Value.ToString("N0") + " ₫" : "0 ₫";
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+
+        // Lấy token từ localStorage
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+        {
+            // Thêm token vào header
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        await LoadData();
+    }
+    private async Task SwitchTab(string tab)
+    {
+        if(activeTab == tab) return;
+        activeTab = tab;
+        pageIndex = 1;
+        keyword = "";
+        Customers.Clear(); // Xóa data cũ cho sạch
+        Owners.Clear();
+        totalRecords = 0;
+        totalPages = 1;
+
+        await LoadData();
+    }
+
+    private async Task Enter(KeyboardEventArgs e)
+    {
+        if (e.Code == "Enter" || e.Code == "NumpadEnter")
+        {
+            await Search();
+        }
+    }
+
+    private async Task Search()
+    {
+        pageIndex = 1; // Reset về trang 1 khi tìm kiếm
+        await LoadData();
+    }
+    private async Task LoadData()
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            if (activeTab == "Customer")
+            {
+                // Gọi API GetCustomers
+                var url = $"admin/customers?keyword={keyword}&pageIndex={pageIndex}&pageSize={pageSize}";
+                // var res = await HotelService.GetCustomersForAdminAsync(keyword, pageIndex, 10, MyAdminId);
+                var res = await _httpClient.GetFromJsonAsync<ApiResponse<PagedResult<CustomerVM>>>(url);
+                if (res != null && res.StatusCode == StatusCodeResponse.Success)
+                {
+                    Customers = res.Content.Items;
+                    totalRecords = res.Content.TotalRecords;
+                    totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
+                }
+
+            }
+            else
+            {
+                // Gọi API GetOwners
+                var url = $"admin/owners?keyword={keyword}&pageIndex={pageIndex}&pageSize={pageSize}";
+
+                var res = await _httpClient!.GetFromJsonAsync<ApiResponse<PagedResult<OwnerVM>>>(url);
+
+                if (res != null && res.StatusCode == StatusCodeResponse.Success)
+                {
+                    Owners = res.Content.Items;
+                    totalRecords = res.Content.TotalRecords;
+                    totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Lỗi tải dữ liệu: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ChangePage(int newPage)
+    {
+        if (newPage < 1 || newPage > totalPages || newPage == pageIndex) return;
+        
+        pageIndex = newPage;
+        await LoadData();
+    }
+    private async Task OpenDetail(int userId)
+    {
+        // Gọi API GetUserDetail
+        try
+        {
+            var url = $"admin/users/{userId}";
+            var res = await _httpClient!.GetFromJsonAsync<ApiResponse<UserDetailVM>>(url);
+
+            if (res != null && res.StatusCode == StatusCodeResponse.Success)
+            {
+                selectedUser = res.Content;
+                showModal = true;
+            }
+            else
+            {
+                Snackbar.Add(res?.Message ?? "Không thể lấy thông tin", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Lỗi: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        selectedUser = null;
+    }
+    private async Task ToggleStatus()
+    {
+        if (selectedUser == null) return;
+
+        try
+        {
+            var url = $"admin/users/{selectedUser.Id}/toggle-status";
+
+            // Dùng PatchAsync (hoặc SendAsync nếu HttpClient cũ không hỗ trợ Patch shortcut)
+            var request = new HttpRequestMessage(HttpMethod.Patch, url);
+            var response = await _httpClient!.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Đọc kết quả trả về để update UI
+                var result = await response.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+
+                if (result != null && result.StatusCode == StatusCodeResponse.Success)
+                {
+                    selectedUser.IsActive = result.Content;
+                    // Cập nhật lại list bên ngoài để đồng bộ mà ko cần load lại API
+                    if(activeTab == "Customer")
+                    {
+                        var cus = Customers.FirstOrDefault(c => c.Id == selectedUser.Id);
+                        if(cus != null) cus.IsActive = result.Content;
+                    }
+                    else
+                    {
+                        var own = Owners.FirstOrDefault(o => o.Id == selectedUser.Id);
+                        if(own != null) own.IsActive = result.Content;
+                    }
+
+                    Snackbar.Add(result.Message ?? "Cập nhật thành công", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add(result?.Message ?? "Thao tác thất bại", Severity.Error);
+                }
+            }
+            else
+            {
+                Snackbar.Add("Lỗi kết nối server", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Lỗi: " + ex.Message, Severity.Error);
+        }
+
+    }
+}

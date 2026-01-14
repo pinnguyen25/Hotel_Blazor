@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 public class PolicyTypeVM
 {
     public int Id { get; set; }
@@ -6,4 +8,6 @@ public class PolicyTypeVM
     public bool IsActive { get; set; } = true;
     public int PolicyCount { get; set; }  
     public List<PolicyVM>? Policies { get; set; } = new List<PolicyVM>();
+    [JsonIgnore]
+    public string? PoliciesJson { get; set; }
 }

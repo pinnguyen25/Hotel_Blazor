@@ -1,25 +1,354 @@
+@page "/admin/requests/overview"
 @using HotelBooking.webapp.ViewModels
-@code {
-    [Parameter] public RequestStatsVM Stats { get; set; } = new();
-}
+@using System.Net.Http.Headers
+@using Blazored.LocalStorage
 
-<div class="row mb-4">
-    <div class="col-md-4">
-        <div class="card bg-light border-0 shadow-sm p-3 text-center">
-            <h5>Pending Requests</h5>
-            <h2 class="text-primary">@Stats.Pending</h2>
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@inject IHttpClientFactory _clientFactory
+@inject NavigationManager Nav
+@inject ILocalStorageService _localStorage
+
+<div class="container-fluid py-3">
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 p-3">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3 text-primary">
+                        <i class="fas fa-user-plus fa-lg"></i>
+                    </div>
+                    <div>
+                        <div class="small text-muted fw-bold text-uppercase">Người dùng chờ duyệt</div>
+                        <h3 class="mb-0 fw-bold">@stats.PendingUsers</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 p-3">
+                <div class="d-flex align-items-center">
+                    <div class="bg-warning bg-opacity-10 p-3 rounded-circle me-3 text-warning">
+                        <i class="fas fa-hotel fa-lg"></i>
+                    </div>
+                    <div>
+                        <div class="small text-muted fw-bold text-uppercase">Khách sạn chờ duyệt</div>
+                        <h3 class="mb-0 fw-bold">@stats.PendingHotels</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 p-3">
+                <div class="d-flex align-items-center">
+                    <div class="bg-success bg-opacity-10 p-3 rounded-circle me-3 text-success">
+                        <i class="fas fa-check-circle fa-lg"></i>
+                    </div>
+                    <div>
+                        <div class="small text-muted fw-bold text-uppercase">Khách sạn đang hoạt động</div>
+                        <h3 class="mb-0 fw-bold">@stats.ActiveHotels</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 p-3">
+                <div class="d-flex align-items-center">
+                    <div class="bg-danger bg-opacity-10 p-3 rounded-circle me-3 text-danger">
+                        <i class="fas fa-times-circle fa-lg"></i>
+                    </div>
+                    <div>
+                        <div class="small text-muted fw-bold text-uppercase">Khách sạn bị từ chối</div>
+                        <h3 class="mb-0 fw-bold">@stats.RejectedHotels</h3>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card bg-light border-0 shadow-sm p-3 text-center">
-            <h5>Approved Requests</h5>
-            <h2 class="text-success">@Stats.Approved</h2>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-bottom pt-4 px-4 pb-1">
+            <ul class="nav custom-tabs card-header-tabs gap-3 pb-1">
+                <li class="nav-item">
+                    <button class="nav-link @(activeTab == 1 ? "active" : "")" @onclick="() => activeTab = 1">
+                        <i class="fas fa-users me-2" style="color:#54a9ff"></i>
+                        <span style="color:#54a9ff">Nâng cấp quyền</span>
+                        @if (stats.PendingUsers > 0)
+                        {
+                            <span class="badge bg-danger ms-2 rounded-pill shadow-sm">@stats.PendingUsers</span>
+                        }
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link @(activeTab == 2 ? "active" : "")" @onclick="() => activeTab = 2">
+                        <i class="fas fa-building me-2" style="color:#54a9ff"></i>
+                        <span style="color:#54a9ff">Duyệt khách sạn</span>
+                        @if (stats.PendingHotels > 0)
+                        {
+                            <span class="badge bg-danger ms-2 rounded-pill shadow-sm">@stats.PendingHotels</span>
+                        }
+                    </button>
+                </li>
+            </ul>
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card bg-light border-0 shadow-sm p-3 text-center">
-            <h5>Rejected Requests</h5>
-            <h2 class="text-danger">@Stats.Rejected</h2>
+
+        <div class="card-body p-4 pl-1">
+            @if (isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="text-muted mt-2">Loading requests...</p>
+                </div>
+            }
+            else
+            {
+                @if (activeTab == 1)
+                {
+                    <div class="d-flex justify-content-between mb-4 align-items-center">
+                        <h5 class="fw-bold mb-0 " style="color: #54a9ff">Danh sách yêu cầu</h5>
+                        <div class="search-box w-25">
+                            <i class="fas fa-search"></i>
+                            <input type="text" class="form-control" placeholder="Tìm kiếm người dùng..." @bind="searchTerm"
+                                @bind:event="oninput" />
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3">Người dùng</th>
+                                    <th>Liên hệ</th>
+                                    <th>Trạng thái</th>
+                                    <th>Ngày gửi</th>
+                                    <th class="text-end pe-3">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in FilteredUserRequests)
+                                {
+                                    <tr>
+                                        <td class="ps-3">
+                                            <div class="d-flex align-items-center">
+                                                @if (!string.IsNullOrEmpty(r.AvatarUrl))
+                                                {
+                                                    <img src="@r.AvatarUrl" class="rounded-circle me-3 border" width="40" height="40"
+                                                        style="object-fit:cover" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="rounded-circle me-3 d-flex align-items-center justify-content-center bg-light text-primary fw-bold border"
+                                                        style="width:40px;height:40px;">
+                                                        @(string.IsNullOrEmpty(r.FullName) ? "?" :
+                                                                                                r.FullName.Trim()[0].ToString().ToUpper())
+                                                    </div>
+                                                }
+                                                <div>
+                                                    <div class="fw-bold text-dark">@r.FullName</div>
+                                                    <small class="text-muted">@@@r.UserName</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-column small">
+                                                <span class="text-dark mb-1"><i
+                                                        class="fas fa-phone me-2 text-secondary"></i>@r.PhoneNumber</span>
+                                                <span class="text-muted"><i
+                                                        class="fas fa-id-card me-2 text-secondary"></i>@r.TaxCode</span>
+                                            </div>
+                                        </td>
+                                        <td><span class="badge @GetBadge(r.Status) rounded-pill px-3">@GetStatusVN(r.Status)</span>
+                                        </td>
+                                        <td class="text-secondary small">@r.RequestedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td class="text-end pe-3">
+                                            <button class="btn btn-sm btn-outline-primary rounded-pill px-3"
+                                                @onclick='() => Nav.NavigateTo($"/admin/requests/details/{r.RequestId}")'>
+                                                Chi tiết
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                                @if (!FilteredUserRequests.Any())
+                                {
+                                    <tr>
+                                        <td colspan="5" class="text-center py-5 text-muted">No pending user requests.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                @if (activeTab == 2)
+                {
+                    <div class="d-flex justify-content-between mb-4 align-items-center">
+                        <h5 class="fw-bold mb-0" style="color: #54a9ff">Danh sách khách sạn</h5>
+                        <div class="search-box w-25">
+                            <i class="fas fa-search"></i>
+                            <input type="text" class="form-control" placeholder="Tìm kiếm khách sạn..." @bind="searchHotelTerm"
+                                @bind:event="oninput" />
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3">Khách sạn</th>
+                                    <th>Chủ sở hữu</th>
+                                    <th>Vị trí</th>
+                                    <th>Trạng thái</th>
+                                    <th>Ngày gửi</th>
+                                    <th class="text-end pe-3">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var h in FilteredHotelRequests)
+                                {
+                                    <tr>
+                                        <td class="ps-3">
+                                            <div class="d-flex align-items-center ">
+                                                <div class="flex-shrink-0 me-3">
+                                                    <img src="@(h.CoverImageUrl ?? "/images/placeholder.jpg")"
+                                                        class="rounded border shadow-sm" width="60" height="60"
+                                                        style="object-fit:cover" />
+                                                </div>
+
+                                                <div class="flex-grow-1">
+                                                    <span class="fw-bold d-block text-dark text-break"
+                                                        style="font-size: 0.95rem; line-height: 1.2;">
+                                                        @h.HotelName
+                                                    </span>
+                                                    <small class="text-muted mt-1 d-block">ID: @h.HotelId</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="bg-light rounded-circle border d-flex align-items-center justify-content-center me-2"
+                                                    style="width:30px;height:30px">
+                                                    <i class="fas fa-user text-secondary small"></i>
+                                                </div>
+                                                <span class="text-dark">@h.OwnerName</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-column" style="max-width: 250px;">
+                                                <span class="fw-bold text-dark" style="font-size: 0.9rem;">@h.CityName</span>
+                                                <small class="text-muted text-truncate" title="@h.Address">
+                                                    <i class="fas fa-map-marker-alt me-1"></i>@h.Address
+                                                </small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge @GetBadge("Pending") rounded-pill px-3">
+                                                @GetStatusVN("PendingVerification")
+                                            </span>
+                                        </td>
+                                        <td class="text-secondary small">@h.SubmittedAt.ToString("dd/MM/yyyy")</td>
+                                        <td class="text-end pe-3">
+                                            <button class="btn btn-sm btn-primary px-4 rounded-pill shadow-sm"
+                                                @onclick='() => Nav.NavigateTo($"/admin/hotel-review/{h.HotelId}")'>
+                                                Chi tiết
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                                @if (!FilteredHotelRequests.Any())
+                                {
+                                    <tr>
+                                        <td colspan="6" class="text-center py-5 text-muted">Không có khách sạn nào chờ duyệt.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
         </div>
     </div>
 </div>
+
+@code {
+    private int activeTab = 1;
+    private string searchTerm = "";
+    private string searchHotelTerm = "";
+    private bool isLoading = true;
+    private HttpClient _httpClient = default!;
+
+    // Data
+    private List<UpgradeRequestVM> userRequests = new();
+    private List<HotelApprovalSummaryVM> hotelRequests = new();
+    private AdminDashboardStatsVM stats = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _clientFactory.CreateClient("HotelBookingAPI");
+        await SetAuthHeader();
+        await LoadData();
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", token);
+        }
+        else
+        {
+            Nav.NavigateTo("/login"); // Đá về login nếu không có token
+        }
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            // API calls (Thêm "api/" nếu cần thiết)
+            stats = await _httpClient.GetFromJsonAsync<AdminDashboardStatsVM>("Request/hotel-stats") ?? new();
+
+            userRequests = await _httpClient.GetFromJsonAsync<List<UpgradeRequestVM>>("Request/get-all-requests?status=Pending") ??
+            new();
+            stats.PendingUsers = userRequests.Count;
+
+            hotelRequests = await _httpClient.GetFromJsonAsync<List<HotelApprovalSummaryVM>>("Request/pending-hotels") ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private IEnumerable<UpgradeRequestVM> FilteredUserRequests => userRequests
+    .Where(r => string.IsNullOrEmpty(searchTerm) ||
+    r.UserName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+    r.FullName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+
+    private IEnumerable<HotelApprovalSummaryVM> FilteredHotelRequests => hotelRequests
+    .Where(h => string.IsNullOrEmpty(searchHotelTerm) ||
+    h.HotelName.Contains(searchHotelTerm, StringComparison.OrdinalIgnoreCase));
+
+    private string GetBadge(string status) => status switch
+    {
+        "Pending" => "bg-warning text-dark",
+        "Approved" => "bg-success",
+        "Rejected" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private string GetStatusVN(string status) => status switch
+    {
+        "Pending" => "Chờ duyệt",
+        "PendingVerification" => "Chờ duyệt", // Backend trả về cái này cho Hotel
+        "Approved" => "Đã duyệt",
+        "Active" => "Hoạt động",
+        "Rejected" => "Từ chối",
+        _ => status
+    };
+}

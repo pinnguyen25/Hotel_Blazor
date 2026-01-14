@@ -1,0 +1,473 @@
+@page "/owner/hotels/{HotelId:int}/staffs"
+@using HotelBooking.webapp.ViewModels.Hotel
+@using Blazored.LocalStorage
+@layout OwnerLayout
+@attribute [Authorize(Roles = "Owner")]
+@inject IHttpClientFactory _httpClientFactory
+@inject ISnackbar Snackbar
+@inject ILocalStorageService _localStorage
+@inject NavigationManager _nav
+<div class="container-fluid py-4 staff-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center">
+            <div>
+                <h3 class="fw-bold mb-0 text-primary">Quản lý nhân sự</h3>
+            </div>
+        </div>
+        <button class="btn btn-primary shadow-sm px-4 fw-bold" @onclick="() => OpenModal()">
+            <i class="bi bi-person-plus-fill me-2"></i> Thêm nhân viên
+        </button>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-0">
+            <div class="input-group" style="max-width: 400px;">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" class="form-control bg-light border-start-0" placeholder="Tìm kiếm nhân viên..." />
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            @if (IsLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary"></div>
+                </div>
+            }
+            else if (StaffList.Count == 0)
+            {
+                <div class="text-center py-5">
+                    <div class="bg-light rounded-circle mx-auto d-flex align-items-center justify-content-center mb-3"
+                        style="width: 80px; height: 80px;">
+                        <i class="bi bi-people text-secondary fs-1"></i>
+                    </div>
+                    <h5>Chưa có nhân viên nào</h5>
+                    <button class="btn btn-outline-primary btn-sm mt-2" @onclick="() => OpenModal()">Thêm mới
+                        ngay</button>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light text-uppercase text-muted small">
+                            <tr>
+                                <th class="ps-4 py-3">Nhân viên</th>
+                                <th>Liên hệ</th>
+                                <th>Chức vụ</th>
+                                <th>Lương cơ bản</th>
+                                <th>Trạng thái</th>
+                                <th class="text-end pe-4">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var staff in StaffList)
+                            {
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle me-3 @GetRandomColorClass(staff.Id)">
+                                                @GetInitials(staff.FullName)
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold text-dark">@staff.FullName</div>
+                                                <small class="text-muted" style="font-size: 0.75rem;">ID: #@staff.Id</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column">
+                                            <span><i class="bi bi-envelope me-1 text-muted"></i> @staff.Email</span>
+                                            <small class="text-muted mt-1"><i class="bi bi-telephone me-1"></i>
+                                                @staff.PhoneNumber</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge rounded-pill px-3 py-2 fw-normal @GetPositionBadge(staff.Position)">
+                                            @GetPositionName(staff.Position)
+                                        </span>
+                                    </td>
+                                    <td class="fw-bold text-secondary">@(staff.Salary?.ToString("N0") ?? "0") ₫</td>
+                                    <td>
+                                        @if (staff.IsActive)
+                                        {
+                                            <span
+                                                class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">
+                                                <i class="bi bi-check-circle-fill me-1"></i> Đang làm việc
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span
+                                                class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill">
+                                                <i class="bi bi-slash-circle-fill me-1"></i> Đã nghỉ / Khóa
+                                            </span>
+                                        }
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <div class="btn-group">
+                                            <button class="btn btn-light btn-sm text-dark border me-1"
+                                                @onclick="() => OpenEditModal(staff)" title="Chỉnh sửa">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-light btn-sm text-danger border"
+                                                @onclick="() => RequestDelete(staff.Id)" title="Xóa/Khóa">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (ShowCreateModal)
+{
+    <div class="modal-backdrop fade show" style="background-color: rgba(0,0,0,0.5);"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header @(IsEditMode ? "bg-warning" : "bg-primary") text-white">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi @(IsEditMode ? "bi-pencil-square" : "bi-person-plus-fill") me-2"></i>
+                        @(IsEditMode ? "Cập Nhật Hồ Sơ" : "Thêm Nhân Viên Mới")
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white"
+                        @onclick="() => ShowCreateModal = false"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <EditForm Model="CurrentStaff" OnValidSubmit="HandleSubmit">
+                        <DataAnnotationsValidator />
+
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-body">
+                                <h6 class="text-muted text-uppercase fw-bold mb-3 small">Thông tin cá nhân</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold small">Họ và tên <span
+                                                class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
+                                            <InputText class="form-control" @bind-Value="CurrentStaff.FullName"
+                                                disabled="@IsEditMode" placeholder="VD: Nguyễn Văn A" />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold small">Số điện thoại</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white"><i class="bi bi-telephone"></i></span>
+                                            <InputText class="form-control" @bind-Value="CurrentStaff.PhoneNumber"
+                                                disabled="@IsEditMode" />
+                                        </div>
+                                    </div>
+                                </div>
+                                @if (IsEditMode)
+                                {
+                                    <div class="text-info small mt-2"><i class="bi bi-info-circle"></i> Tên
+                                        và SĐT không thể sửa tại đây.</div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-body">
+                                <h6 class="text-muted text-uppercase fw-bold mb-3 small">Tài khoản & Công việc</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-bold small">Email đăng nhập <span
+                                                class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white"><i class="bi bi-envelope"></i></span>
+                                            <InputText class="form-control" @bind-Value="CurrentStaff.Email" type="email"
+                                                disabled="@IsEditMode" />
+                                        </div>
+                                        @if (!IsEditMode)
+                                        {
+                                            <div class="form-text text-muted small mt-1">Mật khẩu mặc định:
+                                                <strong>Staff@123</strong>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold small">Chức vụ</label>
+                                        <InputSelect class="form-select" @bind-Value="CurrentStaff.Position">
+                                            @foreach (var pos in PositionDefinitions)
+                                            {
+                                                <option value="@pos.Key">@pos.Value</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold small">Lương cơ bản</label>
+
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white text-success fw-bold">₫</span>
+
+                                            <input type="number" class="form-control fw-bold text-end"
+                                                @bind="CurrentStaff.Salary" @bind:event="oninput" placeholder="0"
+                                                step="1000" />
+
+                                            <span class="input-group-text bg-light text-muted">VNĐ</span>
+                                        </div>
+
+                                        @if (CurrentStaff.Salary.HasValue && CurrentStaff.Salary > 0)
+                                        {
+                                            <div class="d-flex justify-content-end mt-1">
+                                                <small
+                                                    class="text-primary fw-bold bg-primary-subtle px-2 rounded animate__animated animate__fadeIn">
+                                                    <i class="bi bi-eye me-1"></i>
+                                                    @CurrentStaff.Salary.Value.ToString("N0") VNĐ
+                                                </small>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="form-text text-end small fst-italic">Nhập số nguyên (VD: 5000000)</div>
+                                        }
+                                    </div>
+
+                                    @if (IsEditMode)
+                                    {
+                                        <div class="col-12 border-top pt-3">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch"
+                                                    checked="@CurrentStaffIsActive"
+                                                    @onchange="@(e => CurrentStaffIsActive = (bool)e.Value!)">
+                                                <label class="form-check-label fw-bold">Trạng thái hoạt động (Active)</label>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end pt-2">
+                            <button type="button" class="btn btn-light border me-2 px-4"
+                                @onclick="() => ShowCreateModal = false">Hủy</button>
+                            <button type="submit"
+                                class="btn @(IsEditMode ? "btn-warning" : "btn-primary") px-4 fw-bold shadow-sm">
+                                <i class="bi @(IsEditMode ? "bi-save" : "bi-check-lg") me-1"></i>
+                                @(IsEditMode ? "Lưu thay đổi" : "Tạo nhân viên")
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowDeleteConfirm)
+{
+    <div class="modal-backdrop fade show" style="background-color: rgba(0,0,0,0.5); z-index: 1060;"></div>
+    <div class="modal fade show d-block" tabindex="-1" style="z-index: 1070;">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center p-4">
+                    <div class="mb-3 text-danger"><i class="bi bi-exclamation-triangle display-1"></i></div>
+                    <h5 class="fw-bold">Xác nhận xóa?</h5>
+                    <p class="text-muted small">Tài khoản nhân viên sẽ bị khóa và không thể đăng nhập.</p>
+                    <div class="d-flex justify-content-center gap-2 mt-4">
+                        <button class="btn btn-light border px-3" @onclick="() => ShowDeleteConfirm = false">Hủy</button>
+                        <button class="btn btn-danger px-3 fw-bold" @onclick="ConfirmDelete">Xóa luôn</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .staff-container {
+        background-color: #f8f9fc;
+        min-height: 100vh;
+    }
+
+    /* Avatar Styles */
+    .avatar-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        color: white;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-transform: uppercase;
+        font-size: 1.1rem;
+    }
+
+    .bg-gradient-1 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .bg-gradient-2 {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
+    }
+
+    .bg-gradient-3 {
+        background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+        color: #054d44;
+    }
+
+    .bg-gradient-4 {
+        background: linear-gradient(135deg, #fccb90 0%, #d57eeb 100%);
+    }
+
+    /* Custom Badges */
+    .badge.manager {
+        background-color: #e74a3b;
+        color: white;
+    }
+
+    .badge.receptionist {
+        background-color: #4e73df;
+        color: white;
+    }
+
+    .badge.housekeeper {
+        background-color: #f6c23e;
+        color: #212529;
+    }
+
+    .badge.security {
+        background-color: #858796;
+        color: white;
+    }
+
+    .badge.accountant {
+        background-color: #36b9cc;
+        color: white;
+    }
+</style>
+
+@code {
+    [Parameter] public int HotelId { get; set; }
+    private bool IsLoading = true;
+    private List<StaffVM> StaffList = new();
+
+    // Quản lý Modal Chính
+    private bool ShowCreateModal = false;
+    private bool IsEditMode = false;
+    private CreateStaffRequestVM NewStaff = new();
+    private CreateStaffRequestVM CurrentStaff = new();
+    private int EditingStaffId = 0;
+    private bool CurrentStaffIsActive = true;
+    // Quản lý Modal Xóa
+    private bool ShowDeleteConfirm = false;
+    private int StaffIdToDelete = 0;
+    private HttpClient? _httpClient;
+
+    // Định nghĩa chức vụ
+    private static readonly Dictionary<string, string> PositionDefinitions = new()
+{
+{ "Manager", "Quản lý" }, { "Receptionist", "Lễ tân" },
+{ "Housekeeper", "Buồng phòng" }, { "Security", "Bảo vệ" }, { "Accountant", "Kế toán" }
+};
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token)) _httpClient.DefaultRequestHeaders.Authorization = new("Bearer", token);
+
+        await LoadStaffs();
+    }
+
+    private async Task LoadStaffs()
+    {
+        IsLoading = true;
+        try
+        {
+            var res = await _httpClient!.GetFromJsonAsync<ApiResponse<List<StaffVM>>>($"hotel/owner/{HotelId}/staffs");
+            if (res.StatusCode == StatusCodeResponse.Success) StaffList = res.Content;
+        }
+        catch (Exception ex) { Snackbar.Add($"Lỗi tải: {ex.Message}", Severity.Error); }
+        finally { IsLoading = false; }
+    }
+
+    private void OpenModal()
+    {
+        IsEditMode = false;
+        // Map HotelId vào để không bị lỗi reference 0
+        CurrentStaff = new CreateStaffRequestVM { HotelId = this.HotelId, Position = "Receptionist" };
+        ShowCreateModal = true;
+    }
+
+    private void OpenEditModal(StaffVM staff)
+    {
+        IsEditMode = true;
+        EditingStaffId = staff.Id;
+        CurrentStaffIsActive = staff.IsActive; // Lưu trạng thái hiện tại
+                                               // Map dữ liệu cũ vào form
+        CurrentStaff = new CreateStaffRequestVM
+        {
+            HotelId = this.HotelId,
+            FullName = staff.FullName,
+            Email = staff.Email,
+            PhoneNumber = staff.PhoneNumber,
+            Position = staff.Position,
+            Salary = staff.Salary
+        };
+        ShowCreateModal = true;
+    }
+    // --- LOGIC SUBMIT (Tạo & Sửa) ---
+    private async Task HandleSubmit()
+    {
+        if (IsEditMode)
+        {
+            // Gọi API Update
+            var updatePayload = new UpdateStaffRequestVM
+            {
+                Position = CurrentStaff.Position,
+                Salary = CurrentStaff.Salary,
+                IsActive = CurrentStaffIsActive
+            };
+            var res = await _httpClient!.PutAsJsonAsync($"hotel/owner/staff/{EditingStaffId}/update", updatePayload);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Cập nhật thành công!", Severity.Success); ShowCreateModal = false; await
+                LoadStaffs();
+            }
+            else Snackbar.Add("Lỗi cập nhật", Severity.Error);
+        }
+        else
+        {
+            // Gọi API Create
+            var res = await _httpClient!.PostAsJsonAsync("hotel/owner/staff/create", CurrentStaff);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Tạo thành công!", Severity.Success); ShowCreateModal = false; await LoadStaffs();
+            }
+            else { var err = await res.Content.ReadAsStringAsync(); Snackbar.Add($"Lỗi: {err}", Severity.Error); }
+        }
+    }
+
+
+    private void RequestDelete(int id) { StaffIdToDelete = id; ShowDeleteConfirm = true; }
+    private async Task ConfirmDelete()
+    {
+        ShowDeleteConfirm = false;
+        var res = await _httpClient!.DeleteAsync($"hotel/owner/staff/{StaffIdToDelete}/delete");
+        if (res.IsSuccessStatusCode) { Snackbar.Add("Đã xóa nhân viên!", Severity.Success); await LoadStaffs(); }
+        else Snackbar.Add("Lỗi khi xóa", Severity.Error);
+    }
+    // --- HELPERS CHO UI ---
+
+    private string GetPositionName(string pos) => PositionDefinitions.TryGetValue(pos, out var name) ? name : pos;
+    private string GetPositionBadge(string pos) => pos.ToLower();
+    private string GetInitials(string n) => string.IsNullOrEmpty(n) ? "NV" : (n.Contains(" ") ? $"{n[0]}{n.Split(' ').Last()[0]}" : n[0].ToString()).ToUpper();
+    private string GetRandomColorClass(int id) => (id % 4) switch
+    {
+        0 => "bg-gradient-1",
+        1 => "bg-gradient-2",
+        2 => "bg-gradient-3",
+        _ => "bg-gradient-4"
+    };
+}

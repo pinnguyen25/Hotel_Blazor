@@ -1,0 +1,831 @@
+@page "/booking/create"
+@using Blazored.LocalStorage
+@using Microsoft.AspNetCore.WebUtilities
+@using System.ComponentModel.DataAnnotations
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Text.Json
+@attribute [Authorize]
+@inject BookingState _bookingState
+@inject NavigationManager _nav
+@inject IHttpClientFactory _httpClientFactory
+@inject ISnackbar Snackbar
+@inject ILocalStorageService _localStorage
+
+<div class="container booking-container">
+    <div class="row g-0">
+        <div class="col-lg-6 border-lg-end pe-lg-5 custom-pad-end">
+
+            <div class="d-flex align-items-center mb-4 mt-4">
+                <a @onclick="GoBack" class="text-decoration-none text-dark me-3">
+                    <i class="bi bi-arrow-left fs-5"></i>
+                </a>
+            </div>
+
+            <EditForm Model="BookingModel" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="mb-5 pb-4 border-bottom">
+
+                    <h4 class="mb-4 mt-4 fw-bold text-dark">1. Phòng đã chọn</h4>
+                    <div class="d-flex flex-column gap-3">
+                        @foreach (var room in BookingModel.SelectedRooms)
+                        {
+                            <div class="card border-0 shadow-sm bg-light rounded-3">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h6 class="fw-bold text-dark mb-1">@room.RoomTypeName</h6>
+                                            @if (room.IncludedServiceNames.Any())
+                                            {
+                                                <div class="d-flex flex-wrap gap-2 mt-2">
+                                                    @foreach (var inc in room.IncludedServiceNames)
+                                                    {
+                                                        <span
+                                                            class="badge bg-success-subtle text-success border border-success-subtle rounded-pill fw-normal"
+                                                            style="font-size: 0.75rem;">
+                                                            <i class="bi bi-check-circle-fill me-1"></i> @inc
+                                                        </span>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <small class="text-muted fst-italic" style="font-size: 0.8rem">Không bao gồm
+                                                    dịch vụ đi kèm.</small>
+                                            }
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="fw-bold text-primary">@((room.PricePerNight *
+                                                                                            room.Quantity).ToString("N0")) ₫</div>
+                                            <small class="text-muted">/đêm</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="mb-5 pb-4 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="mb-0 fw-bold text-dark">2. Dịch vụ mua thêm</h4>
+                        <span class="badge bg-warning text-dark">Tùy chọn</span>
+                    </div>
+
+                    @if (AllAddOnServices.Any())
+                    {
+                        <div class="d-flex flex-column gap-3">
+                            @foreach (var sv in AllAddOnServices)
+                            {
+                                // Tính toán xem dịch vụ này đã free trong bao nhiêu phòng
+                                int includedCount = GetIncludedCount(sv.Name);
+                                int totalRooms = BookingModel.SelectedRooms.Sum(r => r.Quantity);
+                                bool isFullyCovered = includedCount >= totalRooms;
+                                <div
+                                    class="d-flex align-items-center justify-content-between p-3 border rounded-3 @(sv.Quantity > 0 ? "border-primary bg-primary bg-opacity-10" : "bg-white")">
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-3 p-2 rounded-circle bg-light text-primary">
+                                            <i class="bi bi-stars fs-5"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark">@sv.Name
+                                                @if (includedCount > 0)
+                                                {
+
+                                                    if (isFullyCovered)
+                                                    {
+                                                        <span class="badge bg-success ms-2" style="font-size: 0.7rem;">
+                                                            <i class="bi bi-check-all"></i> Đã bao gồm trong tất cả phòng
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-warning text-dark ms-2" style="font-size: 0.7rem;">
+                                                            <i class="bi bi-info-circle"></i> Đã có trong @includedCount/@totalRooms
+                                                            phòng
+                                                        </span>
+                                                    }
+                                                }
+                                            </div>
+                                            <small class="text-muted d-block" style="font-size: 0.8rem">@sv.Description</small>
+                                            @if (isFullyCovered)
+                                            {
+                                                <small class="text-success fst-italic" style="font-size: 0.75rem;">
+                                                    Bạn không cần mua thêm trừ khi muốn dùng thêm suất phát sinh.
+                                                </small>
+                                            }
+                                            <div class="text-warning-dark fw-bold small mt-1">
+                                                @sv.Price.ToString("N0") ₫ /
+                                                @sv.Unit</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex align-items-center bg-white rounded-pill border px-2 py-1 shadow-sm">
+                                        <button type="button" class="btn btn-sm btn-link text-dark p-0"
+                                            @onclick="() => UpdateServiceQuantity(sv, -1)" disabled="@(sv.Quantity <= 0)">
+                                            <i class="bi bi-dash"></i>
+                                        </button>
+                                        <span class="mx-3 fw-bold small"
+                                            style="min-width: 20px; text-align: center;">@sv.Quantity</span>
+                                        <button type="button" class="btn btn-sm btn-link text-primary p-0"
+                                            @onclick="() => UpdateServiceQuantity(sv, 1)">
+                                            <i class="bi bi-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted small">Khách sạn này chưa có dịch vụ bổ sung.</p>
+                    }
+                </div>
+
+                <div class="mb-5 pb-4 border-bottom">
+                    <h4 class=" mb-3 fw-bold text-dark">3. Thông tin cá nhân</h4>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label text-muted mb-1 fw-bold small">Họ và tên *</label>
+                            <InputText class="form-control rounded-pill py-2" placeholder="Ví dụ: Nguyen Van A"
+                                @bind-Value="BookingModel.ContactName" />
+                            <ValidationMessage For="@(() => BookingModel.ContactName)" class="text-danger small" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted mb-1 fw-bold small">Email *</label>
+                            <InputText class="form-control rounded-pill py-2" placeholder="email@domain.com"
+                                @bind-Value="BookingModel.ContactEmail" />
+                            <ValidationMessage For="@(() => BookingModel.ContactEmail)" class="text-danger small" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted mb-1 fw-bold small">Số điện thoại *</label>
+                            <InputText class="form-control rounded-pill py-2" placeholder="+84 909..."
+                                @bind-Value="BookingModel.ContactPhone" />
+                            <ValidationMessage For="@(() => BookingModel.ContactPhone)" class="text-danger small" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-muted mb-1 fw-bold small">Ghi chú</label>
+                            <InputTextArea class="form-control rounded-3 py-2" rows="2"
+                                placeholder="Yêu cầu đặc biệt..." @bind-Value="BookingModel.Note" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <h4 class="mb-3 fw-bold text-dark">4. Thanh toán</h4>
+                    <div class="d-flex flex-column gap-3">
+                        <label
+                            class="card p-3 rounded-3 cursor-pointer shadow-sm @(BookingModel.PaymentMethod == "VNPAY" ? "border-primary bg-primary bg-opacity-10" : "border-light")">
+                            <div class="d-flex align-items-center">
+                                <input class="form-check-input me-3" type="radio" name="paymentMethod"
+                                    checked="@(BookingModel.PaymentMethod == "VNPAY")"
+                                    @onchange="@(() => BookingModel.PaymentMethod = "VNPAY")"
+                                    style="transform: scale(1.2);">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center">
+                                        <span class="fw-bold text-dark">Thanh toán VNPAY / QR</span>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">An toàn, nhanh chóng qua ngân hàng/ví điện
+                                        tử.</small>
+                                </div>
+                                <img src="https://vnpay.vn/s1/statics.vnpay.vn/2023/9/06ncktiwd6dc1694418196384.png"
+                                    height="25" alt="VNPAY" />
+                            </div>
+                        </label>
+
+                        <label
+                            class="card p-3 rounded-3 cursor-pointer shadow-sm @(BookingModel.PaymentMethod == "Direct" ? "border-primary bg-primary bg-opacity-10" : "border-light")">
+                            <div class="d-flex align-items-center">
+                                <input class="form-check-input me-3" type="radio" name="paymentMethod"
+                                    checked="@(BookingModel.PaymentMethod == "Direct")"
+                                    @onchange="@(() => BookingModel.PaymentMethod = "Direct")"
+                                    style="transform: scale(1.2);">
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold text-dark">Thanh toán tại khách sạn</div>
+                                    <small class="text-muted mt-1">Thanh toán tiền mặt hoặc thẻ khi nhận phòng.</small>
+                                </div>
+                                <i class="bi bi-cash-coin fs-3 text-success"></i>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+
+        <div class="col-lg-6 ps-lg-15 custom-pad-start">
+            <div class="sticky-top desktop-sticky" style="top: 2rem; z-index: 10;">
+                <div class="card shadow-sm border-0 mb-3 rounded-4 overflow-hidden">
+                    <div style="height: 200px; overflow: hidden; background-color: #f0f0f0;">
+                        <img src="@(string.IsNullOrEmpty(HotelImage) ? "/images/default-hotel.jpg" : HotelImage)"
+                            class="w-100 h-100" style="object-fit: cover;">
+                    </div>
+
+                    <div class="card-body py-3">
+                        <h5 class="fw-bold mb-1 text-primary">@HotelName</h5>
+                        <p class="text-muted small"><i class="bi bi-geo-alt-fill text-danger"></i> @HotelAddress</p>
+
+                        <div class="row mb-2">
+                            <div class="col-3 pr-0">
+                                <small class="text-dark fw-bold">Nhận phòng</small>
+                            </div>
+                            <div class="col-7 p-0">
+                                <span class="text-muted">
+                                    @BookingModel.CheckIn.ToString("dddd, dd 'tháng' MM, yyyy", new
+                                    System.Globalization.CultureInfo("vi-VN"))
+                                </span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-3 pr-0">
+                                <small class="text-dark fw-bold">Trả phòng</small>
+                            </div>
+                            <div class="col-7 p-0">
+                                <span class="text-muted">
+                                    @BookingModel.CheckOut.ToString("dddd, dd 'tháng' MM, yyyy",new
+                                                                        System.Globalization.CultureInfo("vi-VN"))
+                                </span>
+                            </div>
+                        </div>
+
+                        <hr class="my-3 text-muted" />
+
+                        <div class="d-flex justify-content-between mb-2 small">
+                            <span>Giá tiền (@BookingModel.SelectedRooms.Sum(x => x.Quantity) phòng)</span>
+                            <span>
+                                @((CalculateRoomTotal() / (TotalNights > 0 ? TotalNights : 1)).ToString("N0")) ₫
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2 small">
+                            <span>Giá (@TotalNights đêm)</span>
+                            <span>@CalculateRoomTotal().ToString("N0") ₫</span>
+                        </div>
+
+                        @if (CalculateServiceTotal() > 0)
+                        {
+                            <div class="d-flex justify-content-between mb-2 small">
+                                <span>Phí dịch vụ thêm</span>
+                                <span class="fw-bold text-success">+@CalculateServiceTotal().ToString("N0") ₫</span>
+                            </div>
+                            <div class="ps-3 mb-2 ">
+                                @foreach (var s in AllAddOnServices.Where(x => x.Quantity > 0))
+                                {
+                                    <div class="d-flex justify-content-between extra-small text-muted">
+                                        <span>@s.Name (x@(s.Quantity))</span>
+                                        <span>@((s.Price * s.Quantity).ToString("N0"))</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <hr class="my-3 text-muted" />
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label small fw-bold text-muted mb-0">Mã khuyến mãi</label>
+                                <button type="button"
+                                    class="btn btn-link text-primary p-0 small fw-bold text-decoration-none"
+                                    @onclick="ToggleVoucherList">
+                                    <i class="bi bi-ticket-perforated-fill"></i> Săn mã giảm giá
+                                </button>
+                            </div>
+
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="Nhập mã (VD: TET2025)"
+                                    @bind="inputVoucherCode" @bind:event="oninput" />
+                                <button class="btn btn-outline-primary" type="button" @onclick="ApplyVoucher"
+                                    disabled="@isCalculating">
+                                    Áp dụng
+                                </button>
+                            </div>
+                            @if (!string.IsNullOrEmpty(priceResult.Message))
+                            {
+                                <div class="mt-2 small @(priceResult.IsSuccess ? "text-success" : "text-danger")">
+                                    <i
+                                        class="bi @(priceResult.IsSuccess ? "bi-check-circle-fill" : "bi-exclamation-circle-fill")"></i>
+                                    @priceResult.Message
+                                </div>
+                            }
+
+                            @if (showVoucherList)
+                            {
+                                <div class="mt-3 p-2 bg-light rounded-3 border">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <small class="text-muted fw-bold">Mã đang có hiệu lực:</small>
+                                        <button class="btn-close small" @onclick="() => showVoucherList = false"></button>
+                                    </div>
+
+                                    @if (AvailableVouchers.Any())
+                                    {
+                                        <div class="d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto;">
+                                            @foreach (var v in AvailableVouchers)
+                                            {
+                                                <div class="card border-0 shadow-sm cursor-pointer voucher-card @(v.Code == BookingModel.VoucherCode ? "selected-voucher" : "")"
+                                                    @onclick="() => SelectVoucherFromList(v.Code)">
+                                                    <div class="card-body p-2 d-flex align-items-center">
+                                                        <div
+                                                            class="voucher-icon bg-warning bg-opacity-25 text-warning-dark rounded p-2 me-3">
+                                                            <i class="bi bi-gift-fill fs-4"></i>
+                                                        </div>
+                                                        <div class="flex-grow-1">
+                                                            <div class="d-flex justify-content-between">
+                                                                <span class="fw-bold text-dark">@v.Code</span>
+                                                                @if (v.DiscountType == 1)
+                                                                {
+                                                                    <span class="badge bg-danger">Giảm
+                                                                        @v.DiscountValue.ToString("0")%</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="badge bg-danger">Giảm
+                                                                        @v.DiscountValue.ToString("N0")đ</span>
+                                                                }
+                                                            </div>
+                                                            <small class="text-muted d-block text-truncate"
+                                                                style="max-width: 200px;">@v.Name</small>
+                                                            @if (v.MinBookingValue > 0)
+                                                            {
+                                                                <small class="text-secondary extra-small">Đơn tối thiểu:
+                                                                    @v.MinBookingValue?.ToString("N0")đ</small>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center py-3">
+                                            <small class="text-muted">Hiện chưa có mã giảm giá nào.</small>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <hr class="text-muted opacity-25" />
+
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Tổng tiền gốc</span>
+                            <span>@((priceResult.OriginalTotal > 0 ? priceResult.OriginalTotal : (CalculateRoomTotal() +
+                                                                CalculateServiceTotal())).ToString("N0")) ₫</span>
+                        </div>
+
+                        @if (priceResult.DiscountAmount > 0)
+                        {
+                            <div class="d-flex justify-content-between mb-2 text-success">
+                                <span>
+                                    <i class="bi bi-tag-fill me-1"></i>
+                                    Giảm giá @(!string.IsNullOrEmpty(priceResult.PromotionName) ?
+                                                                    $"({priceResult.PromotionName})" : "")
+                                </span>
+                                <span>-@priceResult.DiscountAmount.ToString("N0") ₫</span>
+                            </div>
+                        }
+
+                        <div class="d-flex justify-content-between align-items-center pt-1">
+                            <span class="fw-bold fs-5">THÀNH TIỀN</span>
+                            <span class="fw-bold fs-4" style="color: aqua;">
+                                @((priceResult.FinalTotal > 0 ? priceResult.FinalTotal : (CalculateRoomTotal() +
+                                                                CalculateServiceTotal())).ToString("N0")) ₫</span>
+                        </div>
+                        <div class="text-end extra-small text-muted mb-3">Đã bao gồm thuế & phí dịch vụ</div>
+
+                        <div class="text-center mt-3">
+                            <small class="text-muted" style="font-size: 0.8rem;">
+                                <i class="bi bi-shield-lock-fill"></i> Thông tin được bảo mật 100%
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <button class="btn btn-booking w-100 py-3 rounded-pill fw-bold shadow desktop-submit-btn"
+                    style="font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px;"
+                        @onclick="SubmitForm" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            <span>Đang xử lý...</span>
+                        }
+                        else
+                        {
+                            <span>ĐẶT NGAY</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .text-warning-dark {
+        color: #d35400;
+    }
+
+    .extra-small {
+        font-size: 0.8rem;
+    }
+</style>
+
+@code {
+    [SupplyParameterFromQuery] public int HotelId { get; set; }
+    [SupplyParameterFromQuery] public string? CheckIn { get; set; }
+    [SupplyParameterFromQuery] public string? CheckOut { get; set; }
+    // Có thể nhận thêm Adults/Children từ URL để lưu vào Note nếu muốn
+    private HttpClient? _httpClient;
+    // VM
+    private HotelDetailVM? hotelDetail { get; set; }
+    private BookingCreateVM BookingModel { get; set; } = new();
+    private List<ServiceAddOnVM> AllAddOnServices { get; set; } = new();
+
+    // UI Data
+    private string HotelName { get; set; }
+    private string HotelAddress { get; set; } = "";
+    private string HotelImage { get; set; } = "";
+    private bool isSubmitting = false;
+    private bool isCalculating = false;
+
+    // Voucher Logic
+    private string inputVoucherCode = ""; // Biến tạm để bind input
+    private PriceResultVM priceResult = new();
+    private bool showVoucherList = false;
+    private List<PromotionVM> AvailableVouchers { get; set; } = new(); // Dùng lại PromotionVM hoặc DTO
+
+    private int TotalNights => Math.Max(1, (BookingModel.CheckOut.DayNumber - BookingModel.CheckIn.DayNumber));
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            _httpClient!.DefaultRequestHeaders.Authorization = new("Bearer", token);
+    }
+
+    private async Task LoadAvailableVouchers()
+    {
+        try
+        {
+            var res = await _httpClient!.GetFromJsonAsync<ApiResponse<List<PromotionVM>>>("hotel/booking/available-promotions");
+            if (res?.Content != null)
+            {
+                AvailableVouchers = res.Content;
+            }
+        }
+        catch { /* Ignore error */ }
+    }
+
+    private async Task ToggleVoucherList()
+    {
+        showVoucherList = !showVoucherList;
+        if (showVoucherList && !AvailableVouchers.Any())
+        {
+            await LoadAvailableVouchers();
+        }
+    }
+
+    private async Task SelectVoucherFromList(string code)
+    {
+        inputVoucherCode = code; // Điền vào ô input
+        showVoucherList = false; // Đóng list
+        await ApplyVoucher(); // Gọi hàm áp dụng luôn
+    }
+
+    private async Task LoadHotelInfo()
+    {
+
+        if (!_bookingState.HasItems)
+        {
+            Snackbar.Add("Giỏ hàng trống!", Severity.Warning);
+            _nav.NavigateTo("/");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(_bookingState.HotelName) || string.IsNullOrEmpty(_bookingState.HotelImage))
+        {
+
+            var res = await _httpClient.GetFromJsonAsync<ApiResponse<HotelDetailVM>>($"hotel/{_bookingState.HotelId}");
+            if (res?.Content != null)
+            {
+                HotelName = res.Content.HotelName;
+                HotelImage = res.Content.CoverImageUrl ?? "";
+                HotelAddress = res.Content.Address ?? "";
+
+                // Cập nhật lại state cho lần sau
+                await _bookingState.UpdateSearchCriteriaAsync(
+                _bookingState.HotelId,
+                res.Content.HotelName,
+                res.Content.CoverImageUrl ?? "",
+                _bookingState.CheckIn,
+                _bookingState.CheckOut,
+                _bookingState.Adults,
+                _bookingState.Children
+                );
+            }
+        }
+        else
+        {
+            HotelName = _bookingState.HotelName;
+            HotelImage = _bookingState.HotelImage;
+        }
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+        await SetAuthHeader();
+        await _bookingState.InitAsync();
+
+        int targetHotelId = HotelId > 0 ? HotelId : _bookingState.HotelId;
+        if (targetHotelId <= 0 || !_bookingState.HasItems)
+        {
+            Snackbar.Add("Không tìm thấy thông tin đặt phòng.", Severity.Error);
+            _nav.NavigateTo("/");
+            return;
+        }
+        HotelId = targetHotelId;
+        await LoadAddOnServices();
+        await LoadHotelDataAndCart();
+
+        MapStateToModel();
+        await CalculatePriceAsync();
+    }
+
+    private void MapStateToModel()
+    {
+        // Ưu tiên lấy từ State (vì RoomList đã push vào đây)
+        if (_bookingState.HasItems && _bookingState.HotelId == HotelId)
+        {
+            BookingModel.CheckIn = DateOnly.FromDateTime(_bookingState.CheckIn);
+            BookingModel.CheckOut = DateOnly.FromDateTime(_bookingState.CheckOut);
+
+            // Clear cũ và map lại
+            BookingModel.SelectedRooms.Clear();
+            foreach (var item in _bookingState.SelectedRooms)
+            {
+                BookingModel.SelectedRooms.Add(new BookingRoomDetailRequestVM
+                {
+                    RoomTypeId = item.RoomTypeId,
+                    RoomTypeName = item.RoomName,
+                    Quantity = item.Quantity,
+                    PricePerNight = item.PricePerNight,
+                    IncludedServiceNames = item.IncludedServices // Lấy từ CartItemVM
+                });
+            }
+        }
+    }
+
+    private async Task LoadHotelDataAndCart()
+    {
+
+        // Gọi API lấy thông tin Hotel (để hiện Tên, Ảnh, Giá phòng chính xác)
+        var res = await _httpClient!.GetFromJsonAsync<ApiResponse<HotelDetailVM>>($"hotel/{HotelId}");
+        if (res?.StatusCode == StatusCodeResponse.Success && res.Content != null)
+        {
+            hotelDetail = res.Content;
+            HotelName = hotelDetail.HotelName;
+            HotelAddress = hotelDetail.Address;
+            HotelImage = hotelDetail.CoverImageUrl ?? "/images/default-hotel.jpg";
+            // Update State để giữ đồng bộ
+            @* await _bookingState.UpdateSearchCriteriaAsync(
+            HotelId,
+            hotelDetail.HotelName,
+            hotelDetail.CoverImageUrl ?? "",
+            _bookingState.CheckIn,
+            _bookingState.CheckOut,
+            _bookingState.Adults,
+            _bookingState.Children
+            ); *@
+        }
+        else
+        {
+            hotelDetail = null;
+            Snackbar.Add($"Lỗi: {res?.Message ?? "Không tải được thông tin khách sạn"}", Severity.Error);
+        }
+
+    }
+
+    private async Task LoadAddOnServices()
+    {
+        try
+        {
+            var res = await
+            _httpClient!.GetFromJsonAsync<ApiResponse<List<ServiceAddOnVM>>>($"hotel/services-add/{_bookingState.HotelId}");
+            if (res?.Content != null)
+            {
+                AllAddOnServices = res.Content.Select(s => new ServiceAddOnVM
+                {
+                    ServiceId = s.ServiceId,
+                    Name = s.Name,
+                    Description = s.Description,
+                    Price = s.Price,
+                    Unit = s.Unit ?? "lần",
+                    Quantity = 0
+                }).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private async Task UpdateServiceQuantity(ServiceAddOnVM item, int change)
+    {
+        item.Quantity += change;
+        if (item.Quantity < 0) item.Quantity = 0;
+        await CalculatePriceAsync();
+    }
+
+    private async Task CalculatePriceAsync()
+    {
+        if (BookingModel.SelectedRooms == null || !BookingModel.SelectedRooms.Any()) return;
+
+        isCalculating = true;
+        StateHasChanged();
+        try
+        {
+            // 1. Tạo DTO chuẩn bị gửi lên Server
+            var calcRequest = new PriceCalculationVM
+            {
+                HotelId = HotelId,
+                UserId = 0, // Server tự lấy từ token
+                CheckInDate = BookingModel.CheckIn.ToDateTime(TimeOnly.MinValue),
+                CheckOutDate = BookingModel.CheckOut.ToDateTime(TimeOnly.MinValue),
+                VoucherCode = BookingModel.VoucherCode?.Trim(), // Mã hiện tại đang áp dụng
+
+                SelectedRooms = BookingModel.SelectedRooms.Select(r => new BookingRoomDetailRequestVM
+                {
+                    RoomTypeId = r.RoomTypeId,
+                    Quantity = r.Quantity
+                }).ToList(),
+
+                SelectedServices = AllAddOnServices.Where(s => s.Quantity > 0).Select(s => new ServiceAddOnVM
+                {
+                    ServiceId = s.ServiceId,
+                    Quantity = s.Quantity
+                }).ToList()
+            };
+
+            // 2. Gọi API
+            var response = await _httpClient!.PostAsJsonAsync("hotel/booking/preview-price", calcRequest);
+            if (response.IsSuccessStatusCode)
+            {
+                var apiRes = await response.Content.ReadFromJsonAsync<ApiResponse<PriceResultVM>>();
+                if (apiRes?.StatusCode == StatusCodeResponse.Success && apiRes.Content != null)
+                {
+                    priceResult = apiRes.Content; // Cập nhật kết quả hiển thị
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Lỗi tính toán: " + ex.Message);
+        }
+        finally
+        {
+            isCalculating = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyVoucher()
+    {
+        // Khi user bấm "Áp dụng", gán mã vào Model và gọi tính lại giá
+        BookingModel.VoucherCode = inputVoucherCode;
+        await CalculatePriceAsync();
+    }
+
+    private decimal CalculateRoomTotal()
+    {
+        if (BookingModel.SelectedRooms == null) return 0;
+        return BookingModel.SelectedRooms.Sum(r => r.PricePerNight * r.Quantity * TotalNights);
+    }
+
+    private decimal CalculateServiceTotal()
+    {
+        if (AllAddOnServices == null) return 0;
+        return AllAddOnServices.Sum(s => s.Price * s.Quantity);
+    }
+
+    // Hàm này để nút "ĐẶT NGAY" ở cột phải (ngoài form) kích hoạt được submit
+    private async Task SubmitForm()
+    {
+        // Vì nút này nằm ngoài EditForm, ta cần gọi trực tiếp hàm xử lý
+        // Nhưng để kích hoạt Validation, ta cần trigger EditContext (nếu muốn chuẩn chỉ)
+        // Ở đây gọi thẳng HandleSubmit cho đơn giản, validation sẽ check ở server hoặc check tay nếu cần
+        if (string.IsNullOrWhiteSpace(BookingModel.ContactName) || string.IsNullOrWhiteSpace(BookingModel.ContactPhone))
+        {
+            Snackbar.Add("Vui lòng điền đầy đủ thông tin liên hệ.", Severity.Warning);
+            return;
+        }
+        await HandleSubmit();
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        try
+        {
+            // 1. Map VM -> DTO (BookingCreateDTO của Backend)
+            var requestDTO = new BookingCreateVM
+            {
+                HotelId = HotelId,
+                CheckIn = BookingModel.CheckIn, // BE dùng DateOnly
+                CheckOut = BookingModel.CheckOut,
+                TotalAdults = _bookingState.Adults, // THÊM nếu BE cần
+                TotalChildren = _bookingState.Children,
+                ContactName = BookingModel.ContactName,
+                ContactEmail = BookingModel.ContactEmail,
+                ContactPhone = BookingModel.ContactPhone,
+                Note = BookingModel.Note,
+                PaymentMethod = BookingModel.PaymentMethod,
+                VoucherCode = BookingModel.VoucherCode,
+                // Map Rooms
+                SelectedRooms = BookingModel.SelectedRooms.Select(r => new BookingRoomDetailRequestVM
+                {
+                    RoomTypeId = r.RoomTypeId,
+                    Quantity = r.Quantity,
+                    SelectedBedTypeId = null // Tạm thời null, nếu muốn kỹ thì thêm UI chọn giường
+                }).ToList(),
+
+                // Map Services (Chỉ lấy những cái > 0)
+                Services = AllAddOnServices.Where(s => s.Quantity > 0).Select(s => new ServiceAddOnVM
+                {
+                    ServiceId = s.ServiceId,
+                    Quantity = s.Quantity
+                }).ToList()
+            };
+
+            // 2. Call API
+            var response = await _httpClient!.PostAsJsonAsync("hotel/booking/create", requestDTO);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ApiResponse<BookingResponseVM>>();
+                if (result != null && result.StatusCode == StatusCodeResponse.Success)
+                {
+                    await _bookingState.ClearAsync();
+
+                    if (BookingModel.PaymentMethod == "Direct")
+                    {
+                        // Success -> Chuyển trang cảm ơn
+                        Snackbar.Add("Đặt phòng thành công!", Severity.Success);
+                        _nav.NavigateTo($"/booking/success/{result.Content!.BookingId}");
+                    }
+                    else if (BookingModel.PaymentMethod == "VNPAY")
+                    {
+                        // Logic VNPAY: Gọi API lấy link
+                        var payRes = await _httpClient!.PostAsJsonAsync("payment/create-url", new
+                        {
+                            BookingId = result.Content.BookingId,
+                            Amount = result.Content.TotalPrice, // Lấy giá chốt từ BE cho chắc
+                            Method = "VNPAY"
+                        });
+
+                        if (payRes.IsSuccessStatusCode)
+                        {
+                            var url = await payRes.Content.ReadAsStringAsync();
+                            _nav.NavigateTo(url, forceLoad: true); // Chuyển trang sang VNPAY
+                        }
+                    }
+                }
+                else
+                {
+                    Snackbar.Add(result?.Message ?? "Đặt phòng thất bại", Severity.Error);
+                }
+            }
+            else
+            {
+                // Đọc lỗi từ BE trả về (ví dụ hết phòng)
+                var errContent = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Lỗi: {errContent}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Exception: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private int GetIncludedCount(string serviceName)
+    {
+        int count = 0;
+        foreach (var room in BookingModel.SelectedRooms)
+        {
+            if (room.IncludedServiceNames != null && 
+                room.IncludedServiceNames.Any(inc => inc.Equals(serviceName, StringComparison.OrdinalIgnoreCase)))
+            {
+                count += room.Quantity;
+            }
+        }
+        return count;
+    }
+
+    private void GoBack()
+    {
+        // Quay lại trang detail
+        _nav.NavigateTo($"/Hotel/{HotelId}");
+    }
+}

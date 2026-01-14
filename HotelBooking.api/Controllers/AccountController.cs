@@ -14,9 +14,11 @@ namespace HotelBooking.api.Controllers
     public class AccountController : ControllerBase
     {
         private readonly IUserService _userService;
-        public AccountController(IUserService userService)
+        private readonly IFileUploadService _uploadService;
+        public AccountController(IUserService userService, IFileUploadService uploadService)
         {
             _userService = userService;
+            _uploadService = uploadService;
         }
 
         [HttpGet("get-user-by-id")]
@@ -115,5 +117,85 @@ namespace HotelBooking.api.Controllers
             else
                 return Ok("Approved upgrade request successfully.");
         }
+
+        [HttpGet("profile")]
+        [Authorize]
+        public async Task<IActionResult> GetMyProfile()
+        {
+            // Lấy UserId từ Token (Claims)
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier); // hoặc "id" tùy cách bạn lưu token
+            if (userIdClaim == null) return Unauthorized("Invalid Token");
+
+            int userId = int.Parse(userIdClaim.Value);
+
+            var profile = await _userService.GetUserProfileAsync(userId);
+            if (profile == null) return NotFound("Không tìm thấy thông tin người dùng.");
+
+            return Ok(profile);
+        }
+
+        [HttpPut("profile")]
+        [Authorize]
+        public async Task<IActionResult> UpdateMyProfile([FromBody] UserProfileDTO req)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Unauthorized();
+            int userId = int.Parse(userIdClaim.Value);
+
+            var result = await _userService.UpdateUserProfileAsync(userId, req);
+            if (result) return Ok("Profile updated successfully");
+            return BadRequest("Update failed");
+        }
+
+        [HttpPost("avatar")]
+        [Authorize]
+        public async Task<IActionResult> UploadAvatar(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("Vui lòng chọn ảnh để upload.");
+
+            var userId = GetCurrentUserId();
+
+            // 1. Upload ảnh lên Cloudinary (thông qua UploadService)
+            // Folder: users/{userId}/avatar
+            string folderName = $"users/{userId}/avatar";
+            
+            // Gọi hàm SaveImageAsync (Bạn đã define trong IFileUploadService)
+            // publicIdHint: null để Cloudinary tự sinh, hoặc set "avatar" để ghi đè (tùy logic bạn)
+            string? avatarUrl = await _uploadService.SaveImageAsync(file, folderName);
+
+            if (string.IsNullOrEmpty(avatarUrl))
+                return StatusCode(500, "Lỗi khi upload ảnh lên server lưu trữ.");
+
+            // 2. Cập nhật URL vào DB (thông qua UserService)
+            var updateResult = await _userService.UpdateAvatarUrlAsync(userId, avatarUrl);
+
+            if (!updateResult)
+                return BadRequest("Lưu thông tin ảnh vào database thất bại.");
+
+            // 3. Trả về URL để Frontend hiển thị ngay
+            return Ok(avatarUrl); 
+        }
+
+        private int GetCurrentUserId()
+        {
+            // ClaimTypes.NameIdentifier thường được map với "sub" hoặc "id" trong JWT
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("id");
+            
+            if (claim == null || string.IsNullOrEmpty(claim.Value))
+            {
+                // Throw exception để middleware xử lý trả về 401, hoặc return 0 rồi check ở trên
+                throw new UnauthorizedAccessException("Token không hợp lệ hoặc thiếu thông tin định danh.");
+            }
+
+            if (int.TryParse(claim.Value, out int userId))
+            {
+                return userId;
+            }
+            
+            throw new UnauthorizedAccessException("ID người dùng trong Token không hợp lệ.");
+        }
     }
+    
+
 }

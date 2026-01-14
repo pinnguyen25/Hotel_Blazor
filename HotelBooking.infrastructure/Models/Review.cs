@@ -27,6 +27,12 @@ public partial class Review
 
     public string? Additional { get; set; }
 
+    public string? Reply { get; set; }
+
+    public int BookingId { get; set; }
+
+    public virtual Booking Booking { get; set; } = null!;
+
     public virtual User? CreatedByNavigation { get; set; }
 
     public virtual User Customer { get; set; } = null!;

@@ -4,8 +4,6 @@ using HotelBooking.infrastructure.Models;
 public class RoomTypeForOwnerDTO
 {
     public int Id { get; set; }
-    // public int HotelId { get; set; }
-    // public string HotelName { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public decimal PricePerNight { get; set; }
@@ -13,7 +11,6 @@ public class RoomTypeForOwnerDTO
     public int? ChildCapacity { get; set; }
     public int? MaxGuests => AdultCapacity + ChildCapacity; // Tính tự động
     public int? Quantity { get; set; }
-    public int? TotalRooms { get; set; }      // Tổng số phòng thuộc loại này
     public int? AvailableRooms { get; set; }  // Số phòng còn trống
     public decimal? Area { get; set; }
     public bool? IsActive { get; set; }
@@ -26,8 +23,13 @@ public class RoomTypeForOwnerDTO
     // giường và view
     public List<RoomBedTypeDTO>? Beds { get; set; }
     public List<RoomViewTypeDTO>? Views { get; set; }
+    // [JsonPropertyName("Services")]
+    public List<RoomTypeServiceDTO>? RoomTypeServices { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    public bool IsFreeCancellation { get; set; }
+    public bool IsBreakfastIncluded { get; set; }
 }
 
 public class RoomImageDTO

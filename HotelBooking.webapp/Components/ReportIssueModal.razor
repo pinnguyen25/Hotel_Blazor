@@ -1,0 +1,76 @@
+@if (IsVisible)
+{
+    <div class="modal-backdrop fade show" style="background-color: rgba(0,0,0,0.5); z-index: 1050;"></div>
+
+    <div class="modal fade show d-block" tabindex="-1" style="z-index: 1055;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                
+                <div class="modal-header bg-danger text-white border-0 rounded-top-4">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Báo cáo sự cố
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="Close"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <p class="text-muted mb-2">Vui lòng mô tả chi tiết vấn đề (hỏng hóc, thiếu đồ...) để bộ phận kỹ thuật xử lý:</p>
+                    
+                    <textarea class="form-control bg-light" 
+                              rows="4" 
+                              placeholder="Ví dụ: Vòi nước bồn rửa mặt bị rò rỉ..."
+                              @bind="Reason"
+                              style="resize: none;"></textarea>
+                    
+                    @if (ShowError)
+                    {
+                        <div class="text-danger small mt-2 fw-bold">
+                            <i class="bi bi-x-circle me-1"></i> Vui lòng nhập lý do.
+                        </div>
+                    }
+                </div>
+
+                <div class="modal-footer border-0 pt-0 pb-4 pe-4">
+                    <button type="button" class="btn btn-light rounded-pill px-4" @onclick="Close">Hủy bỏ</button>
+                    <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold" @onclick="Submit">
+                        <i class="bi bi-send me-2"></i> Gửi báo cáo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<string> OnSubmit { get; set; }
+
+    private string Reason { get; set; } = "";
+    private bool ShowError { get; set; } = false;
+
+    // Reset lại form mỗi khi mở modal
+    protected override void OnParametersSet()
+    {
+        if (!IsVisible)
+        {
+            Reason = "";
+            ShowError = false;
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(Reason))
+        {
+            ShowError = true;
+            return;
+        }
+        await OnSubmit.InvokeAsync(Reason);
+    }
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+}

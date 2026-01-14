@@ -1,0 +1,91 @@
+@using HotelBooking.webapp.ViewModels.Hotel
+@using MudBlazor
+@using System.Globalization
+
+<MudTable Items="@Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+    <HeaderContent>
+        <MudTh>Đơn hàng</MudTh>
+        <MudTh>Phòng & Lưu trú</MudTh>
+        <MudTh>Tổng tiền</MudTh>
+        <MudTh>Trạng thái</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Đơn hàng">
+            <div class="d-flex align-items-center">
+                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center me-3 fw-bold small text-muted" style="width:40px; height:40px">
+                    #@context.Id
+                </div>
+                <div class="d-flex flex-column">
+                    <span class="fw-bold text-dark">@context.GuestName</span>
+                    <small class="text-muted" style="font-size: 0.75rem;">
+                        <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" Style="font-size: 12px; vertical-align: middle;" />
+                        @GetRelativeTime(context.CreatedAt)
+                    </small>
+                </div>
+            </div>
+        </MudTd>
+
+        <MudTd DataLabel="Lưu trú">
+            <div class="d-flex flex-column">
+                <span class="text-dark fw-medium" style="font-size: 0.9rem;">@context.RoomTypeNames</span>
+                <small class="text-muted d-flex align-items-center mt-1">
+                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Style="font-size: 14px;" Class="me-1"/>
+                    @context.CheckInDate.ToString("dd/MM") - @context.CheckOutDate.ToString("dd/MM")
+                </small>
+            </div>
+        </MudTd>
+
+        <MudTd DataLabel="Tổng tiền">
+            <span class="text-success fw-bold">@string.Format(new CultureInfo("en-EN"), "{0:N0}", context.TotalPrice) ₫</span>
+        </MudTd>
+
+        <MudTd DataLabel="Trạng thái">
+            <MudChip T="string" Color="@GetStatusColor(context.Status)" Size="Size.Small" Class="fw-bold">@GetStatusText(context.Status)</MudChip>
+        </MudTd>
+        
+        <MudTd>
+             <MudIconButton Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Href="@($"/owner/hotels/bookings/{context.Id}")" Color="Color.Default" />
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <div class="d-flex flex-column align-items-center py-5">
+            <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" Class="text-muted opacity-25 mb-2" />
+            <MudText Class="text-muted">@EmptyText</MudText>
+        </div>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter] public List<BookingShortVM> Items { get; set; } = new();
+    [Parameter] public string EmptyText { get; set; } = "Không có dữ liệu.";
+
+    private string GetRelativeTime(DateTime date)
+    {
+        var span = DateTime.Now - date;
+        if (span.TotalMinutes < 1) return "Vừa xong";
+        if (span.TotalMinutes < 60) return $"{span.TotalMinutes:0} phút trước";
+        if (span.TotalHours < 24) return $"{span.TotalHours:0} giờ trước";
+        return date.ToString("dd/MM/yyyy HH:mm");
+    }
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "Completed" => Color.Success,
+        "Confirmed" => Color.Info,
+        "CheckedIn" => Color.Primary,
+        "PendingPayment" => Color.Warning,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetStatusText(string status) => status switch
+    {
+        "Completed" => "Hoàn tất",
+        "Confirmed" => "Đã xác nhận",
+        "CheckedIn" => "Đã nhận phòng",
+        "PendingPayment" => "Chờ thanh toán",
+        "Cancelled" => "Đã hủy",
+        _ => status
+    };
+}

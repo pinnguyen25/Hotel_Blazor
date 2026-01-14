@@ -2,12 +2,12 @@ using System.Linq.Expressions;
 using HotelBooking.application.Helpers;
 using HotelBooking.application.Services;
 using HotelBooking.infrastructure.Models;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 public interface IUserService
 {
     //admin
-    
 
     public Task<User?> GetByIdAsync(int id);
     public Task<RegisterResponseDTO> RegisterAdmin(RegisterAdminDTO newAdmin);
@@ -15,6 +15,10 @@ public interface IUserService
     public Task<LoginResponseDTO> LoginUser(LoginUserDTO userLogin);
     public Task<bool> ApproveUpgradeToOwnerAsync(int requestId, int adminId);
     // public Task<bool> RejectUpgradeToOwnerAsync(int requestId, int adminId);
+    // user
+    public Task<UserProfileDTO> GetUserProfileAsync(int userId);
+    public Task<bool> UpdateUserProfileAsync(int userId, UserProfileDTO updateReq);
+    public Task<bool> UpdateAvatarUrlAsync(int userId, string newAvatarUrl);
 }
 
 public class UserService : IUserService
@@ -26,13 +30,15 @@ public class UserService : IUserService
     public JwtAuthService _jwtAuthService;
     public IUnitOfWork _dbu;
 
-    public UserService(HotelBookingContext context, IUserRepository userRepository, IUserRoleRepository userRoleRepository, IUpgradeRequestRepository upgradeRequestRepository, JwtAuthService jwtAuthService, IUnitOfWork dbu)
+    private IFileUploadService _uploadService;
+    public UserService(HotelBookingContext context, IUserRepository userRepository, IUserRoleRepository userRoleRepository, IUpgradeRequestRepository upgradeRequestRepository, JwtAuthService jwtAuthService, IFileUploadService uploadService, IUnitOfWork dbu)
     {
         _context = context;
         _userRepository = userRepository;
         _userRoleRepository = userRoleRepository;
         _upgradeRequestRepository = upgradeRequestRepository;
         _jwtAuthService = jwtAuthService;
+        _uploadService = uploadService;
         _dbu = dbu;
     }
 
@@ -180,6 +186,17 @@ public class UserService : IUserService
             {
                 return new LoginResponseDTO { Message = MessageLogin.PASSWORD_INCORRECT };
             }
+            // Kiểm tra tài khoản có bị vô hiệu hóa không
+            var isStaff = user.UserRoles.Any(ur => ur.Role.Name == "Staff");
+            if (isStaff)
+            {
+                var staffInfo = await _context.Staffs.FirstOrDefaultAsync(s => s.UserId == user.Id);
+                if (staffInfo != null && (staffInfo.IsActive == false || staffInfo.IsDeleted == true))
+                {
+                    return new LoginResponseDTO { Message = "Tài khoản nhân viên đã bị vô hiệu hóa." };
+                }
+            }
+            // Tạo token JWT
             var token = _jwtAuthService.GenerateToken(user);
             var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
             return new LoginResponseDTO
@@ -241,4 +258,51 @@ public class UserService : IUserService
     // {
 
     // }
+    public async Task<UserProfileDTO> GetUserProfileAsync(int userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId); // Hoặc _context.Users.Find(userId)
+        if (user == null) return null;
+
+        // Map Entity -> DTO
+        return new UserProfileDTO
+        {
+            Id = user.Id,
+            Username = user.UserName,
+            FullName = user.FullName,
+            Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
+            Address = user.Address,
+            AvatarUrl = user.AvatarUrl,
+            DateOfBirth = user.DateOfBirth,
+
+        };
+    }
+
+    // Hàm update (để làm tính năng Edit sau này)
+    public async Task<bool> UpdateUserProfileAsync(int userId, UserProfileDTO updateReq)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null) return false;
+
+        user.FullName = updateReq.FullName;
+        user.PhoneNumber = updateReq.PhoneNumber;
+        user.Address = updateReq.Address;
+        user.DateOfBirth = updateReq.DateOfBirth;
+        // user.AvatarUrl = ... (Xử lý upload ảnh riêng)
+
+        await _dbu.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> UpdateAvatarUrlAsync(int userId, string newAvatarUrl)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null) return false;
+
+        user.AvatarUrl = newAvatarUrl;
+        user.UpdatedAt = DateTime.Now;
+
+        await _dbu.SaveChangesAsync();
+        return true;
+    }
 }

@@ -1,0 +1,87 @@
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Net.Http.Headers
+@inject IHttpClientFactory _clientFactory
+@inject ISnackbar _snackbar
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+
+@if (Show)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5); z-index: 2000;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-star-fill me-2"></i>Đánh giá chuyến đi</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="OnClose"></button>
+                </div>
+                <div class="modal-body text-center p-4">
+                    <h6 class="text-muted mb-3">Bạn cảm thấy thế nào về kỳ nghỉ này?</h6>
+                    
+                    <div class="d-flex justify-content-center mb-2">
+                        <MudRating @bind-SelectedValue="ratingInt" MaxValue="10" Size="Size.Large" Class="text-warning" />
+                    </div>
+                    <div class="fw-bold fs-4 mb-4 text-primary">@ratingInt / 10 điểm</div>
+
+                    <textarea class="form-control bg-light" rows="4" 
+                        placeholder="Hãy chia sẻ trải nghiệm của bạn (phòng ốc, nhân viên, vị trí...)" 
+                        @bind="comment"></textarea>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" @onclick="OnClose">Đóng</button>
+                    <button type="button" class="btn btn-primary fw-bold px-4" @onclick="SubmitReview" disabled="@isSubmitting">
+                        @if(isSubmitting) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                        Gửi Đánh Giá
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public int BookingId { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSuccess { get; set; }
+
+    private int ratingInt = 10;
+    private string comment = "";
+    private bool isSubmitting = false;
+
+    private async Task SubmitReview()
+    {
+        isSubmitting = true;
+        try 
+        {
+            var req = new ReviewCreateVM
+            {
+                BookingId = BookingId,
+                Rating = (decimal)ratingInt,
+                Comment = comment
+            };
+            
+            var client = _clientFactory.CreateClient("HotelBookingAPI");
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            if(!string.IsNullOrEmpty(token))
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var res = await client.PostAsJsonAsync("hotel/review/create", req); // API bạn đã viết lúc nãy
+            
+            if (res.IsSuccessStatusCode)
+            {
+                _snackbar.Add("Cảm ơn đánh giá của bạn!", Severity.Success);
+                await OnSuccess.InvokeAsync(); // Gọi callback để reload list
+                await OnClose.InvokeAsync();   // Đóng modal
+            }
+            else 
+            {
+                var err = await res.Content.ReadAsStringAsync();
+                 _snackbar.Add($"Lỗi: {err}", Severity.Error);
+            }
+        }
+        catch(Exception ex)
+        {
+             _snackbar.Add($"Lỗi kết nối: {ex.Message}", Severity.Error);
+        }
+        finally { isSubmitting = false; }
+    }
+}

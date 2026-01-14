@@ -1,9 +1,87 @@
 @import url("open-iconic/font/css/open-iconic-bootstrap.min.css");
 
 body {
-  font-family: "Inter", sans-serif;
+  font-family: "Nunito", sans-serif;
+  color: #4a4a4a;
 }
 
+.auth-bg {
+    
+    background-size: cover;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* Lớp phủ tối để text nổi bật */
+.auth-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.4); /* Màu tối mờ */
+    backdrop-filter: blur(8px); /* Làm mờ nền ảnh */
+}
+
+/* Card kính mờ (Glassmorphism) */
+.glass-card {
+    background: rgba(255, 255, 255, 0.85); /* Trắng đục */
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    overflow: hidden;
+    position: relative;
+    z-index: 10;
+}
+
+/* Logo & Branding */
+.brand-logo {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(45deg, #0d6efd, #0dcaf0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+}
+
+/* Input Fields */
+.form-floating > .form-control {
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+    background: rgba(255, 255, 255, 0.9);
+}
+.form-floating > .form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
+}
+
+/* Nút bấm Chill */
+.btn-chill {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    border: none;
+    border-radius: 50px;
+    padding: 12px 24px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    width: 100%;
+    color: white;
+}
+.btn-chill:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(13, 110, 253, 0.4);
+    color: white;
+}
+
+/* Animation */
+.animate-fade-in-up {
+    animation: fadeInUp 0.8s ease-out;
+}
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 /* Header */
 /* Navbar */
 .navbar {
@@ -49,12 +127,13 @@ body {
   padding-top: 0.25rem;
   padding-bottom: 0rem;
   transition: color 0.3s ease;
+  color: #6c757d;
 }
 
 /* Hover & Active */
 .nav-link:hover,
 .nav-link.active {
-  color: white;
+  color: white !important;
 }
 
 /* Underline hover animation */
@@ -76,9 +155,9 @@ body {
 }
 
 .navbar .nav-link.active {
-  color: #fff;
+  color: white !important;
   font-weight: 500;
-  text-shadow: 0 0 1px #fff, 0 0 1px #fff;
+  text-shadow: 0 0 1px #54a9ffff, 0 0 1px #54a9ffff;
 }
 
 /* Actions */
@@ -163,7 +242,7 @@ body {
 /* Body */
 /* Hero Section */
 .hero-section {
-  background: url("https://images.unsplash.com/photo-1445019980597-93fa8acb246c?q=80&w=2074&auto=format&fit=crop") no-repeat center center fixed;
+  
   background-size: cover;
   height: 600px;
   position: relative;
@@ -316,6 +395,8 @@ body {
   height: 32px;
   padding: 0;
 }
+
+/* end search-form */
 
 /* hotels  */
 
@@ -487,7 +568,7 @@ h3 {
 .page-content {
   min-height: calc(100vh - 120px);
   /* 100vh trừ header + footer */
-  padding-bottom: 40px;
+  padding-bottom: 0px;
   /* tránh dính footer */
 }
 
@@ -540,7 +621,7 @@ h3 {
   margin: 0;
   font-weight: 700;
   font-size: 1.1rem;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -694,8 +775,8 @@ h3 {
 
 /* Icon */
 .accommodation-icon {
-  width: 56px;
-  height: 56px;
+  width: 90px;
+  height: 90px;
   object-fit: contain;
   transition: transform 0.3s ease;
 }
@@ -914,13 +995,42 @@ h3 {
   overflow-x: hidden;
   scroll-behavior: smooth;
   gap: 1.5rem;
-  padding: 0 1rem;
+  padding: 1rem 60px 1rem 1rem;
+
+  /* Thêm thuộc tính scroll-snap */
+  scroll-snap-type: x mandatory;
+  
+  
+  /* Ẩn thanh cuộn */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE 10+ */
+}
+
+.scroll-container::after {
+  content: '';
+  display: block;
+  flex: 0 0 1px; /* Bằng với padding-right mong muốn */
+  width: 1px;
+}
+
+.scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-item:last-of-type {
+  scroll-snap-align: end;
+  /* Thêm margin nhỏ để khi snap vào end nó không sát sạt lề phải màn hình */
+  margin-right: 1px; 
 }
 
 .scroll-item {
-  flex: 0 0 calc((100% - (1.5rem * 3)) / 4);
+  flex: 0 0 324px;
   box-sizing: border-box;
+  width: 324px;
   scroll-snap-align: start;
+  box-sizing: border-box;
+  max-width: 324px;
+  
 }
 
 .scroll-btn {
@@ -1049,67 +1159,369 @@ h3 {
 /* owner */
 /* form post hotel */
 /* step image */
-.hover-scale:hover { transform: scale(1.05); }
+.hover-scale:hover {
+  transform: scale(1.05);
+}
 
 /* filter */
 .custom-range {
-    height: 8px;
-    background: linear-gradient(to right, #0d6efd 0%, #0d6efd calc(var(--value, 0) * 1%), #e9ecef calc(var(--value, 0) * 1%), #e9ecef 100%);
-    border-radius: 50px;
-    appearance: none;
+  height: 8px;
+  background: linear-gradient(to right, #0d6efd 0%, #0d6efd calc(var(--value, 0) * 1%), #e9ecef calc(var(--value, 0) * 1%), #e9ecef 100%);
+  border-radius: 50px;
+  appearance: none;
 }
 
 .custom-range::-webkit-slider-thumb {
-    appearance: none;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: #0d6efd;
-    cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #0d6efd;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .custom-range::-moz-range-thumb {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: #0d6efd;
-    cursor: pointer;
-    border: none;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #0d6efd;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .unselected-amenity {
-    @apply border rounded-3 p-3 text-center small bg-light text-dark cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  @apply border rounded-3 p-3 text-center small bg-light text-dark cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
 }
 
 .selected-amenity {
-    @apply border rounded-3 p-3 text-center small bg-primary text-white border-primary cursor-pointer shadow-sm relative;
+  @apply border rounded-3 p-3 text-center small bg-primary text-white border-primary cursor-pointer shadow-sm relative;
 }
 
 /* Nếu không dùng Tailwind, dùng CSS thường */
 .unselected-amenity {
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
-    padding: 10px;
-    font-size: 0.875rem;
-    color: #212529;
-    cursor: pointer;
-    transition: all 0.2s ease;
+  border: 1px solid #dee2e6;
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 0.875rem;
+  color: #212529;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .unselected-amenity:hover {
-    background-color: #e9ecef;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  /* background-color: #e9ecef; */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background-color: #f8f9fa !important;
+  border-color: #dee2e6 !important;
 }
 
 .selected-amenity {
-    border: 2px solid #54a9ffff !important;
-    border-radius: 12px;
-    padding: 10px;
-    font-size: 0.875rem;
-    background-color: #54a9ffff;
-    color: white;
+  border: 2px solid #54a9ffff !important;
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 0.875rem;
+  background-color: #54a9ffff;
+  color: white;
+  cursor: pointer;
+  /* box-shadow: 0 2px 8px rgba(13,110,253,0.25); */
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.selected-amenity {
+  font-weight: 600;
+}
+
+.transition-all {
+  transition: all 0.2s ease-in-out;
+}
+
+.range-slider-container {
+  position: relative;
+  height: 24px;
+  width: 100%;
+}
+
+.slider-track-bg {
+  position: absolute;
+  width: 100%;
+  height: 4px;
+  background-color: #dee2e6;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  z-index: 1;
+}
+
+.slider-track-fill {
+  position: absolute;
+  height: 4px;
+  background-color: #0d6efd;
+  /* Bootstrap Primary Color */
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+}
+
+.range-input {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: none;
+  pointer-events: none;
+  /* Quan trọng: Cho phép click xuyên qua */
+  -webkit-appearance: none;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  margin: 0;
+}
+
+/* Tùy chỉnh input number bỏ nút tăng giảm mặc định */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.hotel-list-container {
+  position: relative;
+  /* Giữ chiều cao tối thiểu để không bị co lại khi list rỗng */
+  min-height: 100vh;
+
+  /* 2. Để overlay loading phủ kín nếu cần */
+  position: relative;
+
+  /* 3. Flex column để đẩy nội dung Empty State ra giữa nếu muốn */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Lớp phủ mờ */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.7);
+  /* Màu trắng mờ 70% */
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  padding-top: 100px;
+  /* Spinner nằm cao một chút cho dễ thấy */
+  backdrop-filter: blur(2px);
+  /* Hiệu ứng làm mờ xịn xò (tùy chọn) */
+  border-radius: 8px;
+}
+
+/* Booking User */
+@media (min-width: 992px) {
+  .border-lg-end {
+    border-right: 1px solid #e0e0e0;
+  }
+
+  .custom-pad-end {
+    padding-right: 3rem;
+  }
+
+  .custom-pad-start {
+    padding-left: 3rem;
+  }
+}
+
+/* Mobile & Tablet: Reset padding */
+@media (max-width: 991px) {
+  .custom-pad-end {
+    padding-right: 0;
+  }
+
+  .custom-pad-start {
+    padding-left: 0;
+    padding-top: 2rem;
+  }
+
+  /* Ẩn sticky mặc định trên mobile để tránh chiếm diện tích */
+  .desktop-sticky {
+    position: static !important;
+  }
+}
+
+/* Font sizes tinh chỉnh */
+.booking-container {
+  font-size: 0.95rem;
+}
+
+.booking-container h4 {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.form-control,
+.form-select {
+  font-size: 0.95rem;
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
+/* Hiệu ứng nút Booking */
+.btn-booking {
+  background-color: #54a9ffff;
+  border-color: #54a9ffff;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.btn-booking:hover {
+  background-color: #3b9df8;
+  border-color: #3b9df8;
+  box-shadow: 0 4px 12px rgba(84, 169, 255, 0.4);
+  color: white;
+}
+
+@media (max-width: 767px) {
+  .mobile-bottom-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* Thêm padding bottom cho body để không bị thanh này che mất nội dung cuối */
+  .booking-container {
+    padding-bottom: 80px;
+  }
+}
+
+/* manage banner */
+
+/* Hiệu ứng hover nhẹ cho vùng upload */
+.upload-zone:hover {
+  background-color: #f8f9fa !important;
+  border-color: var(--mud-palette-primary) !important;
+  transition: all 0.3s ease;
+}
+
+.preview-item {
+  transition: transform 0.2s;
+}
+
+.preview-item:hover {
+  transform: scale(1.05);
+}
+
+
+/* request page */
+
+/* Custom CSS cho Tabs đẹp hơn */
+.custom-tabs {
+  /* 1. Tạo đường kẻ xám chạy suốt chiều ngang tại đây */
+  border-bottom: 2px solid #eaedf2;
+}
+
+.custom-tabs .nav-item {
+  /* 2. Đẩy các item xuống 2px để đè lên đường kẻ xám */
+  margin-bottom: -3.5px;
+}
+
+.custom-tabs .nav-link {
+  color: #6c757d;
+  border: none;
+  /* Độ dày border phải bằng hoặc lớn hơn đường kẻ xám */
+  border-bottom: 3px solid transparent;
+  padding: 10px 20px;
+  font-weight: 600;
+  transition: all 0.3s;
+  background: transparent;
+}
+
+.custom-tabs .nav-link:hover {
+  color: #54a9ff;
+}
+
+.custom-tabs .nav-link.active {
+  color: #54a9ff;
+  background: transparent;
+  border-bottom: 3px solid #54a9ff;
+}
+
+.search-box {
+  position: relative;
+}
+
+.search-box i {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #aaa;
+}
+
+.search-box input {
+  padding-left: 40px;
+  border-radius: 20px;
+}
+
+/* end admin */
+
+/* 1. Font chữ viết tay (Handwriting) */
+.handwriting {
+    font-family: 'Pacifico', cursive;
+    font-weight: 400;
+    /* text-shadow: 2px 2px 8px rgba(0,0,0,0.6); */
+    /* color: #54a9ffff; Màu xanh thương hiệu */
+    display: block;   /* Đảm bảo nằm trên 1 dòng riêng nếu cần */
+}
+
+/* 2. Tiêu đề Section chuẩn */
+.section-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    position: relative;
+    z-index: 2;
+}
+
+.main-title {
+    font-weight: 800;
+    color: #2d3748;
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+/* 3. Text Shadow (Dùng cho chữ trên nền ảnh) */
+.text-shadow {
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+.text-shadow-lg {
+    text-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+/* 4. Chill Card (Style card mới bo tròn mềm mại) */
+.chill-card {
+    border: none;
+    background: white;
+    border-radius: 1.5rem; /* Bo góc lớn 24px */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Hiệu ứng nhún */
+    overflow: hidden;
+    position: relative;
+}
+
+.chill-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(84, 169, 255, 0.2); /* Đổ bóng màu xanh */
+}
+
+/* 5. Animation Utilities */
+.object-fit-cover {
+    object-fit: cover;
+    object-position: center;
+}
+
+.cursor-pointer {
     cursor: pointer;
-    /* box-shadow: 0 2px 8px rgba(13,110,253,0.25); */
 }

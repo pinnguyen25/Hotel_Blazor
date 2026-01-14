@@ -1,5 +1,6 @@
 namespace HotelBooking.webapp.ViewModels.Hotel;
 using System.ComponentModel.DataAnnotations;
+
 public class HotelListItemVM
 {
     public int HotelId { get; set; }
@@ -11,7 +12,9 @@ public class HotelListItemVM
     public string? ShortDescription { get; set; }
 
     // Hình ảnh
+
     public string? CoverImageUrl { get; set; }
+
     public List<string> ImageUrls { get; set; } = new();
 
     // Rating & Review
@@ -24,8 +27,8 @@ public class HotelListItemVM
     public decimal? AvgPricePerNight { get; set; }
 
     // Phòng & Sức chứa
-    public bool IsBookable => AvailableRooms > 0;
-    public int AvailableRooms { get; set; } = 0;
+    public bool IsBookable => (AvailableRooms ?? 0) > 0;
+    public int? AvailableRooms { get; set; } 
     public int? MaxAdultCapacity { get; set; }
     public int? MaxChildCapacity { get; set; }
 
@@ -33,6 +36,7 @@ public class HotelListItemVM
     public List<AmenityVM> HighlightAmenities { get; set; } = new();
     public string? AccommodationType { get; set; }
     public string? ChainName { get; set; }
+    public string? Services {get;set;}
     // Wishlist
     public bool IsWishlist { get; set; } = false;
     public bool IsVerified { get; set; } = false;

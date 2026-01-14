@@ -1,3 +1,4 @@
+using System.Text.Json;
 using HotelBooking.infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,48 +40,104 @@ public class WishlistService : IWishlistService
 
     public async Task<List<HotelListItemDTO>> GetUserWishlistAsync(int userId)
     {
-        return await _context.Wishlists.Where(w => w.UserId == userId).Select(w => new HotelListItemDTO
+        // Query tối ưu, lọc bỏ khách sạn đã xóa/tạm ngưng
+        var wishlists = await _context.Wishlists
+            .AsNoTracking()
+            .Include(w => w.Hotel) // Include sơ bộ để check điều kiện
+            .Where(w => w.UserId == userId
+                     && w.Hotel.IsDeleted == false
+                     && w.Hotel.Status == "Active") // Chỉ lấy khách sạn đang hoạt động
+            .OrderByDescending(w => w.CreatedAt) // Mới lưu lên đầu
+            .Select(w => new
+            {
+                // Select Anonymous Type trước để tối ưu query SQL
+                Hotel = w.Hotel,
+                // Lấy ảnh đã sort
+                Images = w.Hotel.HotelImages
+                            .Where(i => i.IsDeleted == false)
+                            .OrderBy(i => i.SortOrder)
+                            .Select(i => i.ImageUrl)
+                            .Take(5)
+                            .ToList(),
+                // Lấy amenities xịn nhất
+                RawAmenities = w.Hotel.HotelAmenities
+                            .Where(ha => ha.Amenity.IsDeleted == false)
+                            .OrderByDescending(ha => ha.Amenity.IsFilterable)
+                            .Select(ha => new
+                            {
+                                ha.Amenity.Id,
+                                ha.Amenity.Name,
+                                ha.Amenity.Additional // <--- CẦN CÁI NÀY
+                            })
+                            .Take(3)
+                            .ToList(),
+                // Tính toán giá và review
+                MinPrice = w.Hotel.RoomTypes.Where(rt => rt.IsDeleted == false).Min(rt => (decimal?)rt.PricePerNight),
+                MaxPrice = w.Hotel.RoomTypes.Where(rt => rt.IsDeleted == false).Max(rt => (decimal?)rt.PricePerNight),
+                AvgRating = w.Hotel.Reviews.Where(r => r.IsDeleted == false).Average(r => (decimal?)r.Rating) ?? 0,
+                ReviewCount = w.Hotel.Reviews.Count(r => r.IsDeleted == false),
+                AvailableRooms = w.Hotel.RoomTypes.SelectMany(rt => rt.Rooms)
+                                .Count(r => r.Status == "Available" && r.IsDeleted == false)
+            })
+            .ToListAsync();
+
+        // Map sang DTO
+        var result = wishlists.Select(item => new HotelListItemDTO
         {
-            HotelId = w.Hotel.Id,
-            HotelName = w.Hotel.Name,
-            Address = w.Hotel.Address,
-            City = w.Hotel.City != null ? w.Hotel.City.Name : string.Empty,
-            Country = w.Hotel.City != null && w.Hotel.City.Country != null ? w.Hotel.City.Country.Name : string.Empty,
-            ShortDescription = !string.IsNullOrEmpty(w.Hotel.Description)
-            ? w.Hotel.Description.Substring(0, Math.Min(150, w.Hotel.Description.Length)) + "..."
-            : string.Empty,
-            CoverImageUrl = w.Hotel.CoverImageUrl ?? string.Empty,
-            ImageUrls = w.Hotel.HotelImages
-                .OrderBy(i => i.Id)
-                .Take(4)
-                .Select(i => i.ImageUrl)
-                .ToList(),
-            HighlightAmenities = w.Hotel.HotelAmenities
-                .Take(3)
-                .Select(a => new AmenityDTO
+            HotelId = item.Hotel.Id,
+            HotelName = item.Hotel.Name,
+            Address = item.Hotel.Address,
+            City = item.Hotel.City?.Name ?? "", // Cần Include City ở trên hoặc chấp nhận null nếu Lazy Loading tắt
+                                                // Country = ..., 
+
+            // Logic ảnh giống HotelService: Ưu tiên Cover, nếu không có thì lấy ảnh đầu tiên trong Gallery
+            CoverImageUrl = !string.IsNullOrEmpty(item.Hotel.CoverImageUrl)
+                            ? item.Hotel.CoverImageUrl
+                            : item.Images.FirstOrDefault() ?? "/images/default-hotel.jpg",
+
+            ImageUrls = item.Images,
+            HighlightAmenities = item.RawAmenities.Select(a =>
                 {
-                    Id = a.Amenity.Id,
-                    Name = a.Amenity.Name,
-                    // IconCode = a.Amenity.IconCode ?? string.Empty
-                })
-                .ToList(),
-            MinPricePerNight = w.Hotel.RoomTypes.Any()
-                ? w.Hotel.RoomTypes.Min(r => r.PricePerNight)
-                : null,
+                    var iconInfo = TryParseAmenityAdditional(a.Additional);
+                    return new AmenityDTO
+                    {
+                        Id = a.Id,
+                        Name = a.Name,
+                        // Gán giá trị mặc định nếu không có trong JSON
+                        IconClass = iconInfo.ContainsKey("IconClass") ? iconInfo["IconClass"] : "bi bi-check-circle",
+                        IconColor = iconInfo.ContainsKey("IconColor") ? iconInfo["IconColor"] : "#54a9ff"
+                    };
+                }).ToList(),
 
-            AvailableRooms = w.Hotel.RoomTypes
-                .SelectMany(rt => rt.Rooms)
-                .Count(r => r.Status == "Available"),
+            MinPricePerNight = item.MinPrice,
+            MaxPricePerNight = item.MaxPrice,
 
-            AverageRating = w.Hotel.Reviews.Any(r => r.Rating.HasValue)
-                ? Math.Round((decimal)w.Hotel.Reviews.Average(r => r.Rating ?? 0), 1)
-                : 0,
+            AverageRating = Math.Round(item.AvgRating, 1),
+            ReviewCount = item.ReviewCount,
 
-            ReviewCount = w.Hotel.Reviews.Count(r => r.Rating.HasValue),
-            MaxAdultCapacity = w.Hotel.RoomTypes.Any() ? w.Hotel.RoomTypes.Max(rt => rt.AdultCapacity) : null, 
-            MaxChildCapacity = w.Hotel.RoomTypes.Any() ? w.Hotel.RoomTypes.Max(rt => rt.ChildCapacity) : null,
-            IsWishlist = true
-        })
-        .ToListAsync();
+            AvailableRooms = item.AvailableRooms,
+            IsBookable = item.AvailableRooms > 0, // Đơn giản hóa
+
+            IsWishlist = true, // Chắc chắn là true vì đang ở trang wishlist
+
+            // ShortDescription xử lý cắt chuỗi an toàn
+            ShortDescription = !string.IsNullOrEmpty(item.Hotel.Description)
+                ? (item.Hotel.Description.Length > 150 ? item.Hotel.Description.Substring(0, 150) + "..." : item.Hotel.Description)
+                : string.Empty
+        }).ToList();
+
+        return result;
+    }
+    private Dictionary<string, string> TryParseAmenityAdditional(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new Dictionary<string, string>();
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new Dictionary<string, string>();
+        }
+        catch
+        {
+            return new Dictionary<string, string>();
+        }
     }
 }

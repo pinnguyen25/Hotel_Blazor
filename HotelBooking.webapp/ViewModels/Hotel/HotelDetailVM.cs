@@ -25,7 +25,8 @@ public class HotelDetailVM
     // === NỘI DUNG CHI TIẾT ===
     public List<AmenityVM> Amenities { get; set; } = new();
     public List<PolicyVM> Policies { get; set; } = new();
-    public List<RoomTypeVM> RoomTypes { get; set; } = new();
+    public List<RoomTypeDetailVM> RoomTypes { get; set; } = new();
+    public List<RoomGroupVM> RoomGroups { get; set; }
     public List<ReviewVM> Reviews { get; set; } = new();
 
     // === CHỈ OWNER THẤY (THÊM MỚI) ===
@@ -38,9 +39,6 @@ public class HotelDetailVM
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
-    // === THỐNG KÊ (OWNER) ===
-    public HotelStatsVM? Stats { get; set; } // Nullable: User không thấy
-
     // === ẢNH CHI TIẾT (OWNER) ===
     public List<HotelImageVM> GalleryImages { get; set; } = new();
 }
@@ -51,14 +49,4 @@ public class HotelImageVM
     public string ImageUrl { get; set; } = string.Empty;
     public bool IsCover { get; set; }
     public int SortOrder { get; set; }
-}
-
-public class HotelStatsVM
-{
-    public int TotalBookings { get; set; }
-    public decimal TotalRevenue { get; set; }
-    public double AvgRating { get; set; }
-    public int ReviewCount { get; set; }
-    public int TotalRooms { get; set; }
-    public int AvailableRooms { get; set; }
 }

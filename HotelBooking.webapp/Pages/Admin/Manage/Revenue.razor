@@ -1,0 +1,127 @@
+@page "/admin/finance/revenue"
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@using HotelBooking.webapp.ViewModels.Hotel 
+@* Lưu ý: Đảm bảo using đúng namespace chứa AdminRevenueVM *@
+@using Blazored.LocalStorage
+@inject IHttpClientFactory ClientFactory
+@inject ILocalStorageService _localStorage
+@inject NavigationManager _nav
+
+<div class="container-fluid p-4">
+    <h3 class="fw-bold mb-4">Báo cáo doanh thu sàn (Commission)</h3>
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center py-5">
+            <div class="spinner-border text-primary"></div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="card bg-primary text-white p-4 rounded-4 shadow-sm h-100">
+                    <h5 class="opacity-75">Tổng doanh thu trọn đời</h5>
+                    <h2 class="fw-bold mt-2">@stats.TotalLifetimeRevenue.ToString("N0") ₫</h2>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-success text-white p-4 rounded-4 shadow-sm h-100">
+                    <h5 class="opacity-75">Doanh thu tháng @DateTime.Now.Month</h5>
+                    <h2 class="fw-bold mt-2">@stats.ThisMonthRevenue.ToString("N0") ₫</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 p-4">
+            <h5 class="mb-4 text-secondary fw-bold">Biểu đồ doanh thu năm @DateTime.Now.Year</h5>
+            
+            <div class="d-flex justify-content-between align-items-end px-2" style="height: 300px;">
+                @if (stats.MonthlyData != null && stats.MonthlyData.Any())
+                {
+                    @foreach (var item in stats.MonthlyData)
+                    {
+                        // Tính % chiều cao
+                        var heightPercent = (item.Value / (MaxVal == 0 ? 1 : MaxVal)) * 100;
+                        if (heightPercent < 2 && item.Value > 0) heightPercent = 2; // Min height visual
+
+                        <div class="d-flex flex-column align-items-center" style="width: 6%;">
+                            <div class="bg-primary bg-opacity-75 rounded-top w-100" 
+                                 style="height: @heightPercent%; transition: height 0.5s ease; min-height: 1px;" 
+                                 title="@item.Label: @item.Value.ToString("N0") ₫"></div>
+                            <small class="mt-2 text-muted fw-bold" style="font-size: 0.7rem;">
+                                @(item.Label?.Replace("Tháng ", "T") ?? "T")
+                            </small>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="w-100 text-center text-muted align-self-center">
+                        <i class="bi bi-bar-chart fs-1 d-block mb-2 opacity-25"></i>
+                        Chưa có dữ liệu biểu đồ
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private AdminRevenueVM stats = new();
+    private decimal MaxVal = 1;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadData();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        // isLoading = true; // Mặc định true rồi
+        try 
+        {
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            if (string.IsNullOrEmpty(token))
+            {
+                _nav.NavigateTo("/login");
+                return;
+            }
+
+            var client = ClientFactory.CreateClient("HotelBookingAPI");
+            client.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        
+            var res = await client.GetFromJsonAsync<ApiResponse<AdminRevenueVM>>(
+                $"hotel/admin/revenue-stats?year={DateTime.Now.Year}");
+            
+            if (res != null && res.StatusCode == StatusCodeResponse.Success && res.Content != null)
+            {
+                stats = res.Content;
+                
+                // An toàn khi truy cập List
+                if(stats.MonthlyData != null && stats.MonthlyData.Any()) 
+                {
+                    MaxVal = stats.MonthlyData.Max(x => x.Value);
+                    if (MaxVal == 0) MaxVal = 1;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Lỗi tải doanh thu: {ex.Message}");
+            // Có thể thêm Snackbar báo lỗi
+        }
+        finally 
+        { 
+            isLoading = false; 
+            StateHasChanged(); // Bắt buộc gọi để tắt loading
+        }
+    }
+}

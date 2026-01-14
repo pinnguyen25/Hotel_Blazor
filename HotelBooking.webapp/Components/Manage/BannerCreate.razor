@@ -1,0 +1,194 @@
+@using System.Net.Http.Headers
+@using Blazored.LocalStorage
+@using MudBlazor 
+@using HotelBooking.webapp.ViewModels.Hotel
+@inject ISnackbar Snackbar
+@inject IHttpClientFactory _clientFactory
+@inject ILocalStorageService _localStorage
+
+<div class="modal-backdrop fade show" style="z-index: 1040;"></div>
+
+<div class="modal fade show d-block" tabindex="-1" role="dialog" style="z-index: 1050;">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable"> 
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            
+            <div class="modal-header border-bottom pb-3">
+                <div>
+                    <h5 class="modal-title fw-bold text-dark mb-0">
+                        <i class="bi bi-images me-2 text-primary"></i>Thêm Banner Mới
+                    </h5>
+                    <small class="text-muted">Tải lên nhiều ảnh cùng lúc cho các trang hiển thị</small>
+                </div>
+                <button type="button" class="btn-close" @onclick="Cancel"></button>
+            </div>
+            
+            <div class="modal-body p-4">
+                <MudContainer>
+                    
+                    <div class="mb-4">
+                        <MudSelect T="string" Label="Vị trí hiển thị" @bind-Value="page" 
+                                   Variant="MudBlazor.Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Required="true"
+                                   AdornmentIcon="@Icons.Material.Filled.Web" AdornmentColor="Color.Primary">
+                            <MudSelectItem Value="@("Home")">Trang chủ</MudSelectItem>
+                            <MudSelectItem Value="@("AboutUs")">Giới thiệu</MudSelectItem>
+                            <MudSelectItem Value="@("Hotels")">Khách sạn</MudSelectItem>
+                            <MudSelectItem Value="@("Rooms")">Danh sách phòng</MudSelectItem>
+                            <MudSelectItem Value="@("Contact")">Liên hệ</MudSelectItem>
+                        </MudSelect>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <MudTextField @bind-Value="title" Label="Tiêu đề (Áp dụng chung)" 
+                                Variant="MudBlazor.Variant.Outlined" Margin="Margin.Dense" />
+                        </div>
+                        <div class="col-md-6">
+                            <MudTextField @bind-Value="linkUrl" Label="Link liên kết (Áp dụng chung)" 
+                                Variant="MudBlazor.Variant.Outlined" Margin="Margin.Dense" />
+                        </div>
+                    </div>
+
+                    <div class="upload-zone p-5 border-2 border-dashed rounded-lg bg-light text-center mb-4 position-relative">
+                        <MudFileUpload T="IReadOnlyList<IBrowserFile>" FilesChanged="UploadFiles" MaximumFileCount="10">
+                            <ActivatorContent>
+                                <MudButton Variant="MudBlazor.Variant.Filled"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.CloudUpload"
+                                           Size="Size.Large" Class="px-5 py-2 rounded-pill shadow-sm">
+                                    Chọn ảnh từ thiết bị
+                                </MudButton>
+                            </ActivatorContent>
+                        </MudFileUpload>
+                        <MudText Typo="Typo.caption" Class="d-block mt-3 text-muted">
+                            Hỗ trợ JPG, PNG. Tối đa 10 ảnh (Max 10MB/ảnh).
+                        </MudText>
+                    </div>
+
+                    @if (filePreviews.Any())
+                    {
+                        <div class="d-flex align-items-center mb-2">
+                            <MudIcon Icon="@Icons.Material.Filled.PhotoLibrary" Class="me-2 text-primary" />
+                            <MudText Typo="Typo.subtitle1" Class="fw-bold">Đã chọn @filePreviews.Count ảnh:</MudText>
+                        </div>
+                        
+                        <div class="d-flex flex-wrap gap-3 p-3 bg-white rounded border shadow-sm">
+                            @foreach (var img in filePreviews)
+                            {
+                                <div class="position-relative rounded overflow-hidden shadow-sm border preview-item" style="width: 140px; height: 90px;">
+                                    <img src="@img" style="width: 100%; height: 100%; object-fit: cover;" />
+                                </div>
+                            }
+                        </div>
+                    }
+                </MudContainer>
+            </div>
+
+            <div class="modal-footer border-top-0 pt-2 pb-4 px-4 bg-light rounded-bottom-4">
+                <MudButton OnClick="Cancel" Variant="MudBlazor.Variant.Text" Color="Color.Default" Class="me-2">Hủy bỏ</MudButton>
+                
+                <MudButton Color="Color.Success" Variant="MudBlazor.Variant.Filled" OnClick="Submit" 
+                           Disabled="@(isProcessing || !filePreviews.Any())"
+                           StartIcon="@(isProcessing ? null : Icons.Material.Filled.Save)"
+                           Class="px-4 fw-bold">
+                    @if (isProcessing)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                        <span class="ms-2">Đang tải lên...</span>
+                    }
+                    else
+                    {
+                        <span>Lưu Banner</span>
+                    }
+                </MudButton>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    // Event để giao tiếp với trang cha
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSuccess { get; set; }
+    
+    private string page = "Home";
+    private string? title;
+    private string? linkUrl;
+    
+    private IReadOnlyList<IBrowserFile>? selectedFiles;
+    private List<string> filePreviews = new();
+    private bool isProcessing = false;
+
+    private async Task UploadFiles(IReadOnlyList<IBrowserFile> files)
+    {
+        if (files == null) return;
+        selectedFiles = files;
+        filePreviews.Clear();
+        foreach (var file in files)
+        {
+            if (file.ContentType.Contains("image"))
+            {
+                var resized = await file.RequestImageFileAsync(file.ContentType, 400, 300);
+                var buffer = new byte[resized.Size];
+                await resized.OpenReadStream().ReadAsync(buffer);
+                filePreviews.Add($"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}");
+            }
+        }
+    }
+
+    private async Task Cancel()
+    {
+        await OnClose.InvokeAsync(); // Báo cha đóng modal
+    }
+
+    private async Task Submit()
+    {
+        if (selectedFiles == null || !selectedFiles.Any())
+        {
+            Snackbar.Add("Vui lòng chọn ít nhất 1 ảnh", Severity.Warning);
+            return;
+        }
+
+        isProcessing = true;
+        try
+        {
+            var client = _clientFactory.CreateClient("HotelBookingAPI");
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            using var content = new MultipartFormDataContent();
+            content.Add(new StringContent(page), "Page");
+            if (!string.IsNullOrEmpty(title)) content.Add(new StringContent(title), "Title");
+            if (!string.IsNullOrEmpty(linkUrl)) content.Add(new StringContent(linkUrl), "LinkUrl");
+
+            foreach (var file in selectedFiles!)
+            {
+                var fileContent = new StreamContent(file.OpenReadStream(10 * 1024 * 1024));
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+                content.Add(fileContent, "Images", file.Name);
+            }
+
+            // Gọi API tạo mới (dùng đúng endpoint API của bạn)
+            var response = await client.PostAsync("admin/banner", content);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Thêm banner thành công!", Severity.Success);
+                await OnSuccess.InvokeAsync(); // Báo thành công -> Reload list
+            }
+            else
+            {
+                var msg = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Lỗi: {msg}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi hệ thống: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+}

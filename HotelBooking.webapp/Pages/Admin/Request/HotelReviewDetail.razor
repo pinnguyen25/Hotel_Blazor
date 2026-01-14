@@ -1,0 +1,256 @@
+@page "/admin/hotel-review/{HotelId:int}"
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.ViewModels.Hotel
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@inject IHttpClientFactory _clientFactory
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject ILocalStorageService _localStorage
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="/admin/requests/overview" class="text-decoration-none text-muted mb-1 d-inline-block">
+                <i class="fas fa-arrow-left me-1"></i> Quay lại
+            </a>
+            <h3 class="fw-bold mb-0">Kiểm duyệt khách sạn</h3>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-danger px-4" @onclick="() => showRejectModal = true">
+                <i class="fas fa-times me-2"></i>Từ chối
+            </button>
+            <button class="btn btn-success px-4" @onclick="ApproveHotel">
+                <i class="fas fa-check me-2"></i>Duyệt khách sạn
+            </button>
+        </div>
+    </div>
+
+    @if (hotel == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm mb-4 overflow-hidden">
+                    <div style="height: 350px;">
+                        <img src="@(hotel.Images.CoverImageUrl ?? "/images/placeholder.jpg")"
+                            class="w-100 h-100 object-fit-cover" />
+                    </div>
+                    <div class="card-body">
+                        <h5 class="fw-bold">Gallery</h5>
+                        <div class="d-flex gap-2 overflow-auto">
+                            @foreach (var img in hotel.Images.GalleryImageUrls)
+                            {
+                                <img src="@img" class="rounded border" style="width:100px;height:70px;object-fit:cover" />
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm p-4 mb-4">
+                    <h4 class="fw-bold text-primary">@hotel.BasicInfo.Name</h4>
+                    <p class="text-muted mb-3"><i class="fas fa-map-marker-alt me-2"></i>@hotel.BasicInfo.Address</p>
+
+                    <hr />
+                    <h6 class="fw-bold text-uppercase text-muted small">Mô tả</h6>
+                    <div class="text-secondary" style="white-space: pre-line;">@hotel.BasicInfo.Description</div>
+                </div>
+
+                <div class="card border-0 shadow-sm p-4">
+                    <h5 class="fw-bold mb-3">Danh sách phòng (@hotel.RoomTypes.Count)</h5>
+                    @foreach (var room in hotel.RoomTypes)
+                    {
+                        <div class="border rounded p-3 mb-3 bg-light">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <img src="@room.DefaultImageUrl" class="img-fluid rounded ;" style=" object-fit:cover" />
+                                </div>
+                                <div class="col-md-9">
+                                    <div class="d-flex justify-content-between">
+                                        <h6 class="fw-bold">@room.Name</h6>
+                                        <span class="text-success fw-bold">@room.PricePerNight.ToString("N0") đ</span>
+                                    </div>
+                                    <div class="small text-muted mb-2">
+                                        SL: @room.Quantity | @room.Area m² | @room.AdultCapacity người lớn
+                                    </div>
+                                    <div class="small">
+                                        @if (room.RoomTypeServices != null && room.RoomTypeServices.Any())
+                                        {
+                                            <div class="text-primary small">
+                                                <i class="fas fa-gift me-1"></i>
+                                                <strong>Dịch vụ bao gồm:</strong>
+                                                @string.Join(", ", room.RoomTypeServices.Select(s => $"{s.ServiceName}"))
+                                             </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="text-muted small fst-italic">
+                                                <i class="fas fa-info-circle me-1"></i> Không có dịch vụ đi kèm
+                                            </div>
+                                        }
+
+                                        @if (room.Amenities != null && room.Amenities.Any())
+                                        {
+                                            <div class="text-secondary small mt-1">
+                                                <i class="fas fa-concierge-bell me-1"></i> 
+                                                <strong>Tiện nghi:</strong> 
+                                                @string.Join(", ", room.Amenities.Select(a => a.Name))
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm p-4 mb-4">
+                    <h6 class="fw-bold mb-3 text-uppercase text-muted small">Thông tin liên hệ</h6>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><i class="fas fa-user me-2 text-secondary"></i> @hotel.BasicInfo.ContactName</li>
+                        <li class="mb-2"><i class="fas fa-phone me-2 text-secondary"></i> @hotel.BasicInfo.ContactPhone</li>
+                        <li><i class="fas fa-envelope me-2 text-secondary"></i> @hotel.BasicInfo.ContactEmail</li>
+                    </ul>
+                </div>
+
+                <div class="card border-0 shadow-sm p-4 mb-4">
+                    <h6 class="fw-bold mb-3 text-uppercase text-muted small">Chính sách</h6>
+                    <ul class="list-group list-group-flush">
+                        @if (hotel.SystemPolicies != null)
+                        {
+                            @foreach (var p in hotel.SystemPolicies)
+                            {
+                                <li class="list-group-item px-0 bg-transparent border-0 py-1">
+                                    <i class="fas fa-check-circle me-2 text-success small"></i>
+                                    <span class="text-dark">@p.Name</span>
+                                </li>
+                            }
+                        }
+
+                        @if (hotel.CustomPolicies != null)
+                        {
+                            @foreach (var p in hotel.CustomPolicies)
+                            {
+                                <li class="list-group-item px-0 bg-transparent border-0 py-1">
+                                    <i class="fas fa-info-circle me-2 text-info small"></i>
+                                    <span class="text-dark">@p.Name</span>
+                                </li>
+                            }
+                        }
+
+                        @if ((hotel.SystemPolicies == null || !hotel.SystemPolicies.Any()) && (hotel.CustomPolicies == null || !hotel.CustomPolicies.Any()))
+                        {
+                            <li class="text-muted small fst-italic">Không có chính sách đặc biệt.</li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (showRejectModal)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-bottom-0">
+                    <h5 class="modal-title fw-bold text-danger">Từ chối xét duyệt</h5>
+                    <button type="button" class="btn-close" @onclick="() => showRejectModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Lý do từ chối (Bắt buộc):</label>
+                        <textarea class="form-control" rows="4" @bind="rejectReason"
+                            placeholder="Ví dụ: Hình ảnh mờ, Thiếu giấy phép kinh doanh, Giá phòng không hợp lý..."></textarea>
+                    </div>
+                    <div class="alert alert-warning small">
+                        <i class="fas fa-exclamation-triangle me-1"></i> Lý do này sẽ được gửi email cho chủ khách sạn để họ
+                        sửa đổi.
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button class="btn btn-light" @onclick="() => showRejectModal = false">Hủy bỏ</button>
+                    <button class="btn btn-danger" @onclick="RejectHotel">Xác nhận Từ chối</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int HotelId { get; set; }
+    private HotelDraftVM? hotel;
+    private bool showRejectModal = false;
+    private string rejectReason = "";
+    private HttpClient? _httpClient;
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient!.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _clientFactory.CreateClient("HotelBookingAPI");
+        try
+        {
+            await SetAuthHeader();
+            // API mới dành cho Admin xem chi tiết
+            var res = await _httpClient.GetFromJsonAsync<HotelDraftVM>($"Request/hotel-preview/{HotelId}");
+            if (res != null) hotel = res;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Lỗi tải dữ liệu: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task ApproveHotel()
+    {
+        await SetAuthHeader();
+        var res = await _httpClient!.PostAsync($"Request/approve-hotel/{HotelId}", null);
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Đã duyệt thành công! Email đã được gửi.", Severity.Success);
+            Nav.NavigateTo("/admin/requests/overview");
+        }
+        else
+        {
+            Snackbar.Add("Duyệt thất bại. Vui lòng thử lại.", Severity.Error);
+        }
+    }
+
+    private async Task RejectHotel()
+    {
+        await SetAuthHeader();
+        if (string.IsNullOrWhiteSpace(rejectReason))
+        {
+            Snackbar.Add("Vui lòng nhập lý do từ chối.", Severity.Warning);
+            return;
+        }
+        // Gọi API Reject kèm Query String
+        var url = $"Request/reject-hotel/{HotelId}?reason={Uri.EscapeDataString(rejectReason)}";
+        var res = await _httpClient!.PostAsync(url, null);
+
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Đã từ chối yêu cầu.", Severity.Success);
+            Nav.NavigateTo("/admin/requests/overview");
+        }
+        else
+        {
+            Snackbar.Add("Lỗi khi từ chối.", Severity.Error);
+        }
+    }
+}

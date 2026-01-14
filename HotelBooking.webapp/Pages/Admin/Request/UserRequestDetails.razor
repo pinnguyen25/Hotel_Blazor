@@ -1,0 +1,197 @@
+@page "/admin/requests/details/{RequestId:int}"
+@using System.Net.Http.Headers
+@using Blazored.LocalStorage
+
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@inject NavigationManager NavigationManager
+@inject IHttpClientFactory _httpClientFactory
+@inject ILocalStorageService _localStorage
+
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <button class="btn btn-link text-decoration-none text-muted p-0 mb-1" @onclick="NavigateBack">
+                <i class="fas fa-arrow-left me-2"></i>Quay lại danh sách
+            </button>
+        </div>
+        
+        @if(request != null)
+        {
+            <span class="badge rounded-pill px-3 py-2 fs-6 @GetStatusBadgeClass(request.Status)">
+                @request.Status
+            </span>
+        }
+    </div>
+
+    @if (request == null)
+    {
+        <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+    }
+    else
+    {
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm overflow-hidden">
+                    <div class="card-body p-4 text-center bg-light border-bottom">
+                        @if (!string.IsNullOrEmpty(request.AvatarUrl))
+                        {
+                            <img src="@request.AvatarUrl" class="rounded-circle shadow-sm border border-3 border-white mb-3" 
+                                 style="width: 120px; height: 120px; object-fit: cover;" />
+                        }
+                        else
+                        {
+                            <div class="rounded-circle bg-white shadow-sm d-flex align-items-center justify-content-center mx-auto mb-3 text-primary fw-bold display-4 border border-3"
+                                 style="width: 120px; height: 120px;">
+                                @(string.IsNullOrEmpty(request.FullName) ? "?" : request.FullName[0].ToString().ToUpper())
+                            </div>
+                        }
+                        <h4 class="fw-bold mb-1">@request.FullName</h4>
+                        <p class="text-muted mb-0">@@@request.UserName</p>
+                    </div>
+
+                    <div class="card-body p-4">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase text-muted small fw-bold">Số điện thoại</label>
+                                <div class="fs-6"><i class="fas fa-phone me-2 text-primary"></i>@request.PhoneNumber</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase text-muted small fw-bold">Mã số thuế</label>
+                                <div class="fs-6"><i class="fas fa-barcode me-2 text-primary"></i>@request.TaxCode</div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label text-uppercase text-muted small fw-bold">Địa chỉ đăng ký kinh doanh</label>
+                                <div class="p-3 bg-light rounded border">
+                                    <i class="fas fa-map-marker-alt me-2 text-danger"></i>@request.Address
+                                </div>
+                            </div>
+                             <div class="col-md-6">
+                                <label class="form-label text-uppercase text-muted small fw-bold">Ngày gửi yêu cầu</label>
+                                <div class="fs-6">@request.RequestedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                            </div>
+                        </div>
+
+                        @if (request.Status == "Pending")
+                        {
+                            <hr class="my-4" />
+                            <div class="d-flex gap-3">
+                                <button class="btn btn-outline-danger flex-grow-1 py-2" @onclick="RejectRequest">
+                                    <i class="fas fa-times me-2"></i>Từ chối
+                                </button>
+                                <button class="btn btn-success flex-grow-1 py-2" @onclick="ApproveRequest">
+                                    <i class="fas fa-check me-2"></i>Phê duyệt lên Chủ khách sạn
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@* Toast notification *@
+@if (!string.IsNullOrEmpty(toastMessage))
+{
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div class="toast show align-items-center text-white @toastClass border-0">
+            <div class="d-flex">
+                <div class="toast-body">
+                    @toastMessage
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                    @onclick="() => toastMessage = null"></button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int RequestId { get; set; }
+    private UpgradeRequestVM? request;
+    HttpClient? _httpClient;
+
+    // Toast state
+    private string? toastMessage;
+    private string toastClass = "bg-success";
+
+    
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+
+        // Lấy token từ localStorage
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+        {
+            // Thêm token vào header
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        try
+        {
+            request = await _httpClient.GetFromJsonAsync<UpgradeRequestVM>($"Request/request-detail/{RequestId}");
+
+            if (request == null)
+            {
+                toastClass = "bg-danger";
+                toastMessage = "Request not found.";
+            }
+            else
+            {
+                toastMessage = null; // Clear any previous messages
+            }
+        }
+        catch (Exception ex)
+        {
+            toastClass = "bg-danger";
+            toastMessage = "Error loading request details.";
+        }
+    }
+
+    private void NavigateBack()
+    {
+        NavigationManager.NavigateTo("/admin/requests/overview");
+    }
+
+    private string GetStatusBadgeClass(string status) => status switch
+    {
+        "Pending" => "bg-primary",
+        "Approved" => "bg-success",
+        "Rejected" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private async Task ApproveRequest()
+    {
+        var response = await _httpClient.PostAsync($"Request/approve/{RequestId}", null);
+        if (response.IsSuccessStatusCode)
+        {
+            request.Status = "Approved";
+            toastClass = "bg-success";
+            toastMessage = "Request approved successfully!";
+        }
+        else
+        {
+            toastClass = "bg-danger";
+            toastMessage = "Failed to approve request.";
+        }
+    }
+
+    private async Task RejectRequest()
+    {
+        var response = await _httpClient.PostAsync($"Request/reject/{RequestId}", null);
+        if (response.IsSuccessStatusCode)
+        {
+            request.Status = "Rejected";
+            toastClass = "bg-success";
+            toastMessage = "Request rejected successfully!";
+        }
+        else
+        {
+            toastClass = "bg-danger";
+            toastMessage = "Failed to reject request.";
+        }
+    }
+}

@@ -43,7 +43,7 @@ builder.Services.AddScoped<IAccommodationRepository, AccommodationRepository>();
 builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 builder.Services.AddScoped<IPolicyTypeRepository, PolicyTypeRepository>();
-
+builder.Services.AddScoped<ISystemSettingService, SystemSettingService>();
 // DI for UnitOfWork
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<JwtAuthService>();
@@ -53,7 +53,13 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IHotelService, HotelService>();
 builder.Services.AddScoped<IUpgradeRequestService, UpgradeRequestService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IWishlistService, WishlistService>();
+
+// Đăng ký Service chạy ngầm để hủy đơn quá hạn
+builder.Services.AddHostedService<BookingCleanupService>();
+builder.Services.AddHostedService<DraftCleanupWorker>();
 
 builder.Services.AddLogging(logging =>
 {

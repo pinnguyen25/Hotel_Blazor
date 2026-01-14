@@ -1,0 +1,181 @@
+@page "/admin/system-config"
+@using System.Net.Http.Headers
+@inject IHttpClientFactory ClientFactory
+@layout AdminLayout
+@inject ISnackbar Snackbar
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@attribute [Authorize(Roles = "Admin")]
+
+<MudContainer Class="mt-8">
+    <MudText Typo="Typo.h4" Class="mb-2 text-primary"> Cấu hình dọn dẹp</MudText>
+    <MudText Typo="Typo.body1" Class="mb-6 text-muted">Thay đổi các tham số vận hành tự động.</MudText>
+
+    @if (isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-5" />
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-12">
+                <MudPaper Class="p-4 rounded-xl border-start border-4 border-primary shadow-sm">
+                    <div class="d-flex align-items-start gap-4">
+                        <MudIcon Icon="@Icons.Material.Filled.Timer" Color="Color.Primary" Size="Size.Large" Class="mt-1" />
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.h6" Class="fw-bold">Thời gian giữ phòng (Pending Payment)</MudText>
+                            <MudText Typo="Typo.body2" Class="text-muted mb-3">
+                                Đơn hàng chưa thanh toán sẽ tự động hủy sau khoảng thời gian này để nhả phòng cho khách khác.
+                            </MudText>
+                            
+                            <div class="d-flex gap-3 align-items-center" style="max-width: 400px;">
+                                <MudNumericField @bind-Value="bookingTimeout" 
+                                                 Label="Số phút" 
+                                                 Variant="MudBlazor.Variant.Outlined" 
+                                                 Min="1" Max="120" 
+                                                 Adornment="Adornment.End" 
+                                                 AdornmentText="phút"
+                                                 Class="bg-white" />
+                                
+                                <MudButton Variant="MudBlazor.Variant.Filled" 
+                                           Color="Color.Primary" 
+                                           OnClick="@(() => SaveSetting("BookingTimeoutMinutes", bookingTimeout.ToString()))"
+                                           Disabled="@isSaving"
+                                           StartIcon="@Icons.Material.Filled.Save">
+                                    Lưu
+                                </MudButton>
+                            </div>
+                            <MudText Typo="Typo.caption" Class="mt-2 d-block text-muted">
+                                <i class="bi bi-clock-history"></i> Cập nhật lần cuối: @GetLastUpdate("BookingTimeoutMinutes")
+                            </MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </div>
+
+            <div class="col-12">
+                <MudPaper Class="p-4 rounded-xl border-start border-4 border-warning shadow-sm">
+                    <div class="d-flex align-items-start gap-4">
+                        <MudIcon Icon="@Icons.Material.Filled.CleaningServices" Color="Color.Warning" Size="Size.Large" Class="mt-1" />
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.h6" Class="fw-bold">Dọn dẹp bản nháp (Draft Cleanup)</MudText>
+                            <MudText Typo="Typo.body2" Class="text-muted mb-3">
+                                Các khách sạn đang tạo dở (Draft) sẽ bị xóa vĩnh viễn nếu quá thời hạn này.
+                            </MudText>
+
+                            <div class="d-flex gap-3 align-items-center" style="max-width: 400px;">
+                                <MudNumericField @bind-Value="draftCleanupDays" 
+                                                 Label="Số ngày" 
+                                                 Variant="MudBlazor.Variant.Outlined" 
+                                                 Min="1" Max="30" 
+                                                 Adornment="Adornment.End" 
+                                                 AdornmentText="ngày"
+                                                 Class="bg-white" />
+
+                                <MudButton Variant="MudBlazor.Variant.Filled" 
+                                           Color="Color.Warning" 
+                                           OnClick="@(() => SaveSetting("DraftCleanupDays", draftCleanupDays.ToString()))"
+                                           Disabled="@isSaving"
+                                           StartIcon="@Icons.Material.Filled.Save">
+                                    Lưu
+                                </MudButton>
+                            </div>
+                            <MudText Typo="Typo.caption" Class="mt-2 d-block text-muted">
+                                <i class="bi bi-clock-history"></i> Cập nhật lần cuối: @GetLastUpdate("DraftCleanupDays")
+                            </MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </div>
+        </div>
+    }
+</MudContainer>
+
+@code {
+    private List<SystemSettingVM> settings = new();
+    private bool isLoading = true;
+    private bool isSaving = false;
+
+    // Biến UI (dùng int để nhập liệu cho chuẩn)
+    private int bookingTimeout = 15;
+    private int draftCleanupDays = 2;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            var client = ClientFactory.CreateClient("HotelBookingAPI");
+            await AddAuthHeader(client);
+
+            // Gọi API lấy list settings
+            settings = await client.GetFromJsonAsync<List<SystemSettingVM>>("admin/settings") ?? new();
+
+            // Map dữ liệu từ API vào biến UI
+            // Lưu ý: KeyWord phải khớp với DB bạn đã insert
+            var s1 = settings.FirstOrDefault(s => s.KeyWord == "BookingTimeoutMinutes");
+            if (s1 != null && int.TryParse(s1.SetTime, out int v1)) bookingTimeout = v1;
+
+            var s2 = settings.FirstOrDefault(s => s.KeyWord == "DraftCleanupDays");
+            if (s2 != null && int.TryParse(s2.SetTime, out int v2)) draftCleanupDays = v2;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Không thể tải cấu hình.", Severity.Error);
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SaveSetting(string key, string value)
+    {
+        isSaving = true;
+        try
+        {
+            var client = ClientFactory.CreateClient("HotelBookingAPI");
+            await AddAuthHeader(client);
+
+            // Gửi request update
+            var payload = new { KeyWord = key, Value = value };
+            var res = await client.PutAsJsonAsync("admin/settings", payload);
+
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Đã cập nhật cấu hình thành công!", Severity.Success);
+                await LoadData(); // Reload để cập nhật thời gian 'Last Updated'
+            }
+            else
+            {
+                Snackbar.Add("Lỗi cập nhật.", Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Lỗi kết nối server.", Severity.Error);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private string GetLastUpdate(string key)
+    {
+        var s = settings.FirstOrDefault(x => x.KeyWord == key);
+        return s?.UpdateAt?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa có dữ liệu";
+    }
+
+    private async Task AddAuthHeader(HttpClient client)
+    {
+        var token = await LocalStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    }
+}

@@ -1,0 +1,148 @@
+@inject NavigationManager Nav
+
+<section class="travel-guide-section py-5 bg-white">
+    <div class="container">
+        <div class="text-center mb-5 animate-on-scroll">
+            <h2 class="handwriting section-title text-primary-gradient">Cẩm nang du lịch</h2>
+            <p class="text-muted">Bí kíp "bỏ túi" cho những chuyến đi hoàn hảo</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                @if (FeaturedArticle != null)
+                {
+                    <div class="card border-0 h-100 rounded-4 overflow-hidden shadow-lg hero-card cursor-pointer position-relative group-hover" 
+                         @onclick='() => NavToDetail(FeaturedArticle.Id)'>
+                        
+                        <div class="img-wrapper h-100 w-100 overflow-hidden">
+                            <img src="@FeaturedArticle.ImageUrl" class="w-100 h-100 object-fit-cover transition-transform" alt="@FeaturedArticle.Title">
+                        </div>
+                        
+                        <div class="card-img-overlay d-flex flex-column justify-content-end p-4 bg-gradient-overlay">
+                            <span class="badge bg-primary w-fit-content mb-2 animate-up">@FeaturedArticle.Category</span>
+                            <h3 class="text-white fw-bold mb-2 animate-up delay-100 text-shadow-sm">@FeaturedArticle.Title</h3>
+                            <p class="text-white-50 mb-3 line-clamp-2 animate-up delay-200 d-none d-md-block">@FeaturedArticle.Summary</p>
+                            
+                            <div class="d-flex align-items-center text-white-50 small animate-up delay-300">
+                                <span><i class="bi bi-calendar3 me-1"></i> @FeaturedArticle.Date</span>
+                                @* <span class="mx-2">•</span>
+                                <span><i class="bi bi-eye me-1"></i> @FeaturedArticle.Views.ToString("N0") lượt xem</span> *@
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="col-lg-6">
+                <div class="d-flex flex-column gap-3 h-100">
+                    @foreach (var item in SideArticles)
+                    {
+                        <div class="card border-0 rounded-4 shadow-sm hover-elevate cursor-pointer transition-all bg-white" 
+                             @onclick='() => NavToDetail(item.Id)'>
+                            <div class="row g-0 align-items-center h-100">
+                                <div class="col-4 h-100">
+                                    <img src="@item.ImageUrl" class="img-fluid rounded-start-4 h-100 object-fit-cover w-100" style="min-height: 110px;" alt="@item.Title">
+                                </div>
+                                <div class="col-8">
+                                    <div class="card-body py-2 pe-3 ps-2">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="badge bg-light text-primary border border-primary-subtle" style="font-size: 0.7rem;">@item.Category</span>
+                                            <small class="text-muted" style="font-size: 0.75rem;"><i class="bi bi-clock me-1"></i>@item.Date</small>
+                                        </div>
+                                        <h6 class="card-title fw-bold text-dark mb-1 line-clamp-2 hover-text-primary transition-color">@item.Title</h6>
+                                        <p class="card-text text-muted small line-clamp-1 mb-0 d-none d-sm-block">@item.Summary</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    
+                    <div class="mt-auto text-end pt-2">
+                        <button class="btn btn-link text-decoration-none fw-bold text-primary hover-arrow p-0">
+                            Xem tất cả bài viết <i class="bi bi-arrow-right ms-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .text-primary-gradient { color: #54a9ffff; } /* Màu thương hiệu của bạn */
+    
+    .bg-gradient-overlay {
+        background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 60%, transparent 100%);
+    }
+
+    /* Hiệu ứng Zoom ảnh Hero */
+    .hero-card:hover .transition-transform { transform: scale(1.08); }
+    .transition-transform { transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+
+    /* Hiệu ứng Card nhỏ */
+    .hover-elevate { transition: all 0.3s ease; }
+    .hover-elevate:hover { transform: translateY(-4px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.1)!important; }
+    .hover-elevate:hover .hover-text-primary { color: var(--bs-primary) !important; }
+
+    /* Utilities */
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+    .w-fit-content { width: fit-content; }
+    .text-shadow-sm { text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+
+    /* Hover Arrow */
+    .hover-arrow i { transition: transform 0.3s; }
+    .hover-arrow:hover i { transform: translateX(5px); }
+
+    /* Animation Entry */
+    .animate-up { animation: fadeInUp 0.8s ease-out backwards; }
+    .delay-100 { animation-delay: 0.1s; }
+    .delay-200 { animation-delay: 0.2s; }
+    .delay-300 { animation-delay: 0.3s; }
+
+    @@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+@code {
+    // Model nội bộ (đơn giản hóa)
+    public class GuideItem
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = "";
+        public string Summary { get; set; } = "";
+        public string ImageUrl { get; set; } = "";
+        public string Category { get; set; } = "";
+        public string Date { get; set; } = "";
+        public int Views { get; set; }
+    }
+
+    private GuideItem? FeaturedArticle;
+    private List<GuideItem> SideArticles = new();
+
+    protected override void OnInitialized()
+    {
+        // 1. DATA MOCK (Dữ liệu tĩnh)
+        FeaturedArticle = new GuideItem
+        {
+            Id = 1,
+            Title = "Top 3 Homestay Đà Lạt 'săn mây' cực đỉnh, view rừng thông đẹp rụng tim.",
+            Summary = "Bỏ lại khói bụi thành phố, cùng ChillZone khám phá những căn nhà gỗ nằm ẩn mình giữa rừng thông Đà Lạt...",
+            ImageUrl = "/images/view/sanmay.jpeg",
+            Category = "Review Chỗ Ở",
+            Date = "20/12/2025",
+            Views = 15420
+        };
+
+        SideArticles = new List<GuideItem>
+        {
+            new GuideItem { Id = 2, Title = "Kinh nghiệm du lịch Phú Quốc 4 ngày 3 đêm cho cặp đôi", Summary = "Lịch trình chi tiết, ăn gì, chơi ở đâu...", ImageUrl = "images/view/exp.webp", Category = "Kinh Nghiệm", Date = "18/12/2025" },
+            new GuideItem { Id = 3, Title = "Food tour Hà Nội: Ăn sập phố cổ chỉ với 500k", Summary = "Danh sách quán ăn vỉa hè ngon bổ rẻ...", ImageUrl = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1000", Category = "Ẩm Thực", Date = "15/12/2025" },
+            new GuideItem { Id = 4, Title = "Săn vé máy bay giá rẻ dịp Tết: Bí mật chưa được bật mí", Summary = "Cách đặt vé giờ vàng hiệu quả...", ImageUrl = "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=1000", Category = "Mẹo Vặt", Date = "10/12/2025" }
+        };
+    }
+
+    private void NavToDetail(int id)
+    {
+        Nav.NavigateTo($"/travel-guide/{id}");
+    }
+}

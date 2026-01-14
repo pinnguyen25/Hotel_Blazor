@@ -28,7 +28,7 @@ else
                        Value="selectedId"
                        ValueChanged="@(v => OnSelectChanged(group.Id, v))"
                        Dense="true"
-                       Variant="Variant.Outlined"
+                       Variant="MudBlazor.Variant.Outlined"
                        Placeholder="Chọn chính sách..."
                        Clearable="true"
                        Class="max-w-lg">
@@ -59,7 +59,7 @@ else
     <div class="d-flex align-center gap-3 flex-wrap mt-6">
         <MudTextField @bind-Value="newCustom"
                       Placeholder="VD: Nhận phòng sớm +300k, trẻ em dưới 6 tuổi miễn phí..."
-                      Variant="Variant.Outlined"
+                      Variant="MudBlazor.Variant.Outlined"
                       Dense="true"
                       Class="flex-grow-1"
                       Style="max-width: 520px;"
@@ -67,7 +67,7 @@ else
                       AdornmentIcon="@Icons.Material.Filled.AddComment" />
 
         <MudButton OnClick="AddCustom"
-                   Variant="Variant.Filled"
+                   Variant="MudBlazor.Variant.Filled"
                    Color="Color.Primary"
                    Disabled="@string.IsNullOrWhiteSpace(newCustom)">
             Thêm chính sách riêng

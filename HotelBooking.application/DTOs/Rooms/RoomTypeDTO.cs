@@ -15,5 +15,12 @@ public class RoomTypeDTO
     public string? DefaultImageUrl { get; set; } // Hình ảnh đại diện
     public List<string> RoomImages { get; set; } = new();
     public List<AmenityDTO> Amenities { get; set; } = new();
+    public List<RoomTypeServiceDTO> RoomTypeServices { get; set; } = new();
+    public List<RoomBedTypeDTO> Beds { get; set; } = new();
+    public List<RoomViewTypeDTO> Views { get; set; } = new();
+
+    public bool IsFreeCancellation { get; set; }
+    public bool IsBreakfastIncluded { get; set; }
+
 }
 

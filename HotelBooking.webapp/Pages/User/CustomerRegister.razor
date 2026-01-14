@@ -6,81 +6,117 @@
 
 @using System.Net.Http.Json
 @using System.Text.Json
+@using HotelBooking.webapp.Components 
+@* ^^^ Đảm bảo đã using namespace chứa file PartnerPolicyModal.razor *@
 @using HotelBooking.webapp.ViewModels
+@using Microsoft.AspNetCore.WebUtilities
 
-<div class="d-flex justify-content-center align-items-center min-vh-100">
-    <div class="container mt-5">
+<div class="auth-bg">
+    <div class="auth-overlay"></div>
+
+    <div class="container py-5">
         <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="bg-white border rounded shadow-sm p-4">
-                    <h2 class="mb-2">Đăng ký tài khoản</h2>
-                    <h6 class="mb-3 fw-normal">Đặt phòng khách sạn dễ dàng</h6>
-                    <p class="text-muted mb-4">Hãy tạo tài khoản để trải nghiệm dịch vụ đặt phòng tốt nhất từ chúng tôi.
-                    </p>
+            <div class="col-lg-8 col-xl-7">
+                <div class="glass-card p-4 p-md-5 animate-fade-in-up">
+                    
+                    <div class="text-center mb-5">
+                        <span class="brand-logo">ChillZone</span>
+                        <h3 class="fw-bold mt-2 text-dark">Tạo Tài Khoản Mới</h3>
+                        <p class="text-muted">Bắt đầu hành trình nghỉ dưỡng tuyệt vời ngay hôm nay</p>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(ReturnUrl) && ReturnUrl.Contains("upgrade-owner"))
+                    {
+                         <div class="alert alert-info border-0 bg-info bg-opacity-10 text-info d-flex align-items-center mb-4 rounded-3 p-3">
+                            <i class="bi bi-briefcase-fill me-3 fs-4"></i>
+                            <div>Để trở thành <strong>Đối tác</strong>, vui lòng tạo tài khoản trước.</div>
+                        </div>
+                    }
+
                     <EditForm Model="@userRegister" OnValidSubmit="HandleValidSubmit">
                         <DataAnnotationsValidator />
-                        <ValidationSummary />
+                        
                         <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="username" class="form-label">Username</label>
-                                <InputText @bind-Value="userRegister.Username" class="form-control" id="username" />
-                                <ValidationMessage For="@(() => userRegister.Username)" />
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <InputText @bind-Value="userRegister.FullName" class="form-control" id="regFullName" placeholder="Nguyen Van A" />
+                                    <label for="regFullName" class="text-muted">Họ và tên đầy đủ</label>
+                                    <ValidationMessage For="@(() => userRegister.FullName)" class="text-danger extra-small" />
+                                </div>
                             </div>
 
                             <div class="col-md-6">
-                                <label for="email" class="form-label">Email</label>
-                                <InputText @bind-Value="userRegister.Email" type="email" class="form-control"
-                                    id="email" />
-                                <ValidationMessage For="@(() => userRegister.Email)" />
+                                <div class="form-floating">
+                                    <InputText @bind-Value="userRegister.Username" class="form-control" id="regUser" placeholder="username" />
+                                    <label for="regUser" class="text-muted">Tên đăng nhập</label>
+                                    <ValidationMessage For="@(() => userRegister.Username)" class="text-danger extra-small" />
+                                </div>
+                            </div>
+                             <div class="col-md-6">
+                                <div class="form-floating">
+                                    <InputText @bind-Value="userRegister.PhoneNumber" class="form-control" id="regPhone" placeholder="0909..." />
+                                    <label for="regPhone" class="text-muted">Số điện thoại</label>
+                                    <ValidationMessage For="@(() => userRegister.PhoneNumber)" class="text-danger extra-small" />
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <InputText @bind-Value="userRegister.Email" type="email" class="form-control" id="regEmail" placeholder="name@example.com" />
+                                    <label for="regEmail" class="text-muted">Địa chỉ Email</label>
+                                    <ValidationMessage For="@(() => userRegister.Email)" class="text-danger extra-small" />
+                                </div>
                             </div>
 
                             <div class="col-md-6">
-                                <label for="fullname" class="form-label">Full Name</label>
-                                <InputText @bind-Value="userRegister.FullName" class="form-control" id="fullname" />
-                                <ValidationMessage For="@(() => userRegister.FullName)" />
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="phone" class="form-label">Phone Number</label>
-                                <InputText @bind-Value="userRegister.PhoneNumber" class="form-control" id="phone" />
-                                <ValidationMessage For="@(() => userRegister.PhoneNumber)" />
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="password" class="form-label">Password</label>
-                                <InputText @bind-Value="userRegister.Password" type="password" class="form-control"
-                                    id="password" />
-                                <ValidationMessage For="@(() => userRegister.Password)" />
+                                <div class="form-floating">
+                                    <InputText @bind-Value="userRegister.Password" type="password" class="form-control" id="regPass" placeholder="Pass" />
+                                    <label for="regPass" class="text-muted">Mật khẩu</label>
+                                    <ValidationMessage For="@(() => userRegister.Password)" class="text-danger extra-small" />
+                                </div>
                             </div>
                             <div class="col-md-6">
-                                <label for="confirmPassword" class="form-label">Confirm Password</label>
-                                <InputText @bind-Value="userRegister.ConfirmPassword" type="password"
-                                    class="form-control" id="confirmPassword" />
-                                <ValidationMessage For="@(() => userRegister.ConfirmPassword)" />
+                                <div class="form-floating">
+                                    <InputText @bind-Value="userRegister.ConfirmPassword" type="password" class="form-control" id="regConfirm" placeholder="Confirm" />
+                                    <label for="regConfirm" class="text-muted">Xác nhận mật khẩu</label>
+                                    <ValidationMessage For="@(() => userRegister.ConfirmPassword)" class="text-danger extra-small" />
+                                </div>
                             </div>
                         </div>
-                        <div class="form-check mt-4">
-                            <input class="form-check-input" type="checkbox" id="receiveEmail">
-                            <label class="form-check-label" for="receiveEmail">
-                                Vâng, tôi muốn nhận email từ Hotel Booking
-                            </label>
+
+                        <div class="mt-4">
+                            <div class="form-check mb-2">
+                                <InputCheckbox @bind-Value="userRegister.AgreeTerm" class="form-check-input" id="agreeTerm" />
+                                <label class="form-check-label small text-muted" for="agreeTerm">
+                                    Tôi đồng ý với 
+                                    <a href="javascript:void(0)" @onclick="() => ShowPolicy = true" class="text-primary text-decoration-none fw-bold">
+                                        Điều khoản & Chính sách
+                                    </a> 
+                                    của ChillZone
+                                </label>
+                                <ValidationMessage For="@(() => userRegister.AgreeTerm)" class="text-danger d-block extra-small" />
+                            </div>
                         </div>
 
-                        <div class="form-check mb-3">
-                            <InputCheckbox @bind-Value="userRegister.AgreeTerm" class="form-check-input"
-                                id="agreeTerm" />
-                            <label class="form-check-label" for="agreeTerm">
-                                Tôi đồng ý với <a href="#">Điều khoản, Chính sách bảo mật và Phí dịch vụ</a>
-                            </label>
-                            <ValidationMessage For="@(() => userRegister.AgreeTerm)" />
+                        @if (!string.IsNullOrEmpty(messageAlert))
+                        {
+                            <div class="alert @(messageAlert.Contains("successful") ? "alert-success" : "alert-danger") mt-3 text-center small">
+                                @messageAlert
+                            </div>
+                        }
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn-chill py-3 shadow-lg">
+                                Đăng Ký Tài Khoản
+                            </button>
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100">Tạo tài khoản</button>
-
-                        <div class="text-center mt-3">
-                            <small class="text-muted">Bạn đã có tài khoản? <a href="/customer-login">Đăng
-                                    nhập</a></small>
+                        <div class="text-center mt-4">
+                            <p class="small text-muted mb-0">Đã có tài khoản?</p>
+                            <a href="/customer-login@(string.IsNullOrEmpty(ReturnUrl) ? "" : $"?returnUrl={Uri.EscapeDataString(ReturnUrl)}")" 
+                               class="text-decoration-none fw-bold text-primary fs-6">Đăng nhập ngay</a>
                         </div>
+
                     </EditForm>
                 </div>
             </div>
@@ -88,10 +124,32 @@
     </div>
 </div>
 
+<PartnerPolicy @bind-IsVisible="ShowPolicy" OnAgreed="HandlePolicyAgreed" />
+
+<style>
+    .extra-small { font-size: 0.75rem; margin-top: 4px; display: block;}
+    .form-floating > label { padding-left: 1.25rem; } 
+    .form-control { padding-left: 1.25rem; }
+    /* Cursor pointer cho link */
+    a[href="javascript:void(0)"] { cursor: pointer; }
+</style>
+
 @code {
     private UserRegisterVM userRegister = new UserRegisterVM();
-
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
     private string messageAlert = "";
+
+    // 1. Biến điều khiển hiển thị Modal
+    private bool ShowPolicy { get; set; } = false;
+
+    // 2. Hàm xử lý khi người dùng bấm "Tôi Đồng ý" trong Popup
+    private void HandlePolicyAgreed()
+    {
+        // Tự động tích vào ô checkbox
+        userRegister.AgreeTerm = true;
+        StateHasChanged(); // Cập nhật giao diện
+    }
 
     private async Task HandleValidSubmit()
     {
@@ -109,10 +167,15 @@
 
             if (response.IsSuccessStatusCode)
             {
-                messageAlert = "Registration successful! Redirecting to login...";
-                // Redirect to login page after a short delay
-                await Task.Delay(2000);
-                _navManager.NavigateTo("/customer-login");
+                if (!string.IsNullOrEmpty(ReturnUrl))
+                {
+                    string encodedUrl = Uri.EscapeDataString(ReturnUrl);
+                    _navManager.NavigateTo($"/customer-login?returnUrl={encodedUrl}");
+                }
+                else
+                {
+                    _navManager.NavigateTo("/customer-login");
+                }
             }
             else
             {

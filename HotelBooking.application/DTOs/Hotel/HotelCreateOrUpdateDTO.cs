@@ -36,6 +36,6 @@ public class HotelAmenitiesDTO
 public class HotelPoliciesDTO
 {
     public List<int> PolicyIds { get; set; } = new();
-    public List<OwnerCustomPolicyDTO>? OwnerCustomPolicies { get; set; }
+    public List<OwnerCustomPolicyDTO>? OwnerCustomPolicies { get; set; } = new();
 }
 

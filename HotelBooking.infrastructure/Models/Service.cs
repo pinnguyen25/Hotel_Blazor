@@ -11,8 +11,6 @@ public partial class Service
 
     public string? Description { get; set; }
 
-    public decimal Price { get; set; }
-
     public bool? IsDeleted { get; set; }
 
     public DateTime? CreatedAt { get; set; }
@@ -28,6 +26,10 @@ public partial class Service
     public virtual ICollection<BookingService> BookingServices { get; set; } = new List<BookingService>();
 
     public virtual User? CreatedByNavigation { get; set; }
+
+    public virtual ICollection<HotelServiceConfig> HotelServiceConfigs { get; set; } = new List<HotelServiceConfig>();
+
+    public virtual ICollection<RoomTypeService> RoomTypeServices { get; set; } = new List<RoomTypeService>();
 
     public virtual User? UpdatedByNavigation { get; set; }
 }

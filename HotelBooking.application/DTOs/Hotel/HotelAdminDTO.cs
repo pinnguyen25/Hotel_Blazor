@@ -7,5 +7,5 @@ public class HotelAdminDTO : HotelBaseDTO
     public DateTime CreatedDate { get; set; }
     public int? CreatedBy { get; set; }
 
-    public HotelStatsDTO Stats { get; set; } = new();
+    public OwnerDashboardStatsDTO Stats { get; set; } = new();
 }

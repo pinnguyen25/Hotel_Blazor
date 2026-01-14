@@ -5,6 +5,6 @@ public class RoomBedTypeDTO
     public string? BedTypeName {get;set;}
     public string? Additional {get;set;}
     public int Quantity { get; set; } = 1;
-    public bool IsPrimary { get; set; } = false;
+    public bool? IsPrimary { get; set; } = false;
     
 }

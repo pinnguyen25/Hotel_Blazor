@@ -1,0 +1,111 @@
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.ViewModels.Hotel
+@inject ISnackbar Snackbar
+@inject IHttpClientFactory _clientFactory
+@inject ILocalStorageService _localStorage
+@using System.Net.Http.Headers
+@using System.Text.Json
+
+<MudOverlay Visible="true" DarkBackground="true" AutoClose="false" ZIndex="9999">
+    <MudPaper Class="mx-4 my-4" Style="width: 500px; max-width: 95vw;" Elevation="4">
+        
+        <div class="d-flex justify-space-between align-center pa-4 border-b">
+            <MudText Typo="Typo.h6">@(Service == null ? "Thêm Dịch Vụ Mới" : "Cập Nhật Dịch Vụ")</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="Cancel" Size="Size.Small"/>
+        </div>
+
+        <div class="pa-4">
+            <MudTextField @bind-Value="model.Name" Label="Tên dịch vụ" 
+                          Variant="MudBlazor.Variant.Outlined" Required="true" Class="mb-3" />
+            
+            <MudTextField @bind-Value="model.Description" Label="Mô tả chi tiết" 
+                          Variant="MudBlazor.Variant.Outlined" Lines="3" Class="mb-3" />
+        </div>
+
+        <div class="d-flex justify-end gap-2 pa-4 border-t bg-light">
+            <MudButton OnClick="Cancel" Variant="MudBlazor.Variant.Text">Hủy bỏ</MudButton>
+            <MudButton Color="Color.Primary" Variant="MudBlazor.Variant.Filled" OnClick="Submit" Disabled="isProcessing"
+                       StartIcon="@(isProcessing ? null : Icons.Material.Filled.Save)">
+                @if (isProcessing) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ms-n1 me-2"/> }
+                <span>Lưu Dịch Vụ</span>
+            </MudButton>
+        </div>
+
+    </MudPaper>
+</MudOverlay>
+
+@code {
+    // --- THAY ĐỔI QUAN TRỌNG ---
+    // 1. Nhận EventCallback từ cha để báo đóng/thành công
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSuccess { get; set; }
+    
+    // 2. Nhận dữ liệu đầu vào
+    [Parameter] public ServicesVM? Service { get; set; }
+
+    private ServiceCreateOrUpdateVM model = new();
+    private bool isProcessing = false;
+
+    protected override void OnInitialized()
+    {
+        if (Service != null)
+        {
+            model.Name = Service.Name;
+            model.Description = Service.Description;
+        }
+    }
+
+    private async Task Cancel()
+    {
+        // Gọi Event báo cho cha biết là user muốn đóng
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(model.Name))
+        {
+            Snackbar.Add("Vui lòng nhập tên dịch vụ", Severity.Warning);
+            return;
+        }
+
+        isProcessing = true;
+        try
+        {
+            var client = _clientFactory.CreateClient("HotelBookingAPI");
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            HttpResponseMessage response;
+            if (Service == null) // Create
+            {
+                response = await client.PostAsJsonAsync("admin/service", model);
+            }
+            else // Update
+            {
+                response = await client.PutAsJsonAsync($"admin/service/{Service.Id}", model);
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Lưu thành công!", Severity.Success);
+                // Báo cho cha biết là đã xong, hãy reload data đi
+                await OnSuccess.InvokeAsync(); 
+            }
+            else
+            {
+                // Xử lý lỗi từ API trả về (nếu có message trong body)
+                var content = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Lỗi: {response.StatusCode} - {content}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi hệ thống: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+}

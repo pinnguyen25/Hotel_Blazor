@@ -1,0 +1,127 @@
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.ViewModels.Hotel
+@inject IHttpClientFactory _clientFactory
+@inject ILocalStorageService _localStorage
+@using System.Net.Http.Headers
+@using System.Text.Json
+
+<MudOverlay Visible="true" DarkBackground="true" AutoClose="false" ZIndex="2000">
+    <MudPaper Class="mx-4 overflow-hidden rounded-xl" Style="width: 700px; max-width: 95vw;" Elevation="4">
+        
+        <div class="d-flex justify-space-between align-center pa-4 border-b">
+            <MudText Typo="Typo.h6" Class="fw-bold">Thống Kê Sử Dụng</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="Cancel" Size="Size.Small"/>
+        </div>
+
+        <div class="pa-4">
+            @if (isLoading)
+            {
+                <div class="d-flex flex-column align-center justify-center py-5">
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large"/>
+                    <MudText Class="mt-3 text-muted">Đang tải dữ liệu...</MudText>
+                </div>
+            }
+            else if (detail == null)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="MudBlazor.Variant.Outlined" Class="my-2">
+                    Không tìm thấy thông tin chi tiết.
+                </MudAlert>
+            }
+            else
+            {
+                <div class="d-flex gap-4 mb-4">
+                    <MudPaper Class="pa-4 flex-grow-1 text-center bg-blue-50" Elevation="0">
+                        <MudText Typo="Typo.h4" Color="Color.Primary" Class="fw-bold">@detail.UsageCount</MudText>
+                        <MudText Typo="Typo.caption" Class="text-uppercase fw-bold text-muted">Khách sạn sử dụng</MudText>
+                    </MudPaper>
+                    <MudPaper Class="pa-4 flex-grow-1 text-center bg-green-50" Elevation="0">
+                        <MudText Typo="Typo.h4" Color="Color.Success" Class="fw-bold">
+                            @detail.AveragePrice.ToString("N0") <small style="font-size:14px">đ</small>
+                        </MudText>
+                        <MudText Typo="Typo.caption" Class="text-uppercase fw-bold text-muted">Giá trung bình</MudText>
+                    </MudPaper>
+                </div>
+
+                <MudText Typo="Typo.subtitle1" Class="fw-bold mb-2">Danh sách khách sạn:</MudText>
+                <MudTable Items="@detail.UsedByHotels" Dense="true" Hover="true" FixedHeader="true" Height="300px" 
+                          Outlined="true" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Khách sạn</MudTh>
+                        <MudTh>Chủ sở hữu</MudTh>
+                        <MudTh>Giá bán</MudTh>
+                        <MudTh Style="text-align:center">Trạng thái</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Filled.Hotel" Size="Size.Small" Class="me-2 text-muted"/>
+                                @context.HotelName
+                            </div>
+                        </MudTd>
+                        <MudTd>@context.OwnerName</MudTd>
+                        <MudTd>
+                            <span class="fw-bold text-success">@context.Price.ToString("N0")</span>
+                            <small class="text-muted">/@(context.Unit ?? "lượt")</small>
+                        </MudTd>
+                        <MudTd Style="text-align:center">
+                            @if(context.IsActive) 
+                            { 
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="MudBlazor.Variant.Text">Đang bật</MudChip> 
+                            }
+                            else 
+                            { 
+                                <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="MudBlazor.Variant.Text">Đã tắt</MudChip> 
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <MudText Class="pa-4 text-center text-muted">Chưa có khách sạn nào đăng ký dịch vụ này.</MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            }
+        </div>
+    </MudPaper>
+</MudOverlay>
+
+@code {
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public int ServiceId { get; set; }
+    private HttpClient? _httpClient;
+    private ServiceDetailVM? detail;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _clientFactory.CreateClient("HotelBookingAPI");
+        await LoadData();
+    }
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient!.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
+    }
+    private async Task LoadData()
+    {
+        try
+        {
+            await SetAuthHeader();
+            isLoading = true;
+            var res = await _httpClient!.GetAsync($"hotel/get-detail-services/{ServiceId}");
+            if (res.IsSuccessStatusCode)
+            {
+                var content = await res.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var apiRes = JsonSerializer.Deserialize<ApiResponse<ServiceDetailVM>>(content, options);
+                detail = apiRes?.Content;
+            }
+        }
+        catch {}
+        finally { isLoading = false; }
+    }
+
+    private async Task Cancel() => await OnClose.InvokeAsync();
+}

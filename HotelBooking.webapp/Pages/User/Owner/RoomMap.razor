@@ -1,0 +1,316 @@
+@page "/owner/hotels/{HotelId:int}/room-map"
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Net.Http.Json
+@using System.Threading
+@implements IDisposable
+@layout OwnerLayout
+@attribute [Authorize(Roles = "Owner, Staff")]
+@inject IHttpClientFactory _httpClientFactory
+@inject ISnackbar Snackbar
+@inject ILocalStorageService _localStorage
+@inject NavigationManager _nav
+
+<PageTitle>Sơ đồ phòng</PageTitle>
+
+<div class="container-fluid py-4 room-container">
+    <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded shadow-sm">
+        <div class="d-flex align-items-center">
+            <a href="/owner/hotels" class="btn btn-light btn-sm me-3 text-muted">
+                <i class="bi bi-arrow-left fs-5"></i>
+            </a>
+            <div>
+                <h4 class="fw-bold mb-0 text-dark">Sơ đồ phòng</h4>
+            </div>
+        </div>
+
+        <div class="d-flex gap-3 flex-wrap">
+            <div class="d-flex align-items-center"><span class="status-dot available me-1"></span><small>Trống</small>
+            </div>
+            <div class="d-flex align-items-center"><span class="status-dot reserved me-1"></span><small>Sắp đến</small>
+            </div>
+            <div class="d-flex align-items-center"><span class="status-dot occupied me-1"></span><small>Có khách</small>
+            </div>
+            <div class="d-flex align-items-center"><span class="status-dot cleaning me-1"></span><small>Chờ dọn</small>
+            </div>
+            <div class="d-flex align-items-center"><span class="status-dot maintenance me-1"></span><small>Bảo
+                    trì</small></div>
+
+            <button class="btn btn-light btn-sm shadow-sm d-flex align-items-center gap-2"
+                @onclick="() => LoadRooms(false)" disabled="@IsLoading">
+                <i class="bi bi-arrow-clockwise text-primary @(IsRefreshing ? "fa-spin" : "")"></i>
+            </button>
+        </div>
+    </div>
+
+    @if (!IsLoading && GroupedRooms != null)
+    {
+        <div class="room-map-content px-2">
+            @foreach (var floorGroup in GroupedRooms.OrderBy(g => g.Key))
+            {
+                <h6 class="text-muted fw-bold mb-3 ps-1">@(string.IsNullOrEmpty(floorGroup.Key) ? "Tầng trệt" : $"Tầng {floorGroup.Key}")</h6>
+                <div class="mb-5">
+                    <div class="room-grid">
+                        @foreach (var room in floorGroup.OrderBy(r => r.RoomNumber))
+                        {
+                            <div class="card room-card border-0 shadow-sm h-100 position-relative hover-card"
+                                @onclick="() => OnRoomClick(room)">
+
+                                <div class="status-strip @GetStatusClass(room.Status)"></div>
+
+                                <div class="card-body p-3 d-flex flex-column">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span class="fs-5 fw-bold text-dark">@room.RoomNumber</span>
+                                        <span class="badge bg-light text-secondary border fw-normal text-truncate"
+                                            style="max-width: 100px;">
+                                            @room.RoomTypeName
+                                        </span>
+                                    </div>
+
+                                    <div
+                                        class="flex-grow-1 d-flex flex-column justify-content-center align-items-center text-center">
+
+                                        @if (room.Status == "Occupied")
+                                        {
+                                            <div class="text-truncate fw-bold text-dark w-100 mb-1" title="@room.CurrentGuestName">
+                                                <i class="bi bi-person-fill text-danger"></i> @(room.CurrentGuestName ?? "Khách lẻ")
+                                            </div>
+                                            <small class="text-danger fw-bold bg-danger-subtle px-2 py-1 rounded">
+                                                Out: @room.CurrentCheckOut?.ToString("dd/MM")
+                                            </small>
+                                        }
+                                        else if (room.Status == "Reserved") // Trạng thái mới: Đã gán phòng, chờ khách đến
+                                        {
+                                            <div class="text-truncate fw-bold text-dark w-100 mb-1" title="@room.CurrentGuestName">
+                                                <i class="bi bi-person-fill text-info"></i> @(room.CurrentGuestName ?? "Khách đặt")
+                                            </div>
+                                            <small class="text-info fw-bold bg-info-subtle px-2 py-1 rounded">
+                                                Sắp đến
+                                            </small>
+                                        }
+                                        else if (room.Status == "Available")
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success display-6 mb-1 opacity-50"></i>
+                                        }
+                                        else if (room.Status == "Cleaning")
+                                        {
+                                            <i
+                                                class="bi bi-stars text-warning display-6 mb-1 animate__animated animate__pulse animate__infinite"></i>
+                                            <div class="badge bg-warning text-dark border border-warning text-truncate mt-1"
+                                                style="max-width: 100%;">
+                                                @(string.IsNullOrEmpty(room.HousekeeperName) ? "Chờ dọn" : room.HousekeeperName)
+                                            </div>
+                                        }
+                                        else if (room.Status == "Maintenance")
+                                        {
+                                            <i class="bi bi-cone-striped text-secondary display-6 mb-1"></i>
+                                            <small class="text-muted fw-bold border-bottom border-secondary"
+                                                title="@room.MaintenanceReason">
+                                                Bảo trì
+                                            </small>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<RoomDetailForm Show="ShowDetailModal" Room="SelectedRoom" HotelId="HotelId" OnClose="() => ShowDetailModal = false"
+    OnChange="ReloadMap" />
+
+<style>
+    :root {
+        --color-available: #28a745;
+        --color-occupied: #dc3545;
+        --color-cleaning: #ffc107;
+        --color-maintenance: #6c757d;
+        --color-reserved: #0dcaf0;
+    }
+
+    .room-container {
+        background-color: #f3f4f6;
+        min-height: 100vh;
+    }
+
+    .room-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+
+    /* Card Styles */
+    .hover-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+        min-height: 130px;
+    }
+
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .room-number {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #344767;
+    }
+
+    /* Status Strip & Dots */
+    .status-strip {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 6px;
+    }
+
+    .status-strip.available {
+        background-color: var(--color-available);
+    }
+
+    .status-strip.occupied {
+        background-color: var(--color-occupied);
+    }
+
+    .status-strip.cleaning {
+        background-color: var(--color-cleaning);
+    }
+
+    .status-strip.maintenance {
+        background-color: var(--color-maintenance);
+    }
+
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    .status-dot.available {
+        background-color: var(--color-available);
+    }
+
+    .status-dot.occupied {
+        background-color: var(--color-occupied);
+    }
+
+    .status-dot.cleaning {
+        background-color: var(--color-cleaning);
+    }
+
+    .status-dot.maintenance {
+        background-color: var(--color-maintenance);
+    }
+
+    .status-strip.reserved {
+        background-color: var(--color-reserved);
+    }
+
+    .status-dot.reserved {
+        background-color: var(--color-reserved);
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int HotelId { get; set; } // Nhận HotelId từ URL
+    private bool IsLoading = true;
+    private List<RoomPhysicalVM> AllRooms = new();
+    private IEnumerable<IGrouping<string?, RoomPhysicalVM>> GroupedRooms;
+
+    // Thêm biến trạng thái cho Modal
+    private bool ShowDetailModal = false;
+    private RoomPhysicalVM SelectedRoom = new();
+    private bool IsRefreshing = false;
+    private HttpClient? _httpClient;
+    private Timer? _timer;
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+        await SetAuthHeader();
+        await LoadRooms();
+
+        _timer = new Timer(async _ =>
+            {
+                if (ShowDetailModal) return;
+                await InvokeAsync(async () =>
+            {
+            // Gọi load lại nhưng không hiện loading spinner to (silent reload)
+                await LoadRooms(silent: true);
+                StateHasChanged();
+            });
+        }, null, 10000, 10000);
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            _httpClient!.DefaultRequestHeaders.Authorization = new("Bearer", token);
+        else
+            _nav.NavigateTo("/customer-login");
+    }
+
+    private async Task LoadRooms(bool silent = false)
+    {
+        if (!silent) IsLoading = true; 
+        else IsRefreshing = true;
+
+        try
+        {
+            // API: GET /api/Hotel/owner/{hotelId}/rooms
+            var res = await _httpClient!.GetFromJsonAsync<ApiResponse<List<RoomPhysicalVM>>>($"hotel/owner/{HotelId}/rooms");
+
+            if (res != null && res.StatusCode == StatusCodeResponse.Success)
+            {
+                AllRooms = res.Content;
+                // Nhóm theo tầng
+                GroupedRooms = AllRooms.OrderBy(r => r.Floor).GroupBy(r => r.Floor);
+            }
+            else
+            {
+                Snackbar.Add(res?.Message ?? "Không thể tải dữ liệu phòng", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!silent) Snackbar.Add($"Lỗi kết nối: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsLoading = false;
+            IsRefreshing = false;
+        }
+    }
+
+    private string GetStatusClass(string status) => status?.ToLower() switch
+    {
+        "occupied" => "occupied",
+        "reserved" => "reserved",
+        "cleaning" => "cleaning",
+        "maintenance" => "maintenance",
+        _ => "available"
+    };
+
+    private void OnRoomClick(RoomPhysicalVM room)
+    {
+        SelectedRoom = room;
+        ShowDetailModal = true;
+    }
+    private async Task ReloadMap()
+    {
+        await LoadRooms(); // Gọi lại hàm load cũ
+        StateHasChanged();
+    }
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

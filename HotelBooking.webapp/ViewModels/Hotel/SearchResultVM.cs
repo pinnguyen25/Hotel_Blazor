@@ -8,4 +8,5 @@ public class SearchResultVM
     public int Rooms { get; set; } = 1;
     public string? HotelName { get; set; }
     public string? AccommodationType { get; set; } // Khách sạn, Homestay...
+    
 }

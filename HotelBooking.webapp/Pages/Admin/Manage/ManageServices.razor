@@ -1,0 +1,256 @@
+@page "/admin/manages/manage-services"
+@using System.Net.Http.Headers
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.Components.Manage
+@using HotelBooking.webapp.ViewModels.Hotel
+@layout AdminLayout
+@inject IHttpClientFactory _clientFactory
+@inject ILocalStorageService _localStorage
+@inject IDialogService DialogService 
+@inject ISnackbar Snackbar
+@using MudBlazor
+@using System.Text.Json
+
+<PageTitle>Quản lý Dịch vụ</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <MudText Typo="Typo.h4" Class=" text-primary">Quản lý dịch vụ</MudText>
+        </div>
+        <MudButton Variant="MudBlazor.Variant.Filled" Color="Color.Primary" 
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenCreateDialog"
+                   Class="rounded-pill px-4 shadow-sm">
+            Thêm Dịch vụ
+        </MudButton>
+    </div>
+
+    <MudPaper Class="pa-4 mb-4 rounded-lg" Elevation="0" Outlined="true">
+        <div class="d-flex gap-3 align-center">
+            <MudIcon Icon="@Icons.Material.Filled.ManageSearch" Size="Size.Large" Color="Color.Primary" />
+            <MudTextField T="string" @bind-Value="searchKeyword" 
+                          Placeholder="Tìm kiếm tên dịch vụ hoặc mô tả..." 
+                          Variant="MudBlazor.Variant.Outlined" 
+                          Margin="Margin.Dense" 
+                          Class="flex-grow-1 bg-white"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          OnAdornmentClick="@(() => _table.ReloadServerData())"
+                          OnKeyDown="@(e => { if (e.Key == "Enter") _table.ReloadServerData(); })" />
+            
+            <MudButton Variant="MudBlazor.Variant.Filled" Color="Color.Secondary" 
+                       OnClick="@(() => _table.ReloadServerData())" Class="px-4">
+                Tìm kiếm
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    <MudTable T="ServicesVM" ServerData="LoadServerData" @ref="_table"
+              Hover="true" Elevation="0" Outlined="true" Dense="true" Class="rounded-lg overflow-hidden">
+        <HeaderContent>
+            <MudTh>ID</MudTh>
+            <MudTh>Tên dịch vụ</MudTh>
+            <MudTh>Mô tả</MudTh>
+            <MudTh Style="text-align:center">Thống kê</MudTh>
+            <MudTh Style="text-align:center">Trạng thái</MudTh>
+            <MudTh Style="text-align:right">Thao tác</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="ID">
+                <MudChip T="string" Size="Size.Small" Variant="MudBlazor.Variant.Text" Color="Color.Default">#@context.Id</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Tên">
+                <MudText Typo="Typo.subtitle2" Class="fw-bold text-primary">@context.Name</MudText>
+            </MudTd>
+            <MudTd DataLabel="Mô tả">
+                <MudText Typo="Typo.body2" Class="text-muted text-truncate" Style="max-width: 300px;">
+                    @(string.IsNullOrEmpty(context.Description) ? "---" : context.Description)
+                </MudText>
+            </MudTd>
+            <MudTd DataLabel="Thống kê" Style="text-align:center">
+                <MudTooltip Text="Xem chi tiết sử dụng">
+                    <MudIconButton Icon="@Icons.Material.Filled.Analytics" 
+                                   Color="Color.Info" Size="Size.Small"
+                                   OnClick="@(() => OpenUsageDialog(context.Id))" />
+                </MudTooltip>
+            </MudTd>
+            <MudTd DataLabel="Trạng thái" Style="text-align:center">
+                @if (context.IsDeleted == true)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="MudBlazor.Variant.Text">Đã xóa</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="MudBlazor.Variant.Text">Hoạt động</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Thao tác" Style="text-align:right">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Warning" Size="Size.Small"
+                               OnClick="@(() => OpenEditDialog(context))" Class="me-2" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                               OnClick="@(() => DeleteService(context))" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <div class="d-flex flex-column align-center py-5">
+                <MudIcon Icon="@Icons.Material.Outlined.SearchOff" Size="Size.Large" Color="Color.Default" />
+                <MudText Class="mt-2 text-muted">Không tìm thấy dịch vụ nào phù hợp.</MudText>
+            </div>
+        </NoRecordsContent>
+        <PagerContent>
+            <MudTablePager RowsPerPageString="Số dòng:" InfoFormat="{first_item}-{last_item} trong tổng {all_items}" />
+        </PagerContent>
+    </MudTable>
+</MudContainer>
+
+@* --- NHÚNG CÁC DIALOG THỦ CÔNG (MANUAL OVERLAY) --- *@
+
+@if (_showCreateEditDialog)
+{
+    <ServiceForm Service="_selectedService" 
+                   OnClose="CloseCreateEditDialog" 
+                   OnSuccess="HandleCreateEditSuccess" />
+}
+
+@if (_showUsageDialog)
+{
+    <ServiceUsage ServiceId="_selectedServiceId"
+                        OnClose="CloseUsageDialog" />
+}
+
+@code {
+    private MudTable<ServicesVM>? _table;
+    private string searchKeyword = "";
+    private HttpClient? _httpClient;
+
+    // --- State cho Dialog Create/Edit ---
+    private bool _showCreateEditDialog = false;
+    private ServicesVM? _selectedService;
+
+    // --- State cho Dialog Usage ---
+    private bool _showUsageDialog = false;
+    private int _selectedServiceId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _clientFactory.CreateClient("HotelBookingAPI");
+    }
+    
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient!.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
+    }
+
+    // --- LOAD DATA ---
+    private async Task<TableData<ServicesVM>> LoadServerData(TableState state, CancellationToken token)
+    {
+        try
+        {
+            await SetAuthHeader();
+
+            var url = $"hotel/get-all-services?keyword={searchKeyword}&pageIndex={state.Page + 1}&pageSize={state.PageSize}";
+            var response = await _httpClient!.GetAsync(url);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var apiRes = JsonSerializer.Deserialize<ApiResponse<PagedResult<ServicesVM>>>(content, options); // Lưu ý DTO/VM
+
+                if (apiRes?.Content != null)
+                {
+                    return new TableData<ServicesVM>
+                    {
+                        TotalItems = apiRes.Content.TotalRecords,
+                        Items = apiRes.Content.Items
+                    };
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi tải dữ liệu: {ex.Message}", Severity.Error);
+        }
+        return new TableData<ServicesVM> { TotalItems = 0, Items = new List<ServicesVM>() };
+    }
+
+    // --- LOGIC DIALOG CREATE/EDIT (MANUAL) ---
+    private void OpenCreateDialog()
+    {
+        _selectedService = null; // null = Create
+        _showCreateEditDialog = true;
+    }
+
+    private void OpenEditDialog(ServicesVM service)
+    {
+        _selectedService = service; // value = Edit
+        _showCreateEditDialog = true;
+    }
+
+    private void CloseCreateEditDialog()
+    {
+        _showCreateEditDialog = false;
+        _selectedService = null;
+    }
+
+    private async Task HandleCreateEditSuccess()
+    {
+        _showCreateEditDialog = false;
+        _selectedService = null;
+        await _table.ReloadServerData(); // Refresh bảng
+    }
+
+    // --- LOGIC DIALOG USAGE (MANUAL) ---
+    private void OpenUsageDialog(int id)
+    {
+        _selectedServiceId = id;
+        _showUsageDialog = true;
+    }
+
+    private void CloseUsageDialog()
+    {
+        _showUsageDialog = false;
+        _selectedServiceId = 0;
+    }
+
+    // --- DELETE LOGIC ---
+    private async Task DeleteService(ServicesVM service)
+    {
+        // DialogService ở đây chỉ dùng cho MessageBox (Alert) đơn giản, không phải form phức tạp
+        var confirm = await DialogService.ShowMessageBox(
+            "Xác nhận xóa", 
+            $"Bạn có chắc chắn muốn xóa dịch vụ '{service.Name}'?\nHành động này không thể hoàn tác.",
+            yesText: "Xóa ngay", cancelText: "Hủy", 
+            options: new MudBlazor.DialogOptions { MaxWidth = MaxWidth.ExtraSmall });
+
+        if (confirm == true)
+        {
+            try
+            {
+                await SetAuthHeader();
+
+                var response = await _httpClient!.DeleteAsync($"hotel/delete-service/{service.Id}");
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Đã xóa thành công", Severity.Success);
+                    await _table.ReloadServerData();
+                }
+                else 
+                {
+                    var msg = await response.Content.ReadAsStringAsync();
+                    Snackbar.Add($"Không thể xóa: {msg}", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Lỗi: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

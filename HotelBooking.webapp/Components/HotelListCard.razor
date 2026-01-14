@@ -1,42 +1,51 @@
+@using Blazored.LocalStorage
 @using HotelBooking.webapp.ViewModels.Hotel
 @using MudBlazor
 @inject NavigationManager NavigationManager
+@inject ILocalStorageService _localStorage
+@inject AuthenticationStateProvider _auth
+@inject ISnackbar Snackbar
 
 <MudPaper Class="d-flex p-3 rounded shadow-sm hover-elevation-6" Style="gap:1rem; cursor:pointer;"
     @onclick="() => GoToDetail(Hotel.HotelId)">
-    <!-- Ảnh -->
-    <div class="position-relative" style="width:250px; flex-shrink:0;">
-        @if (Hotel.ImageUrls != null && Hotel.ImageUrls.Any())
+
+    <div class="position-relative rounded overflow-hidden" style="width:250px; height: 200px; flex-shrink:0;">
+
+        @if (displayImages.Count > 1)
         {
-            <MudCarousel TData="string" Items="@(Hotel.ImageUrls.Take(4).ToList())" ShowArrows="true" AutoCycle="false">
-                <ItemTemplate Context="img">
-                    <MudImage Src="@img" Alt="@Hotel.HotelName" />
-                </ItemTemplate>
+            <MudCarousel Class="h-100 w-100" ShowArrows="true" ShowBullets="false" AutoCycle="false" TData="object">
+                @foreach (var img in displayImages)
+                {
+                    <MudCarouselItem>
+                        <div class="h-100 w-100">
+                            <img src="@img" alt="@Hotel.HotelName" style="width:100%; height:100%; object-fit:cover;" />
+                        </div>
+                    </MudCarouselItem>
+                }
             </MudCarousel>
         }
         else
         {
-            <MudImage Src="/images/default-Hotels.jpg" Alt="@Hotel.HotelName" />
+            <img src="@displayImages.FirstOrDefault()" alt="@Hotel.HotelName"
+                style="width:100%; height:100%; object-fit:cover;" />
         }
 
-        <!-- Wishlist -->
-        <MudTooltip Text="@(Hotel.IsWishlist ? "Xóa khỏi yêu thích" : "Thêm vào yêu thích")">
-            <MudButton Class="position-absolute top-0 end-0 m-2 rounded-circle bg-white shadow-sm"
-                Style="width:40px; height:40px; min-width:40px;" Size="Size.Small" Disabled="@isToggling"
-                @onclick="HandleWishlistClick" Variant="Variant.Outlined">
-                <MudIcon Icon="@(Hotel.IsWishlist ? Icons.Material.Filled.Favorite : 
-                                             Icons.Material.Outlined.FavoriteBorder)"
+
+        <div class="position-absolute top-0 end-0 m-2" style="z-index: 10;" @onclick:stopPropagation="true">
+            <MudButton Class="rounded-circle bg-white shadow-sm" Style="width:40px; height:40px; min-width:40px;"
+                Size="Size.Small" Disabled="@isToggling" OnClick="HandleWishlistClick" Variant="MudBlazor.Variant.Outlined">
+                <MudIcon
+                    Icon="@(Hotel.IsWishlist ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
                     Color="@(Hotel.IsWishlist ? Color.Error : Color.Default)" />
             </MudButton>
-        </MudTooltip>
+        </div>
     </div>
 
-    <!-- Thông tin -->
     <div class="d-flex flex-column flex-grow-1 justify-content-between">
         <MudText Typo="Typo.h6" Class="fw-bold mb-1">@Hotel.HotelName</MudText>
         <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">@Hotel.City</MudText>
         <MudText Typo="Typo.body2" Class="mb-1">@Hotel.Address</MudText>
-        <!-- Highlight Amenities -->
+
         <div class="d-flex flex-wrap gap-1 mb-2">
             @foreach (var amenity in Hotel.HighlightAmenities)
             {
@@ -50,7 +59,6 @@
             }
         </div>
 
-        <!-- Rate + Price -->
         <div class="d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-2">
                 <MudPaper Class="bg-success text-white rounded px-2 py-1">
@@ -72,9 +80,6 @@
                             @($"{Hotel.MinPricePerNight?.ToString("#,##0")} ₫ / đêm")
                         </MudText>
                     }
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Class="mt-1">
-                        Xem phòng
-                    </MudButton>
                 }
                 else
                 {
@@ -92,10 +97,48 @@
     [Parameter] public EventCallback<int> OnWishlistToggle { get; set; }
 
     private bool isToggling;
+    private List<string> displayImages = new();
+    protected override void OnParametersSet()
+    {
+        displayImages = GetDisplayImages();
+    }
+    private List<string> GetDisplayImages()
+    {
+        var images = new List<string>();
 
+        // 1. Ưu tiên CoverImageUrl
+        if (!string.IsNullOrWhiteSpace(Hotel.CoverImageUrl))
+        {
+            images.Add(Hotel.CoverImageUrl);
+        }
+
+        // 2. Thêm các ảnh khác từ ImageUrls (loại trùng)
+        if (Hotel.ImageUrls != null && Hotel.ImageUrls.Any())
+        {
+            images.AddRange(Hotel.ImageUrls
+            .Where(u => !string.IsNullOrWhiteSpace(u) && !images.Contains(u))
+            .Take(5));
+        }
+
+        // 3. Nếu vẫn không có ảnh → dùng placeholder
+        if (images.Count == 0)
+        {
+            images.Add("/images/default-Hotels.jpg");
+        }
+
+        return images;
+    }
     private async Task HandleWishlistClick()
     {
         if (isToggling) return;
+        var authState = await _auth.GetAuthenticationStateAsync();
+        if (authState.User?.Identity?.IsAuthenticated != true)
+        {
+            Snackbar.Add("Bạn cần đăng nhập để lưu vào yêu thích!", Severity.Warning);
+            // Optional: _nav.NavigateTo("/customer-login");
+            return;
+        }
+
         isToggling = true;
         try
         {
@@ -105,7 +148,6 @@
         finally
         {
             isToggling = false;
-            StateHasChanged();
         }
     }
 

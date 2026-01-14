@@ -15,7 +15,7 @@
 
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-0 fw-semibold">Quản lý @PageTitle</h3>
+        <h3 class="mb-0 fw-semibold text-primary">Quản lý @PageTitle</h3>
         <button class="btn btn-primary d-flex align-items-center gap-2" @onclick="OpenAddModal">
             <i class="bi bi-plus-circle"></i> Thêm mới
         </button>
@@ -100,8 +100,8 @@
 
 @code {
     [Parameter] public string ItemType { get; set; } = ""; // bedtype / viewtype
-    private string PageTitle => ItemType == "bedtype" ? "loại giường" : "hướng nhìn";
-    private string SingularName => ItemType == "bedtype" ? "loại giường" : "hướng nhìn";
+    private string PageTitle => ItemType == "bedtype" ? "loại giường" : "cảnh quan";
+    private string SingularName => ItemType == "bedtype" ? "loại giường" : "cảnh quan";
     private string DefaultIconClass => ItemType == "bedtype" ? "fa-bed" : "fa-eye";
     private string DefaultColor => ItemType == "bedtype" ? "#8B4513" : "#2196F3";
 
@@ -193,7 +193,7 @@
 
     private async Task CreateItem(IconItemVM model)
     {
-        var endpoint = ItemType == "bedtype" ? "hotel/create-bedtype" : "hotel/create-viewtype";
+        var endpoint = ItemType == "bedtype" ? "admin/bedtype" : "admin/viewtype";
         var res = await _httpClient!.PostAsJsonAsync(endpoint, model);
         await HandleResponse(res, "Tạo mới");
     }
@@ -201,8 +201,8 @@
     private async Task UpdateItem(IconItemVM model)
     {
         var endpoint = ItemType == "bedtype"
-        ? $"hotel/update-bedtype/{model.Id}"
-        : $"hotel/update-viewtype/{model.Id}";
+        ? $"admin/bedtype/{model.Id}"
+        : $"admin/viewtype/{model.Id}";
 
         var res = await _httpClient!.PutAsJsonAsync(endpoint, model);
         await HandleResponse(res, "Cập nhật");
@@ -213,8 +213,8 @@
         if (!await js.InvokeAsync<bool>("confirm", "Xóa vĩnh viễn mục này?")) return;
 
         var endpoint = ItemType == "bedtype"
-        ? $"hotel/delete-bedtype/{id}"
-        : $"hotel/delete-viewtype/{id}";
+        ? $"admin/bedtype/{id}"
+        : $"admin/viewtype/{id}";
 
         var res = await _httpClient!.DeleteAsync(endpoint);
         if (res.IsSuccessStatusCode)

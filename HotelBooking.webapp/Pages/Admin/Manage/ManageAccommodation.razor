@@ -13,7 +13,7 @@
 
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-0 fw-semibold">Quản lý loại hình lưu trú</h3>
+        <h3 class="mb-0 fw-semibold text-primary">Quản lý loại hình lưu trú</h3>
         <button class="btn btn-primary d-flex align-items-center gap-2" @onclick="OpenAddModal">
             <i class="bi bi-plus-circle"></i> Thêm mới
         </button>
@@ -223,7 +223,7 @@
             Description = selectedAccommodation.Description?.Trim()
         };
 
-        var response = await _httpClient!.PostAsJsonAsync("hotel/create-accommodation", accData);
+        var response = await _httpClient!.PostAsJsonAsync("admin/accommodation", accData);
         if (!response.IsSuccessStatusCode) { await HandleErrorResponse(response); return; }
 
         var result = await response.Content.ReadFromJsonAsync<ApiResponse<AccommodationTypeVM>>();
@@ -256,7 +256,7 @@
             Description = selectedAccommodation.Description?.Trim()
         };
 
-        var response = await _httpClient!.PutAsJsonAsync($"hotel/update-accommodation/{id}", accData);
+        var response = await _httpClient!.PutAsJsonAsync($"admin/accommodation/{id}", accData);
         if (!response.IsSuccessStatusCode) { await HandleErrorResponse(response); return; }
 
         var result = await response.Content.ReadFromJsonAsync<ApiResponse<AccommodationTypeVM>>();
@@ -286,7 +286,7 @@
         markupMessage: new MarkupString("Bạn có chắc chắn muốn <strong>xóa loại lưu trú này</strong>?<br><small>Dữ liệu sẽ bị xóa vĩnh viễn.</small>"),
         yesText: "Xóa ngay",
         cancelText: "Hủy",
-        options: new DialogOptions()
+        options: new MudBlazor.DialogOptions()
         {
             CloseButton = true,
             MaxWidth = MaxWidth.Small,
@@ -300,7 +300,7 @@
 
         // Bước 2: Thực hiện xóa
         await SetAuthHeader();
-        var response = await _httpClient!.DeleteAsync($"hotel/delete-accommodation/{id}");
+        var response = await _httpClient!.DeleteAsync($"admin/accommodation/{id}");
 
         // Bước 3: Dùng Snackbar để thông báo kết quả (đẹp hơn alert 1000 lần)
         if (response.IsSuccessStatusCode)
@@ -335,7 +335,7 @@
         using var fileContent = new StreamContent(stream);
         fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
         content.Add(fileContent, "Image", file.Name);
-        return await _httpClient!.PostAsync($"hotel/accommodation/{accId}/image", content);
+        return await _httpClient!.PostAsync($"admin/accommodation/{accId}/image", content);
     }
 
     private void CloseModal()

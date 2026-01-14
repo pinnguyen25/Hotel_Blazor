@@ -1,0 +1,567 @@
+@page "/admin/finances"
+@layout AdminLayout
+@using Blazored.LocalStorage
+@using Microsoft.AspNetCore.Authorization
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Net.Http.Headers
+@attribute [Authorize(Roles = "Admin")]
+@inject IHttpClientFactory ClientFactory
+@inject ISnackbar Snackbar
+@inject ILocalStorageService _localStorage
+@inject NavigationManager _nav
+
+<div class="container-fluid py-4 animate-fade-in">
+    
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <MudText Typo="Typo.h4" Class="fw-bold text-dark">Tài chính & Doanh thu</MudText>
+        </div>
+        <div class="d-flex gap-2">
+            <MudButton Variant="MudBlazor.Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" 
+                       OnClick="ReloadAllData" Color="Color.Default" Size="Size.Small">
+                Làm mới
+            </MudButton>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="metric-card bg-white p-4 rounded-4 shadow-sm border-0 d-flex align-items-center justify-content-between">
+                <div>
+                    <p class="text-uppercase text-muted fw-bold small mb-1 ls-1">Tổng doanh thu sàn</p>
+                    <h3 class="fw-bolder text-primary mb-0">
+                        @(_revenueData?.TotalLifetimeRevenue.ToString("N0") ?? "0") ₫
+                    </h3>
+                    <small class="text-success fw-bold"><i class="bi bi-graph-up-arrow"></i> Tích lũy trọn đời</small>
+                </div>
+                <div class="icon-circle bg-primary-subtle text-primary">
+                    <i class="bi bi-wallet2 fs-3"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="metric-card bg-white p-4 rounded-4 shadow-sm border-0 d-flex align-items-center justify-content-between">
+                <div>
+                    <p class="text-uppercase text-muted fw-bold small mb-1 ls-1">Tháng @DateTime.Now.Month / @DateTime.Now.Year</p>
+                    <h3 class="fw-bolder text-success mb-0">
+                        @(_revenueData?.ThisMonthRevenue.ToString("N0") ?? "0") ₫
+                    </h3>
+                    <small class="text-muted">Doanh thu thực nhận</small>
+                </div>
+                <div class="icon-circle bg-success-subtle text-success">
+                    <i class="bi bi-cash-coin fs-3"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="metric-card bg-white p-4 rounded-4 shadow-sm border-0 d-flex align-items-center justify-content-between cursor-pointer hover-lift"
+                 @onclick="ScrollToTable">
+                <div>
+                    <p class="text-uppercase text-muted fw-bold small mb-1 ls-1">Yêu cầu rút tiền</p>
+                    <h3 class="fw-bolder text-warning mb-0">
+                        @_pendingCount <span class="fs-6 text-muted fw-normal">yêu cầu</span>
+                    </h3>
+                    <small class="text-warning fw-bold">Cần xử lý ngay &rarr;</small>
+                </div>
+                <div class="icon-circle bg-warning-subtle text-warning">
+                    <i class="bi bi-exclamation-lg fs-2"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-lg-8">
+    <MudPaper Class="pa-4 rounded-4 shadow-sm border-0 h-100 d-flex flex-column" Elevation="0">
+        
+        <div class="d-flex align-items-center mb-4">
+            <div>
+                <h5 class="fw-bold m-0 text-dark">Biểu đồ tăng trưởng</h5>
+                <small class="text-muted">Dữ liệu doanh thu theo tháng</small>
+            </div>
+
+            <div class="ms-auto"></div> 
+
+            <div style="width: 100px;"> <MudSelect T="int" Value="_selectedYear" ValueChanged="OnYearChanged"
+                           Variant="MudBlazor.Variant.Outlined" 
+                           Margin="Margin.Dense" Dense="true"
+                           AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                           Class="bg-white rounded-3">
+                    @foreach (var year in _availableYears)
+                    {
+                        <MudSelectItem Value="@year">@year</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+        </div>
+
+        <div class="flex-grow-1 d-flex align-items-center justify-content-center">
+            @if (_series.Any())
+            {
+                <MudChart ChartType="ChartType.Bar" ChartSeries="@_series" XAxisLabels="@_xAxisLabels" 
+                          Width="100%" Height="350px" Class="rounded-chart"></MudChart>
+            }
+            else
+            {
+                <div class="text-muted small">Đang tải dữ liệu...</div>
+            }
+        </div>
+
+    </MudPaper>
+</div>
+
+        <div class="col-lg-4">
+            <MudPaper Class="rounded-4 shadow-sm border-0 h-100 overflow-hidden d-flex flex-column" Elevation="0" Style="height: 450px;">
+                <div class="p-4 bg-white border-bottom">
+                    <h5 class="fw-bold m-0"><i class="bi bi-trophy-fill text-warning me-2"></i>Top 10 Doanh Thu</h5>
+                </div>
+                <div class="overflow-auto custom-scrollbar flex-grow-1">
+                    <MudList T="string" Clickable="true" Dense="true" Class="py-0">
+                        @if (_topHotels.Any())
+                        {
+                            int rank = 1;
+                            @foreach(var hotel in _topHotels)
+                            {
+                                <div class="p-3 border-bottom d-flex align-items-center hover-bg-light transition-fast">
+                                    <div class="rank-circle me-3 @(rank <= 3 ? $"rank-{rank}" : "rank-common")">@rank</div>
+                                    <div class="flex-grow-1" style="min-width: 0;">
+                                        <div class="fw-bold text-truncate text-dark">@hotel.HotelName</div>
+                                        <div class="small text-muted text-truncate">@hotel.OwnerName</div>
+                                    </div>
+                                    <div class="text-end ms-2">
+                                        <div class="fw-bold text-success">@hotel.TotalRevenue.ToString("N0")</div>
+                                        <small class="text-muted" style="font-size: 0.7rem;">@hotel.TotalBookings đơn</small>
+                                    </div>
+                                </div>
+                                rank++;
+                            }
+                        }
+                        else
+                        {
+                            <div class="text-center p-4 text-muted">Chưa có dữ liệu</div>
+                        }
+                    </MudList>
+                </div>
+            </MudPaper>
+        </div>
+    </div>
+
+    <div id="withdrawal-section" class="bg-white rounded-4 shadow-sm border-0 overflow-hidden">
+        <div class="p-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold m-0 text-primary"><i class="bi bi-bank me-2"></i>Quản lý Rút tiền</h5>
+                <small class="text-muted">Danh sách yêu cầu thanh toán từ đối tác</small>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <MudSelect T="string" @bind-Value="_filterStatus" Label="Trạng thái"
+                           Variant="MudBlazor.Variant.Outlined" Margin="Margin.Dense" Dense="true" 
+                           Style="width: 180px; background: white;" SelectedValuesChanged="OnFilterChanged"
+                           AdornmentIcon="@Icons.Material.Filled.FilterList" AdornmentColor="Color.Primary">
+                    <MudSelectItem Value="@("")">Tất cả</MudSelectItem>
+                    <MudSelectItem Value="@("Pending")">Chờ duyệt</MudSelectItem>
+                    <MudSelectItem Value="@("Approved")">Đã duyệt</MudSelectItem>
+                    <MudSelectItem Value="@("Rejected")">Đã từ chối</MudSelectItem>
+                </MudSelect>
+            </div>
+        </div>
+
+        <MudTable T="WithdrawalRequestAdminVM" ServerData="@ServerReload" @ref="_table" 
+                  Dense="true" Hover="true" Elevation="0" Class="w-100">
+            <HeaderContent>
+                <MudTh>ID</MudTh>
+                <MudTh>Đối tác</MudTh>
+                <MudTh>Thông tin Ngân hàng</MudTh>
+                <MudTh Style="text-align:right">Số tiền rút</MudTh>
+                <MudTh>Ngày tạo</MudTh>
+                <MudTh Style="text-align:center">Trạng thái</MudTh>
+                <MudTh Style="text-align:center">Thao tác</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="ID">
+                    <span class="text-muted">#@context.RequestId</span>
+                </MudTd>
+                <MudTd DataLabel="Đối tác">
+                    <div class="d-flex flex-column">
+                        <span class="fw-bold text-dark">@context.OwnerName</span>
+                        <small class="text-muted">@context.OwnerEmail</small>
+                        <small class="text-primary fw-bold" style="font-size:0.7rem">
+                            Ví: @context.CurrentWalletBalance.ToString("N0") ₫
+                        </small>
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Ngân hàng">
+                    <div class="d-flex flex-column lh-sm ">
+                        <span class="fw-bold text-dark text-uppercase" style="font-size:0.85rem">@context.BankName</span>
+                        <span class="small font-monospace">@context.BankAccountNumber</span>
+                        <span class="small text-uppercase text-muted">@context.BankAccountName</span>
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Số tiền" Style="text-align:right">
+                    <span class="fw-bolder text-danger fs-6">-@context.Amount.ToString("N0") ₫</span>
+                </MudTd>
+                <MudTd DataLabel="Ngày tạo">
+                    <div class="d-flex flex-column text-muted small">
+                        <span>@context.CreatedAt.ToString("dd/MM/yyyy")</span>
+                        <span>@context.CreatedAt.ToString("HH:mm")</span>
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Trạng thái" Style="text-align:center">
+                    @switch (context.Status)
+                    {
+                        case "Pending":
+                            <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="MudBlazor.Variant.Filled">Chờ duyệt</MudChip>
+                            break;
+                        case "Approved":
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="MudBlazor.Variant.Text">Thành công</MudChip>
+                            break;
+                        default:
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="MudBlazor.Variant.Text">Từ chối</MudChip>
+                            break;
+                    }
+                </MudTd>
+                <MudTd DataLabel="Thao tác" Style="text-align:center">
+                    @if (context.Status == "Pending")
+                    {
+                        <MudButton Variant="MudBlazor.Variant.Filled" Color="Color.Primary" Size="Size.Small" 
+                                   StartIcon="@Icons.Material.Filled.Edit" Class="rounded-pill px-3"
+                                   OnClick="@(() => OpenCustomModal(context))">Xử lý</MudButton>
+                    }
+                    else
+                    {
+                        <MudTooltip Text="@(context.AdminNote ?? "Không có ghi chú")">
+                            <MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
+                        </MudTooltip>
+                    }
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager InfoFormat="{first_item}-{last_item} trong {all_items}" />
+            </PagerContent>
+        </MudTable>
+    </div>
+</div>
+
+@if (_isModalOpen && _selectedRequest != null)
+{
+    <div class="custom-modal-overlay">
+        <div class="custom-modal-box animate-pop-in">
+            <div class="modal-header d-flex justify-content-between align-items-center p-4 border-bottom bg-light rounded-top-3">
+                <div>
+                    <h5 class="fw-bold m-0 text-dark">Xử lý yêu cầu #@_selectedRequest.RequestId</h5>
+                    <small class="text-muted">Ngày tạo: @_selectedRequest.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small>
+                </div>
+                <button class="btn-close" @onclick="CloseModal"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <div class="bank-card p-3 rounded-3 mb-4 border border-primary border-opacity-25 bg-blue-subtle">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="badge bg-primary text-uppercase">Thông tin chuyển khoản</span>
+                        <span class="fw-bold text-dark">@_selectedRequest.OwnerName</span>
+                    </div>
+                    <h4 class="fw-bold text-primary my-2 text-center">
+                        @_selectedRequest.Amount.ToString("N0") <span class="fs-6">VND</span>
+                    </h4>
+                    <hr class="border-primary border-opacity-25 my-2"/>
+                    <div class="row g-2 small">
+                        <div class="col-4 text-muted">Ngân hàng:</div>
+                        <div class="col-8 fw-bold">@_selectedRequest.BankName</div>
+                        <div class="col-4 text-muted">Số tài khoản:</div>
+                        <div class="col-8 fw-bold font-monospace fs-6">@_selectedRequest.BankAccountNumber</div>
+                        <div class="col-4 text-muted">Chủ tài khoản:</div>
+                        <div class="col-8 fw-bold text-uppercase">@_selectedRequest.BankAccountName</div>
+                    </div>
+                </div>
+
+                <div class="action-section">
+                    <label class="form-label fw-bold small text-uppercase text-muted ls-1">Hành động</label>
+                    <div class="d-flex gap-2 mb-3">
+                        <button class="btn flex-grow-1 py-2 fw-bold transition-fast @(_isApproveMode ? "btn-success shadow" : "btn-outline-secondary opacity-50")" 
+                                @onclick="() => SetMode(true)">
+                            <i class="bi bi-check-circle-fill me-2"></i>DUYỆT CHI
+                        </button>
+                        <button class="btn flex-grow-1 py-2 fw-bold transition-fast @(!_isApproveMode ? "btn-danger shadow" : "btn-outline-secondary opacity-50")" 
+                                @onclick="() => SetMode(false)">
+                            <i class="bi bi-x-circle-fill me-2"></i>TỪ CHỐI
+                        </button>
+                    </div>
+
+                    <div class="form-group mb-2">
+                        <label class="form-label small text-muted">
+                            @(_isApproveMode ? "Mã giao dịch ngân hàng / Ghi chú (Optional):" : "Lý do từ chối (Bắt buộc):")
+                        </label>
+                        <textarea class="form-control bg-light" rows="3" @bind="_processNote" 
+                                  placeholder="@(_isApproveMode ? "VD: FT12345678..." : "VD: Sai tên chủ tài khoản, vui lòng kiểm tra lại...")"></textarea>
+                    </div>
+
+                    @if (_isApproveMode)
+                    {
+                        <div class="d-flex align-items-start gap-2 text-success small bg-success-subtle p-2 rounded">
+                            <i class="bi bi-info-circle-fill mt-1"></i>
+                            <span>Vui lòng đảm bảo bạn đã thực hiện chuyển khoản thành công trên App Ngân hàng trước khi bấm duyệt.</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-start gap-2 text-danger small bg-danger-subtle p-2 rounded">
+                            <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                            <span>Hệ thống sẽ hoàn lại số tiền <b>@_selectedRequest.Amount.ToString("N0") ₫</b> vào ví của đối tác ngay lập tức.</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="modal-footer p-3 border-top bg-light rounded-bottom-3 d-flex justify-content-end gap-2">
+                <button class="btn btn-white border px-4" @onclick="CloseModal" disabled="@_isProcessing">Đóng</button>
+                <button class="btn @(_isApproveMode ? "btn-success" : "btn-danger") fw-bold px-4 py-2 shadow-sm" 
+                        @onclick="SubmitProcess" disabled="@_isProcessing">
+                    @if (_isProcessing)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span> <span>Đang xử lý...</span>
+                    }
+                    else
+                    {
+                        <span><i class="bi bi-send-check me-2"></i>Xác nhận</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    /* UTILITIES */
+    .ls-1 { letter-spacing: 1px; }
+    .bg-blue-subtle { background-color: #f0f7ff; }
+    .bg-success-subtle { background-color: #e6f9ed; }
+    .bg-danger-subtle { background-color: #ffebee; }
+    .hover-bg-light:hover { background-color: #f8f9fa; }
+    .transition-fast { transition: all 0.2s ease; }
+    .font-monospace { font-family: 'Courier New', Courier, monospace; }
+
+    /* METRIC CARDS */
+    .metric-card { transition: all 0.3s ease; }
+    .metric-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.05) !important; }
+    .icon-circle {
+        width: 60px; height: 60px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .hover-lift:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(255, 152, 0, 0.2) !important; }
+
+    /* LEADERBOARD */
+    .rank-circle {
+        width: 28px; height: 28px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: bold; font-size: 0.8rem;
+        color: white;
+    }
+    .rank-1 { background: #FFD700; box-shadow: 0 2px 5px rgba(255, 215, 0, 0.4); } /* Vàng */
+    .rank-2 { background: #C0C0C0; } /* Bạc */
+    .rank-3 { background: #CD7F32; } /* Đồng */
+    .rank-common { background: #e9ecef; color: #6c757d; }
+
+    /* CUSTOM MODAL */
+    .custom-modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        z-index: 9999;
+        display: flex; align-items: center; justify-content: center;
+        backdrop-filter: blur(4px);
+    }
+    .custom-modal-box {
+        background: white; width: 95%; max-width: 500px;
+        border-radius: 16px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @@keyframes popIn { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+</style>
+@code {
+    // --- Services & Data ---
+    private AdminRevenueVM? _revenueData;
+    private List<HotelRevenueRankVM> _topHotels = new();
+    private int _selectedYear = DateTime.Now.Year;
+    
+    // --- Chart Data ---
+    public List<ChartSeries> _series = new();
+    public string[] _xAxisLabels = { "T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12" };
+
+    // --- Table Data ---
+    private MudTable<WithdrawalRequestAdminVM>? _table;
+    private string _filterStatus = "Pending";
+    private int _pendingCount = 0;
+
+    // --- Modal State (Thủ công) ---
+    private bool _isModalOpen = false;
+    private bool _isApproveMode = true; // True = Duyệt, False = Từ chối
+    private bool _isProcessing = false;
+    private WithdrawalRequestAdminVM? _selectedRequest;
+    private string _processNote = "";
+    private HttpClient? _httpClient;
+    private List<int> _availableYears = new();
+    private const int _startYear = 2024;
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = ClientFactory.CreateClient("HotelBookingAPI");
+        var currentYear = DateTime.Now.Year;
+        for (int y = currentYear; y >= _startYear; y--)
+        {
+            _availableYears.Add(y);
+        }
+        
+        // Mặc định chọn năm nay
+        _selectedYear = currentYear;
+        await SetAuthHeader();
+        await LoadStats();
+        await LoadTopHotels();
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            _httpClient!.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    }
+
+    // --- LOGIC LOAD STATS ---
+    private async Task OnYearChanged(int year)
+    {
+        _selectedYear = year;
+        await LoadStats();
+        await LoadTopHotels();
+    }
+
+    private async Task LoadStats()
+    {
+        try
+        {
+            var res = await _httpClient!.GetFromJsonAsync<ApiResponse<AdminRevenueVM>>($"admin/revenue-stats?year={_selectedYear}");
+            if (res?.StatusCode == StatusCodeResponse.Success && res.Content != null)
+            {
+                _revenueData = res.Content;
+                var dataPoints = _revenueData.MonthlyData.Select(x => (double)x.Value).ToArray();
+                _series = new List<ChartSeries> { new ChartSeries { Name = "Doanh thu (VNĐ)", Data = dataPoints } };
+            }
+        }
+        catch { /* Handle error silently */ }
+    }
+
+    private async Task LoadTopHotels()
+    {
+        try 
+        {
+            var res = await _httpClient!.GetFromJsonAsync<ApiResponse<List<HotelRevenueRankVM>>>($"admin/revenue/top-hotels?year={_selectedYear}");
+            if (res?.StatusCode == StatusCodeResponse.Success) _topHotels = res.Content ?? new();
+        }
+        catch {}
+    }
+
+    // --- LOGIC TABLE RELOAD ---
+    private async Task<TableData<WithdrawalRequestAdminVM>> ServerReload(TableState state, CancellationToken token)
+    {
+        try
+        {
+            var query = $"admin/withdrawals?pageIndex={state.Page + 1}&pageSize={state.PageSize}";
+            if (!string.IsNullOrEmpty(_filterStatus)) query += $"&status={_filterStatus}";
+
+            var res = await _httpClient!.GetFromJsonAsync<ApiResponse<PagedResult<WithdrawalRequestAdminVM>>>(query);
+            if (res?.StatusCode == StatusCodeResponse.Success && res.Content != null)
+            {
+                // Cập nhật số lượng pending để hiện lên Card
+                if (_filterStatus == "Pending") _pendingCount = res.Content.TotalRecords;
+                
+                return new TableData<WithdrawalRequestAdminVM>
+                {
+                    TotalItems = res.Content.TotalRecords,
+                    Items = res.Content.Items.ToList()
+                };
+            }
+        }
+        catch (Exception ex) { Snackbar.Add($"Lỗi tải: {ex.Message}", Severity.Error); }
+        return new TableData<WithdrawalRequestAdminVM> 
+        { 
+            TotalItems = 0, 
+            Items = new List<WithdrawalRequestAdminVM>() 
+        };
+    }
+
+    private void OnFilterChanged() => _table?.ReloadServerData();
+
+    // --- LOGIC CUSTOM MODAL ---
+    private void OpenCustomModal(WithdrawalRequestAdminVM item)
+    {
+        _selectedRequest = item;
+        _isApproveMode = true; // Mặc định là duyệt
+        _processNote = "";
+        _isModalOpen = true;
+        StateHasChanged(); // Force render lại UI để hiện popup
+    }
+
+    private void CloseModal()
+    {
+        _isModalOpen = false;
+        _selectedRequest = null;
+    }
+
+    private void SetMode(bool isApprove)
+    {
+        _isApproveMode = isApprove;
+        _processNote = ""; // Reset note khi đổi chế độ
+    }
+
+    private async Task SubmitProcess()
+    {
+        if (!_isApproveMode && string.IsNullOrWhiteSpace(_processNote))
+        {
+            Snackbar.Add("Vui lòng nhập lý do từ chối!", Severity.Warning);
+            return;
+        }
+
+        _isProcessing = true;
+        try
+        {
+            var payload = new AdminProcessWithdrawalVM
+            {
+                RequestId = _selectedRequest!.RequestId,
+                IsApproved = _isApproveMode,
+                AdminNote = _processNote
+            };
+
+            var res = await _httpClient!.PostAsJsonAsync("admin/withdrawals/process", payload);
+            var content = await res.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+
+            if (res.IsSuccessStatusCode && content?.StatusCode == StatusCodeResponse.Success)
+            {
+                Snackbar.Add(content.Message, _isApproveMode ? Severity.Success : Severity.Info);
+                CloseModal();
+                await _table!.ReloadServerData(); // Reload lại bảng
+            }
+            else
+            {
+                Snackbar.Add(content?.Message ?? "Lỗi xử lý", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Lỗi hệ thống: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+    private async Task ReloadAllData()
+    {
+        await LoadStats();
+        await LoadTopHotels();
+        await _table!.ReloadServerData();
+        Snackbar.Add("Đã làm mới dữ liệu", Severity.Normal);
+    }
+    private void ScrollToTable()
+    {
+        // Có thể dùng JS Interop để scroll, nhưng ở đây để trống cũng được vì Table ở ngay dưới
+    }
+}

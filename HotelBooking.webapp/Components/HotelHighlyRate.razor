@@ -1,9 +1,12 @@
+@using Blazored.LocalStorage
 @using HotelBooking.webapp.ViewModels.Hotel
+@using System.Net.Http.Headers
 @inject IJSRuntime JSRuntime
 @inject IHttpClientFactory HttpClientFactory
-
-<div class="container mt-15">
-  <h2 class="mb-6 text-center">Top chỗ ở được yêu thích</h2>
+@inject ILocalStorageService _localStorage
+@inject ISnackbar Snackbar
+<div class="container mt-15 ">
+  <h2 class="handwriting mb-6 text-center" style="color: #54a9ffff;">Nơi lưu trú hàng đầu</h2>
   @if (hotels == null)
   {
     <p>Loading...</p>
@@ -41,35 +44,87 @@
 @code {
   private List<HotelListItemVM>? hotels;
   private HashSet<int> loadingHotels = new();
+  private HttpClient? _httpClient;
+  private bool isLoading = true;
+  private async Task<bool> EnsureAuthTokenAsync()
+  {
+    // Nếu Header đã có Token rồi thì thôi
+    if (_httpClient!.DefaultRequestHeaders.Authorization != null) return true;
 
+    var token = await _localStorage.GetItemAsync<string>("accessToken");
+    if (!string.IsNullOrEmpty(token))
+    {
+      _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+      return true;
+    }
+    return false;
+  }
   protected override async Task OnInitializedAsync()
   {
-    var httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");
-    hotels = await httpClient.GetFromJsonAsync<List<HotelListItemVM>>("Hotel/highly-rated");
+    _httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");
+    var token = await _localStorage.GetItemAsync<string>("accessToken");
+    await EnsureAuthTokenAsync();
+    try
+    {
+      hotels = await _httpClient.GetFromJsonAsync<List<HotelListItemVM>>("Hotel/highly-rated");
+    }
+    catch { hotels = new List<HotelListItemVM>(); }
+    finally { isLoading = false; }
   }
+
 
   private async Task ToggleWishlist(int hotelId)
   {
     if (loadingHotels.Contains(hotelId)) return;
-    loadingHotels.Add(hotelId);
 
-    try
+    if (!await EnsureAuthTokenAsync())
     {
-      var hotel = hotels?.FirstOrDefault(h => h.HotelId == hotelId);
-      if (hotel != null)
+      Snackbar.Add("Vui lòng đăng nhập để lưu khách sạn.", Severity.Warning);
+      return;
+    }
+
+    loadingHotels.Add(hotelId);
+    var hotel = hotels?.FirstOrDefault(h => h.HotelId == hotelId);
+
+    if (hotel != null)
+    {
+      var oldState = hotel.IsWishlist;
+      hotel.IsWishlist = !hotel.IsWishlist;
+
+      try
       {
-        hotel.IsWishlist = !hotel.IsWishlist;
-        var httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");
-        await httpClient.PostAsJsonAsync($"Wishlist/toggle/{hotelId}", new { });
+        // Dùng _httpClient đã được EnsureAuthTokenAsync xử lý Header
+        var response = await _httpClient!.PostAsync($"wishlist/toggle/{hotelId}", null);
+
+        if (!response.IsSuccessStatusCode)
+        {
+          // Lỗi -> Rollback UI
+          hotel.IsWishlist = oldState;
+
+          if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+          {
+            Snackbar.Add("Phiên đăng nhập hết hạn.", Severity.Error);
+            _httpClient.DefaultRequestHeaders.Authorization = null; // Clear header lỗi
+            await _localStorage.RemoveItemAsync("accessToken");
+          }
+          else
+          {
+            Snackbar.Add("Lỗi cập nhật.", Severity.Error);
+          }
+        }
+      }
+      catch
+      {
+        hotel.IsWishlist = oldState;
+        Snackbar.Add("Lỗi kết nối.", Severity.Error);
+      }
+      finally
+      {
+        loadingHotels.Remove(hotelId);
         StateHasChanged();
       }
     }
-    finally
-    {
-      loadingHotels.Remove(hotelId);
-    }
   }
-
   private async Task Scroll(int direction)
   {
     await JSRuntime.InvokeVoidAsync("scrollContainer", direction);

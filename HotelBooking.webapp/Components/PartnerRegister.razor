@@ -1,9 +1,287 @@
-<div class="container mt-5">
-  <div class="card bg-light text-center py-5">
-    <div class="card-body">
-      <h2 class="card-title mb-4">Bạn là chủ khách sạn?</h2>
-      <p class="card-text mb-4">Đăng ký ngay để quảng bá khách sạn của bạn và tiếp cận hàng triệu khách hàng.</p>
-      <a href="#" class="btn btn-primary">Đăng ký đối tác</a>
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ISnackbar Snackbar
+
+<section class="partner-cta-section position-relative overflow-hidden py-5">
+    <div class="bg-overlay"></div>
+    <div class="circle-decor-1"></div>
+    <div class="circle-decor-2"></div>
+
+    <div class="container position-relative z-index-2">
+        <div class="row align-items-center">
+
+            <div class="col-lg-7 mb-4 mb-lg-0">
+               
+
+                <h2 class="display-5 fw-bold text-white mb-3 lh-base animate-fade-right">
+                    @MainTitle <br />
+                    <span class="text-warning-light">@HighlightText</span>
+                </h2>
+
+                <p class="lead text-white-50 mb-4 animate-fade-right delay-100">
+                    @Description
+                </p>
+
+                <div class="d-flex flex-wrap gap-3 animate-fade-up delay-200">
+                    @foreach (var item in Benefits)
+                    {
+                        <div class="benefit-item">
+                            <i class="bi @item.Icon text-warning me-2"></i>@item.Text
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="col-lg-5 text-center text-lg-end">
+                <div
+                    class="cta-card p-4 rounded-4 bg-white bg-opacity-10 backdrop-blur border border-white border-opacity-25 shadow-lg animate-zoom-in">
+
+                    <h5 class="text-white mb-3">@CardTitle</h5>
+
+                    <button @onclick="NavigateToPartnerReg"
+                        class="btn btn-light btn-lg w-100 fw-bold shadow-sm py-3 mb-2 hover-scale">
+                        <span class="text-primary">@ButtonText</span> <i class="bi @ButtonIcon ms-2 text-primary"></i>
+                    </button>
+
+                    <small class="text-white-50 d-block mt-2">
+                        <i class="bi @SubIcon me-1"></i> @SubText
+                    </small>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-</div>
+</section>
+
+<style>
+    .partner-cta-section {
+        background: linear-gradient(135deg, #0d6efd 0%, #0dcaf0 100%);
+        /* Gradient xanh hiện đại */
+        position: relative;
+    }
+
+    /* Hiệu ứng nền */
+    .bg-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .circle-decor-1 {
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        top: -100px;
+        right: -50px;
+        filter: blur(60px);
+    }
+
+    .circle-decor-2 {
+        position: absolute;
+        width: 200px;
+        height: 200px;
+        background: rgba(255, 215, 0, 0.15);
+        /* Màu vàng nhẹ */
+        border-radius: 50%;
+        bottom: -50px;
+        left: -50px;
+        filter: blur(50px);
+    }
+
+    /* Typography */
+    .text-warning-light {
+        color: #ffda6a;
+        /* Màu vàng sáng nổi trên nền xanh */
+    }
+
+    .benefit-item {
+        color: white;
+        font-weight: 500;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 8px 16px;
+        border-radius: 50px;
+        font-size: 0.9rem;
+    }
+
+    /* Card hiệu ứng kính */
+    .backdrop-blur {
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    /* Hiệu ứng nút */
+    .hover-scale {
+        transition: all 0.3s ease;
+    }
+
+    .hover-scale:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    /* Animation đơn giản */
+    .animate-fade-right {
+        animation: fadeRight 0.8s ease-out;
+    }
+
+    .animate-fade-up {
+        animation: fadeUp 0.8s ease-out backwards;
+    }
+
+    .animate-zoom-in {
+        animation: zoomIn 0.8s ease-out;
+    }
+
+    .delay-100 {
+        animation-delay: 0.1s;
+    }
+
+    .delay-200 {
+        animation-delay: 0.2s;
+    }
+
+    @@keyframes fadeRight {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @@keyframes fadeUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@keyframes zoomIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+</style>
+
+@code {
+    // --- 1. Class lưu trữ cấu trúc lợi ích (3 dòng tick xanh) ---
+    public class BenefitItem
+    {
+        public string Text { get; set; } = "";
+        public string Icon { get; set; } = "bi-check-circle-fill";
+    }
+
+    // --- 2. Các biến hiển thị (Mặc định là cho Guest/Customer) ---
+    // Bên Trái (Nội dung)
+    private string MainTitle = "Trở thành Đối tác ChillZone";
+    private string HighlightText = "Tăng doanh thu";
+    private string Description = "Tiếp cận hàng triệu khách hàng tiềm năng. Quản lý dễ dàng, thanh toán minh bạch và hỗ trợ 24/7.";
+    private List<BenefitItem> Benefits = new()
+{
+new BenefitItem { Text = "Phí hoa hồng thấp" },
+new BenefitItem { Text = "Marketing miễn phí" },
+new BenefitItem { Text = "Thanh toán nhanh" }
+};
+
+    // Bên Phải (Card & Nút)
+    private string CardTitle = "Bạn đã có chỗ nghỉ dưỡng?";
+    private string ButtonText = "Đăng ký ngay";
+    private string ButtonIcon = "bi-arrow-right";
+    private string SubText = "Cam kết bảo mật thông tin";
+    private string SubIcon = "bi-shield-check";
+
+    // --- 3. Xử lý Logic ---
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity != null && user.Identity.IsAuthenticated)
+        {
+            if (user.IsInRole("Admin"))
+            {
+                // ==> Nội dung cho ADMIN
+                MainTitle = "Chào mừng Admin trở lại";
+                HighlightText = "Giám sát toàn diện";
+                Description = "Theo dõi hiệu suất hệ thống, quản lý người dùng và kiểm duyệt tin đăng nhanh chóng, chính xác.";
+
+                Benefits = new()
+                {
+                new BenefitItem { Text = "Kiểm soát dữ liệu", Icon = "bi-database-fill-lock" },
+                new BenefitItem { Text = "Báo cáo thời gian thực", Icon = "bi-bar-chart-fill" },
+                new BenefitItem { Text = "Bảo mật tuyệt đối", Icon = "bi-shield-lock-fill" }
+                };
+
+                CardTitle = "Truy cập";
+                ButtonText = "Vào trang quản trị";
+                ButtonIcon = "bi-speedometer2";
+            }
+            else if (user.IsInRole("Owner"))
+            {
+                // ==> Nội dung cho OWNER (ĐỐI TÁC)
+                MainTitle = "Đồng hành cùng thành công";
+                HighlightText = "Tối ưu vận hành";
+                Description = "Quản lý phòng trống, cập nhật giá và theo dõi doanh thu dễ dàng ngay trên nền tảng dành riêng cho Đối tác.";
+
+                Benefits = new()
+{
+new BenefitItem { Text = "Mở rộng thị trường", Icon = "bi-graph-up-arrow" },
+new BenefitItem { Text = "Công cụ quản lý 4.0", Icon = "bi-phone-vibrate" },
+new BenefitItem { Text = "Hỗ trợ 24/7", Icon = "bi-headset" }
+};
+
+                CardTitle = "Chào mừng Đối tác trở lại";
+                ButtonText = "Quản lý Khách sạn";
+                ButtonIcon = "bi-briefcase-fill";
+                SubText = "Kiểm tra đơn đặt phòng mới";
+                SubIcon = "bi-bell-fill";
+            }
+        }
+        // Guest & Customer giữ nguyên mặc định
+    }
+
+    private async Task NavigateToPartnerReg()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.IsInRole("Admin"))
+        {
+            Nav.NavigateTo("/admin/dashboard");
+        }
+        else if (user.IsInRole("Owner"))
+        {
+            Nav.NavigateTo("/owner/hotels");
+        }
+        else
+        {
+            if (user.Identity == null || !user.Identity.IsAuthenticated)
+            {
+                string returnUrl = Uri.EscapeDataString("/upgrade-owner");
+                Nav.NavigateTo($"/customer-register?returnUrl={returnUrl}");
+            }
+            else
+            {
+                Nav.NavigateTo("/upgrade-owner");
+            }
+        }
+    }
+}

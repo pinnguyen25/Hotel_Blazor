@@ -31,7 +31,11 @@ public partial class Room
 
     public int? SortOrder { get; set; }
 
+    public virtual ICollection<BookingRoom> BookingRooms { get; set; } = new List<BookingRoom>();
+
     public virtual User? CreatedByNavigation { get; set; }
+
+    public virtual ICollection<HousekeepingTask> HousekeepingTasks { get; set; } = new List<HousekeepingTask>();
 
     public virtual RoomType RoomType { get; set; } = null!;
 

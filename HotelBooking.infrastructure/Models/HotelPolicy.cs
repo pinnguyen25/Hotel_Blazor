@@ -7,13 +7,15 @@ public partial class HotelPolicy
 {
     public int HotelId { get; set; }
 
-    public int PolicyId { get; set; }
+    public int? PolicyId { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
     public string? Additional { get; set; }
 
+    public int Id { get; set; }
+
     public virtual Hotel Hotel { get; set; } = null!;
 
-    public virtual Policy Policy { get; set; } = null!;
+    public virtual Policy? Policy { get; set; }
 }

@@ -1,0 +1,259 @@
+@page "/owner/hotels/{HotelId:int}/housekeeping-tasks"
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Threading
+@implements IDisposable
+@layout OwnerLayout
+@attribute [Authorize(Roles = "Owner, Staff")]
+@inject IHttpClientFactory _httpClientFactory
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILocalStorageService _localStorage
+<div class="container-fluid py-4">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            @if (IsLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary"></div>
+                </div>
+            }
+            else if (Tasks.Count == 0)
+            {
+
+                <div class="text-center py-5 text-muted">Tất cả phòng đều sạch sẽ!</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light text-uppercase small text-muted">
+                            <tr>
+                                <th class="ps-4">Phòng</th>
+                                <th>Trạng thái</th>
+                                <th>Nhân viên</th>
+                                <th>Độ ưu tiên</th>
+                                <th>Thời gian</th>
+                                <th>Ghi chú</th>
+                                <th class="text-end pe-4">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var task in Tasks)
+                            {
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary-subtle text-primary rounded-circle me-2 d-flex align-items-center justify-content-center fw-bold">
+                                                <i class="bi bi-door-open"></i>
+                                            </div>
+                                            <span class="fw-bold fs-5 text-dark">@task.RoomNumber</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if(task.TaskStatus == "Pending") 
+                                        { <span class="badge rounded-pill bg-secondary px-3 py-2">Chờ giao</span> }
+                                        else if(task.TaskStatus == "Assigned") 
+                                        { <span class="badge rounded-pill bg-info text-dark px-3 py-2">Đã giao</span> }
+                                        else if(task.TaskStatus == "Cleaning") 
+                                        { <span class="badge rounded-pill bg-warning text-dark px-3 py-2"><i class="bi bi-stars me-1"></i> Đang dọn</span> }
+                                        else if(task.TaskStatus == "Completed") 
+                                        { <span class="badge rounded-pill bg-success px-3 py-2">Hoàn tất</span> }
+                                        else 
+                                        { <span class="badge rounded-pill bg-danger px-3 py-2">Báo hỏng</span> }
+                                    </td>
+                                    <td>
+                                        @if(string.IsNullOrEmpty(task.StaffName) || task.StaffName == "Chưa giao") 
+                                        { <span class="text-muted fst-italic small">-- Chưa gán --</span> }
+                                        else 
+                                        { 
+                                            <span class="fw-bold text-dark"><i class="bi bi-person me-1"></i>@task.StaffName</span> 
+                                        }
+                                    </td>
+                                    <td>
+                                        @if(task.Priority == "High") 
+                                        { <span class="text-danger fw-bold"><i class="bi bi-lightning-fill"></i> Gấp</span> }
+                                        else 
+                                        { <span class="text-muted">Bình thường</span> }
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column small">
+                                            @if(task.CompletedAt.HasValue) 
+                                            { 
+                                                <span class="text-success fw-bold">Xong</span>
+                                                <span class="text-muted">@task.CompletedAt.Value.ToString("HH:mm")</span> 
+                                            }
+                                            else 
+                                            { 
+                                                <span class="text-muted">Tạo lúc</span>
+                                                <span class="fw-bold text-dark">@task.CreatedAt.ToString("HH:mm")</span> 
+                                            }
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-truncate text-muted small" style="max-width: 200px;" title="@task.Note">
+                                            @task.Note
+                                        </div>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        @if (task.TaskStatus != "Completed" && task.TaskStatus != "ReportedIssue")
+                                        {
+                                            <div class="d-flex justify-content-end gap-2">
+                                                @if (task.TaskStatus == "Assigned" || task.TaskStatus == "Pending")
+                                                {
+                                                    <button class="btn btn-sm btn-primary px-3 fw-bold shadow-sm" 
+                                                            @onclick='() => UpdateTaskStatus(task.Id, "Cleaning")'>
+                                                        <i class="bi bi-play-fill me-1"></i> Làm
+                                                    </button>
+                                                }
+                                                else if (task.TaskStatus == "Cleaning")
+                                                {
+                                                    <button class="btn btn-sm btn-success px-3 fw-bold shadow-sm" 
+                                                            @onclick='() => UpdateTaskStatus(task.Id, "Completed")'>
+                                                        <i class="bi bi-check-lg me-1"></i> Xong
+                                                    </button>
+                                                }
+
+                                                <button class="btn btn-sm btn-outline-danger px-2 border-0 bg-danger-subtle text-danger" 
+                                                        title="Báo cáo sự cố" 
+                                                        @onclick='() => OpenReportModal(task.Id)'>
+                                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<ReportIssueModal IsVisible="IsReportModalOpen"
+                  OnClose="() => IsReportModalOpen = false"
+                  OnSubmit="HandleReportSubmit" />
+
+@code {
+    [Parameter] public int HotelId { get; set; }
+    private bool IsLoading = true;
+    private List<HousekeepingTaskVM> Tasks = new();
+    private HttpClient? _httpClient;
+    private Timer? _timer;
+
+    private bool IsReportModalOpen = false;
+    private int SelectedTaskIdForReport = 0;
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            _httpClient!.DefaultRequestHeaders.Authorization = new("Bearer", token);
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+        await SetAuthHeader();
+        await LoadTasks();
+        _timer = new Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+    {
+        // Gọi load lại thầm lặng (không hiện spinner)
+            await LoadTasks(silent: true);
+            StateHasChanged(); // Bắt buộc gọi để UI cập nhật dòng mới
+        });
+        }, null, 10000, 10000);
+    }
+
+    private async Task LoadTasks(bool silent = false)
+    {
+        IsLoading = true;
+        try
+        {
+            // lấy danh sách việc dọn phòng
+            var res = await
+            _httpClient!.GetFromJsonAsync<ApiResponse<List<HousekeepingTaskVM>>>($"hotel/housekeeping/tasks/{HotelId}");
+            if (res.StatusCode == StatusCodeResponse.Success)
+            {
+                Tasks = res.Content;
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!silent) Snackbar.Add($"Lỗi: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    // Cập nhật trạng thái việc dọn phòng
+    private async Task UpdateTaskStatus(int taskId, string newStatus, string? issueDesc = null)
+    {
+        var request = new UpdateTaskStatusRequestVM
+        {
+            TaskId = taskId,
+            Status = newStatus,
+            IssueDescription = issueDesc
+        };
+
+        var res = await _httpClient!.PutAsJsonAsync("hotel/housekeeping/update-status", request);
+
+        if (res.IsSuccessStatusCode)
+        {
+            string msg = newStatus == "Cleaning" ? "Đã bắt đầu dọn!" :
+            newStatus == "Completed" ? "Phòng đã sạch & sẵn sàng!" :
+            "Đã báo bảo trì.";
+            Snackbar.Add(msg, Severity.Success);
+
+            // Reload lại danh sách để cập nhật giao diện
+            await LoadTasks();
+        }
+        else
+        {
+            Snackbar.Add("Lỗi cập nhật trạng thái", Severity.Error);
+        }
+    }
+
+    private void OpenReportModal(int taskId)
+    {
+        SelectedTaskIdForReport = taskId;
+        IsReportModalOpen = true;
+    }
+
+    private async Task HandleReportSubmit(string reason)
+    {
+        // Gọi API báo hỏng kèm lý do
+        var request = new UpdateTaskStatusRequestVM 
+        { 
+            TaskId = SelectedTaskIdForReport, 
+            Status = "Maintenance", 
+            IssueDescription = reason 
+        };
+
+        await CallUpdateApi(request);
+        IsReportModalOpen = false; // Đóng modal sau khi gửi
+    }
+
+    private async Task CallUpdateApi(UpdateTaskStatusRequestVM request)
+    {
+        var res = await _httpClient!.PutAsJsonAsync("hotel/housekeeping/update-status", request);
+        if (res.IsSuccessStatusCode)
+        {
+            string msg = request.Status == "Maintenance" ? "Đã báo cáo sự cố." : "Cập nhật thành công!";
+            Snackbar.Add(msg, Severity.Success);
+            await LoadTasks(true);
+        }
+        else
+        {
+            Snackbar.Add("Có lỗi xảy ra", Severity.Error);
+        }
+    }
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

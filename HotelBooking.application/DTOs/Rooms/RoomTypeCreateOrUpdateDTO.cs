@@ -28,7 +28,14 @@ public class RoomTypeCreateOrUpdateDTO
 
     [Required(ErrorMessage = "Vui lòng chọn loại giường")]
     public List<RoomBedRequestDTO>? Beds { get; set; } = new();   
-    public List<RoomViewRequestDTO>? Views { get; set; } = new();
+    public List<int>? ViewIds { get; set; } = new();
+
+    public bool? IsFreeCancellation { get; set; } // Dùng bool? để check null khi update
+    public bool? IsBreakfastIncluded { get; set; }
+
+    // 3. Tiện nghi: Chỉ cần ID -> Dùng List<int> (Bổ sung cái này)
+    public List<int>? AmenityIds { get; set; } = new();
+    public List<RoomTypeServiceRequestDTO>? RoomTypeServices { get; set; }
 }
 public class CreateRoomTypeResponseDTO
 {
@@ -57,11 +64,4 @@ public class RoomBedRequestDTO
     [Range(1, 10)]
     public int Quantity { get; set; } = 1;
     // public bool IsPrimary {get; set;} = false; // cho phép đánh dấu giường chính
-}
-
-public class RoomViewRequestDTO
-{
-    [Required]
-    public int ViewTypeId { get; set; }
-
 }

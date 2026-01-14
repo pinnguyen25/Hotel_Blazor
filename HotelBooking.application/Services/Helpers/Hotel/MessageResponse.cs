@@ -19,6 +19,7 @@ public static class MessageResponse
     public const string CONFLICT = "Dữ liệu đã tồn tại hoặc xung đột!";
     public const string BAD_REQUEST = "Yêu cầu không hợp lệ!";
     public const string IMAGE_UPLOAD_FAILED = "Tải ảnh thất bại!";
+    public const string IMAGE_NOTFOUND = "Không tìm thấy ảnh!";
     public const string IMAGE_DELETE_FAILED = "Xóa ảnh thất bại!";
     public const string HOTEL_NOT_BELONG_TO_OWNER = "Khách sạn không thuộc về bạn!";
     public const string ROOM_NOT_AVAILABLE = "Không có phòng trống!";

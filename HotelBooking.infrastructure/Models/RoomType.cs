@@ -49,9 +49,11 @@ public partial class RoomType
 
     public decimal? Area { get; set; }
 
-    public virtual ICollection<BookingRoom> BookingRooms { get; set; } = new List<BookingRoom>();
+    public bool IsFreeCancellation { get; set; }
 
-    public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+    public bool IsBreakfastIncluded { get; set; }
+
+    public virtual ICollection<BookingRoom> BookingRooms { get; set; } = new List<BookingRoom>();
 
     public virtual User? CreatedByNavigation { get; set; }
 
@@ -62,6 +64,8 @@ public partial class RoomType
     public virtual ICollection<RoomBedType> RoomBedTypes { get; set; } = new List<RoomBedType>();
 
     public virtual ICollection<RoomImage> RoomImages { get; set; } = new List<RoomImage>();
+
+    public virtual ICollection<RoomTypeService> RoomTypeServices { get; set; } = new List<RoomTypeService>();
 
     public virtual ICollection<RoomViewType> RoomViewTypes { get; set; } = new List<RoomViewType>();
 

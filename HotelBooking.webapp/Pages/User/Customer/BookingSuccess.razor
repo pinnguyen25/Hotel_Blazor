@@ -1,0 +1,48 @@
+@page "/booking/success/{BookingId:int}"
+@using HotelBooking.webapp.ViewModels.Hotel
+@inject NavigationManager _nav
+
+<div class="d-flex flex-column align-items-center justify-content-center min-vh-100 bg-light py-5">
+    <div class="card border-0 shadow-lg rounded-4 p-5 text-center animate__animated animate__fadeInUp" style="max-width: 500px; width: 90%;">
+        
+        <div class="mb-4">
+            <div class="rounded-circle bg-success bg-opacity-10 d-inline-flex align-items-center justify-content-center" style="width: 100px; height: 100px;">
+                <i class="bi bi-check-lg text-success" style="font-size: 3.5rem;"></i>
+            </div>
+        </div>
+
+        <h2 class="fw-bold text-dark mb-2">Đặt phòng thành công!</h2>
+        <p class="text-muted mb-4">Cảm ơn bạn đã tin tưởng. Mã đặt phòng của bạn là:</p>
+
+        <div class="bg-light border border-dashed border-secondary rounded-3 p-3 mb-4">
+            <span class="fs-3 fw-bold text-primary"># @BookingId</span>
+        </div>
+
+        <p class="small text-muted mb-4">
+            Email xác nhận đã được gửi đến hộp thư của bạn. 
+        </p>
+
+        <div class="d-grid gap-2">
+            <button class="btn btn-primary py-2 rounded-pill fw-bold" @onclick="GoToDetail">
+                <i class="bi bi-file-earmark-text me-2"></i> Xem chi tiết đơn hàng
+            </button>
+            <button class="btn btn-outline-secondary py-2 rounded-pill fw-bold" @onclick="GoHome">
+                <i class="bi bi-house me-2"></i> Quay về trang chủ
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int BookingId { get; set; }
+    private void GoToDetail()
+    {
+        // Điều hướng đến trang chi tiết lịch sử đặt phòng (API GetBookingDetailForUserAsync bạn đã viết)
+        _nav.NavigateTo($"/user/profile"); 
+    }
+
+    private void GoHome()
+    {
+        _nav.NavigateTo("/");
+    }
+}

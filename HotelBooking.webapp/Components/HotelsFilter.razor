@@ -1,285 +1,370 @@
-@using System.Text.Json
-@* @using MudBlazor
-@inject Snackbar Snackbar *@
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Timers
 @inject IHttpClientFactory _httpClientFactory
-<div class="container-fluid">
-    <div class="filter-sidebar bg-white rounded-4 shadow-sm p-4 sticky-top"
-        style="top: 90px; max-height: calc(100vh - 110px); overflow-y: auto;">
+@using MudBlazor
 
-        <!-- Header -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h5 class="fw-bold text-dark mb-0">
-                <i class="bi bi-funnel-fill text-primary me-2"></i>
-                Bộ lọc tìm kiếm
-            </h5>
-            <button type="button" class="btn btn-link text-danger p-0 text-decoration-none fw-medium"
-                @onclick="ResetAllFilters">
-                Xóa
-            </button>
-        </div>
 
-        <hr class="text-muted opacity-75">
+<div class="filter-sidebar bg-white rounded-4 shadow-sm p-4 sticky-top"
+    style="top: 90px; max-height: calc(100vh - 120px); overflow-y: auto; z-index: 1">
 
-        <!-- Giá mỗi đêm -->
-        <div class="mb-4">
-            <h6 class="fw-semibold text-dark mb-3">Giá mỗi đêm</h6>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-funnel-fill text-primary me-2"></i>Bộ lọc</h5>
+        <button class="btn btn-link text-danger p-0 text-decoration-none" @onclick="ResetAllFilters">
+            Xóa
+        </button>
+    </div>
 
-            <div class="px-3">
-                <input type="range" class="form-range custom-range" min="0" max="10000000" step="100000"
-                    @bind="_maxPrice" @bind:event="oninput" />
-
-                <div class="d-flex justify-content-between text-muted small mt-2">
-                    <span>0đ</span>
-                    <span class="fw-bold text-primary">@FormatPrice(_maxPrice)đ</span>
-                    <span>10tr+</span>
-                </div>
+    <div class="mb-4">
+        <h6 class="fw-semibold text-dark mb-3">Khoảng giá</h6>
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="position-relative w-100">
+                <input type="text" class="form-control text-center fw-bold" value="@(_minPrice.ToString("N0"))"
+                    @onchange="@(e => OnInputChanged(e, true))" />
             </div>
-
-            <div class="row g-2 mt-3">
-                <div class="col-6">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-light">Từ</span>
-                        <input type="text" class="form-control text-end" value="@FormatPrice(_minPrice)"
-                            @onchange="OnMinPriceChange" />
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-light">Đến</span>
-                        <input type="text" class="form-control text-end" value="@FormatPrice(_maxPrice)"
-                            @onchange="OnMaxPriceChange" />
-                    </div>
-                </div>
+            <span class="text-muted fw-bold">-</span>
+            <div class="position-relative w-100">
+                <input type="text" class="form-control text-center fw-bold" value="@(_maxPrice.ToString("N0"))"
+                    @onchange="@(e => OnInputChanged(e, false))" />
             </div>
         </div>
 
-        <hr class="text-muted opacity-75">
+        <div class="range-slider-container">
+            <div class="slider-track-bg"></div>
 
-        <!-- Loại hình lưu trú -->
-        <div class="mb-4">
-            <h6 class="fw-semibold text-dark mb-3">Loại hình lưu trú</h6>
+            <div class="slider-track-fill" style="left: @(_minPercent)%; right: @(100 - _maxPercent)%;">
+            </div>
+
+            <input type="range" min="0" max="@MAX_PRICE" step="100000" value="@_minPrice"
+                @oninput="@(e => OnRangeInput(e, true))" class="range-input" />
+
+            <input type="range" min="0" max="@MAX_PRICE" step="100000" value="@_maxPrice"
+                @oninput="@(e => OnRangeInput(e, false))" class="range-input" />
+        </div>
+
+        <div class="d-flex justify-content-between text-muted small mt-3">
+            <span>0đ</span>
+            <span>10tr+</span>
+        </div>
+    </div>
+
+    <hr class="text-muted opacity-50">
+
+    <div class="mb-4">
+        <h6 class="fw-semibold text-dark mb-3">Loại hình</h6>
+        @if (AccommodationTypes != null)
+        {
             <div class="vstack gap-2">
                 @foreach (var type in AccommodationTypes)
                 {
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="@($"acc-{type.Id}")"
-                            checked="@SelectedAccTypes.Contains(type.Id)"
-                            @onchange="() => ToggleItem(SelectedAccTypes, type.Id)" />
-                        <label class="form-check-label d-flex justify-content-between" for="@($"acc-{type.Id}")">
-                            <span>@type.Name</span>
-                            @* <span class="text-muted small">(@type.Count)</span> *@
-                        </label>
+                    <div class="d-flex align-items-center rounded-2 cursor-pointer hover-bg"
+                        @onclick="@(() => ToggleAccType(type))">
+
+                        <div class="form-check mb-0">
+                            <input class="form-check-input pointer-events-none" type="checkbox" checked="@type.IsSelected"
+                                readonly />
+                        </div>
+
+                        <div class="ms-2 user-select-none flex-grow-1">
+                            @type.Name
+                        </div>
                     </div>
                 }
             </div>
-        </div>
+        }
+    </div>
 
-        <!-- Điểm đánh giá -->
-        <div class="mb-4">
-            <h6 class="fw-semibold text-dark mb-3">Điểm đánh giá</h6>
-            <div class="vstack gap-3">
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="rating" id="rate-all"
-                        checked="@(_selectedRating == 0)" @onchange="() => SetRating(0)" />
-                    <label class="form-check-label" for="rate-all">Tất cả</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="rating" id="rate-8"
-                        checked="@(_selectedRating == 8)" @onchange="() => SetRating(8)" />
-                    <label class="form-check-label d-flex align-items-center gap-2" for="rate-8">
-                        <span>Xuất sắc</span>
-                        <span class="text-warning fw-bold">8+</span>
-                        <div class="text-warning small">★★★★★</div>
-                    </label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="rating" id="rate-7"
-                        checked="@(_selectedRating == 7)" @onchange="() => SetRating(7)" />
-                    <label class="form-check-label d-flex align-items-center gap-2" for="rate-7">
-                        <span>Rất tốt</span>
-                        <span class="text-success fw-bold">7+</span>
-                        <div class="text-warning small">★★★★☆</div>
-                    </label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="rating" id="rate-6"
-                        checked="@(_selectedRating == 6)" @onchange="() => SetRating(6)" />
-                    <label class="form-check-label d-flex align-items-center gap-2" for="rate-6">
-                        <span>Tốt</span>
-                        <span class="text-info fw-bold">6+</span>
-                        <div class="text-warning small">★★★☆☆</div>
-                    </label>
-                </div>
+    <div class="mb-4">
+        <h6 class="fw-semibold text-dark mb-3">Đánh giá</h6>
+        @foreach (var r in new[] { 0, 8, 7, 6 })
+        {
+            <div class="form-check cursor-pointer">
+                <input class="form-check-input" type="radio" name="rating" checked="@(_selectedRating == r)"
+                    @onchange="() => UpdateRating(r)" id="rate-@r" />
+                <label class="form-check-label w-100 cursor-pointer" for="rate-@r">
+                    @(r == 0 ? "Tất cả" : $"Trên {r} điểm")
+                </label>
             </div>
-        </div>
+        }
+    </div>
 
-        <!-- Tiện nghi phổ biến -->
-        <div class="mb-4">
-            <h6 class="fw-semibold text-dark mb-3">Tiện nghi phổ biến</h6>
-            @if (Amenities == null || !Amenities.Any())
-            {
-                <div class="text-center py-3 text-muted small">Đang tải tiện nghi...</div>
-            }
-            else
-            {
-                <div class="row g-2">
-                    @foreach (var amenity in Amenities)
-                    {
-                        <div class="col-6">
-                            <div class="@(SelectedAmenities.Contains(amenity.Id) ? "selected-amenity" : "unselected-amenity")"
-                                style="cursor: pointer; transition: all 0.2s"
-                                @onclick="() => ToggleItem(SelectedAmenities, amenity.Id)">
-                                @if (!string.IsNullOrEmpty(amenity.IconClass))
-                                {
-                                    <i class="@amenity.IconClass me-1"></i>
-                                }
-                                @amenity.Name
+    <hr class="text-muted opacity-50">
 
-                                @if (SelectedAmenities.Contains(amenity.Id))
-                                {
-                                    <i class="bi bi-check-lg float-end mt-1 text-white"></i>
-                                }
+    <div class="mb-4">
+        <h6 class="fw-semibold text-dark mb-3">Tiện nghi</h6>
+        @if (Amenities != null)
+        {
+            <div class="d-flex flex-column row g-2">
+                @foreach (var am in Amenities)
+                {
+                    <MudTooltip Text="@am.Name" Arrow="true" Placement="Placement.Right" Class="d-none d-md-block">
+                        <div class="@(am.IsSelected ? "selected-amenity bg-light border-primary text-primary fw-bold" : "unselected-amenity bg-white text-dark border-light-subtle") d-flex align-items-center p-2 rounded-3 border cursor-pointer position-relative transition-all amenity-item"
+                            @onclick="() => ToggleAmenity(am)">
+
+                            <div class="flex-shrink-0 me-2 d-flex align-items-center justify-content-center"
+                                style="width: 24px;">
+                                <i
+                                    class="@(string.IsNullOrEmpty(am.IconClass) ? "fa fa-check" : am.IconClass) fs-6 @(am.IsSelected ? "text-primary" : "text-secondary")"></i>
                             </div>
+
+                            <div class="flex-grow-1" style="min-width: 0;">
+                                <div class="text-truncate responsive-text">
+                                    @am.Name
+                                </div>
+                            </div>
+
+                            @if (am.IsSelected)
+                            {
+                                <div class="flex-shrink-0 ms-2">
+                                    <i class="bi bi-check-circle-fill text-primary fs-6"></i>
+                                </div>
+                            }
                         </div>
-                    }
-                </div>
-            }
-        </div>
-
-        <!-- Chính sách -->
-        <div class="mb-4">
-            <h6 class="fw-semibold text-dark mb-3">Chính sách</h6>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="free-cancel" checked="@FreeCancellation"
-                    @onchange="() => { FreeCancellation = !FreeCancellation; TriggerFilter(); }" />
-                <label class="form-check-label text-success fw-medium" for="free-cancel">
-                    Miễn phí hủy phòng
-                </label>
+                    </MudTooltip>
+                }
             </div>
-            <div class="form-check mt-2">
-                <input class="form-check-input" type="checkbox" id="no-prepay" checked="@NoPrepayment"
-                    @onchange="() => { NoPrepayment = !NoPrepayment; TriggerFilter(); }" />
-                <label class="form-check-label text-primary fw-medium" for="no-prepay">
-                    Không cần thanh toán trước
-                </label>
-            </div>
-        </div>
+        }
+    </div>
 
-        <!-- Nút áp dụng -->
-        <div class="d-grid mt-4">
-            <button class="btn btn-primary btn-lg rounded-pill shadow-sm py-3 fw-bold" @onclick="ApplyFilters">
-                <i class="bi bi-check2-all me-2"></i>
-                Xem @_filteredCount khách sạn
-            </button>
-        </div>
+    <div class="mb-4">
+        <h6 class="fw-semibold text-dark mb-3">Dịch vụ</h6>
+        @if (Services != null)
+        {
+            <div class="d-flex flex-column row g-2">
+                @foreach (var sv in Services)
+                {
+                    <MudTooltip Text="@sv.Name" Arrow="true" Placement="Placement.Right" Class="d-none d-md-block">
+                        <div class="@(sv.IsSelected ? "selected-amenity bg-light border-primary text-primary fw-bold" : "unselected-amenity bg-white text-dark border-light-subtle") d-flex align-items-center p-2 rounded-3 border cursor-pointer position-relative transition-all amenity-item"
+                            @onclick="() => ToggleService(sv)">
+
+                            <div class="flex-grow-1" style="min-width: 0;">
+                                <div class="text-truncate responsive-text">
+                                    @sv.Name
+                                </div>
+                            </div>
+
+                            @if (sv.IsSelected)
+                            {
+                                <div class="flex-shrink-0 ms-2">
+                                    <i class="bi bi-check-circle-fill text-primary fs-6"></i>
+                                </div>
+                            }
+                        </div>
+                    </MudTooltip>
+                }
+            </div>
+        }
     </div>
 </div>
 
-
 @code {
-    [Parameter] public EventCallback OnFilterChanged { get; set; }
+    [Parameter] public EventCallback<FilterHotelsVM> OnFilterChanged { get; set; }
+    [Parameter] public FilterHotelsVM InitialState { get; set; } = new();
 
     private decimal _minPrice = 0;
-    private decimal _maxPrice = 10000000m;
-    private int _selectedRating = 0;
-    private HashSet<int> SelectedAccTypes { get; set; } = new() { 1, 3 };
-    private HashSet<int> SelectedAmenities { get; set; } = new() { 2 };
-    private bool FreeCancellation = true;
-    private bool NoPrepayment = false;
-    private int _filteredCount = 1248;
+    private decimal _maxPrice = 10000000;
+    private const decimal MAX_PRICE = 10000000;
+    // Biến tính toán % để vẽ thanh màu xanh bằng CSS
+    private double _minPercent => (double)(_minPrice / MAX_PRICE * 100);
+    private double _maxPercent => (double)(_maxPrice / MAX_PRICE * 100);
 
-    private HttpClient? _httpClient;
-    private List<AmenityVM> Amenities { get; set; } = new();
-    private List<AccommodationTypeVM> AccommodationTypes { get; set; } = new();
-    private List<CityVM> Cities { get; set; } = new();
+    private int _selectedRating = 0;
+    private List<AccommodationTypeVM> AccommodationTypes = new();
+    private List<AmenityVM> Amenities = new();
+    private List<ServicesVM> Services = new List<ServicesVM>();
+
+    // Timer để Debounce (Tránh spam API khi kéo slider)
+    private Timer? _debounceTimer;
+
     protected override async Task OnInitializedAsync()
     {
-        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
-        await LoadDataAsync();
-    }
-    private async Task LoadAmenitiesAsync()
-    {
-        try
-        {
-            var response = await _httpClient!.GetAsync("hotel/get-all-amenities");
-            var json = await response.Content.ReadAsStringAsync();
-            var apiRes = JsonSerializer.Deserialize<ApiResponse<List<AmenityVM>>>(json,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        // Init Timer
+        _debounceTimer = new Timer(500); // Đợi 500ms sau khi dừng thao tác
+        _debounceTimer.Elapsed += async (sender, e) => await InvokeAsync(ApplyFilters);
+        _debounceTimer.AutoReset = false;
 
-            Amenities = apiRes?.StatusCode == StatusCodeResponse.Success
-            ? apiRes.Content ?? new()
-            : new();
+        await LoadMasterData();
+    }
+
+    protected override void OnParametersSet()
+    {
+        SyncStateWithUrl();
+    }
+
+    private void SyncStateWithUrl()
+    {
+        if (InitialState == null) return;
+
+        _minPrice = InitialState.PriceMin ?? 0;
+        _maxPrice = InitialState.PriceMax ?? MAX_PRICE;
+
+        // Sync Rating
+        _selectedRating = (int)(InitialState.RatingMin ?? 0);
+
+        // Sync Checkbox
+        if (AccommodationTypes.Any())
+        {
+            var ids = ParseIds(InitialState.AccommodationTypeIds);
+            AccommodationTypes.ForEach(a => a.IsSelected = ids.Contains(a.Id));
         }
-        catch (Exception ex)
+
+        if (Amenities.Any())
         {
-            Console.WriteLine($"Lỗi khi tải dữ liệu: {ex.Message}", Severity.Error);
-            Amenities = new();
+            var ids = ParseIds(InitialState.AmenityIds);
+            Amenities.ForEach(a => a.IsSelected = ids.Contains(a.Id));
         }
-        StateHasChanged();
-    }
-    private async Task LoadDataAsync()
-    {
-        AccommodationTypes = await _httpClient!.GetFromJsonAsync<List<AccommodationTypeVM>>("hotel/get-all-accommodations") ??
-        new();
-        Amenities = await _httpClient!.GetFromJsonAsync<List<AmenityVM>>("hotel/get-all-amenities") ?? new();
-    }
 
-    private string FormatPrice(decimal? price) => price?.ToString("#,##0") ?? "0";
-
-    private void OnMinPriceChange(ChangeEventArgs e)
-    {
-        if (decimal.TryParse(e.Value?.ToString(), out var val))
+        if (Services.Any())
         {
-            _minPrice = Math.Max(0, Math.Min(val, _maxPrice));
-            TriggerFilter();
-        }
-    }
-
-    private void OnMaxPriceChange(ChangeEventArgs e)
-    {
-        if (decimal.TryParse(e.Value?.ToString(), out var val))
-        {
-            _maxPrice = Math.Min(10000000m, Math.Max(val, _minPrice));
-            TriggerFilter();
+            var ids = ParseIds(InitialState.ServiceIds);
+            Services.ForEach(s => s.IsSelected = ids.Contains(s.Id));
         }
     }
 
-    // Helper chung để toggle bất kỳ HashSet<int> nào
-    private void ToggleItem(HashSet<int> set, int id)
+    private List<int> ParseIds(string? ids)
+    => string.IsNullOrEmpty(ids) ? new() : ids.Split(',').Select(int.Parse).ToList();
+    // --- XỬ LÝ KÉO SLIDER (Real-time update UI) ---
+    private void OnRangeInput(ChangeEventArgs e, bool isMin)
     {
-        if (set.Contains(id)) set.Remove(id);
-        else set.Add(id);
-        TriggerFilter();
+        if (decimal.TryParse(e.Value?.ToString(), out decimal val))
+        {
+            if (isMin)
+            {
+                // Chặn Min không được vượt quá Max
+                _minPrice = Math.Min(val, _maxPrice);
+            }
+            else
+            {
+                // Chặn Max không được thấp hơn Min
+                _maxPrice = Math.Max(val, _minPrice);
+            }
+            RestartDebounce();
+        }
     }
 
-    private void SetRating(int rating)
+    // --- XỬ LÝ NHẬP INPUT TEXT (Có format phẩy) ---
+    private void OnInputChanged(ChangeEventArgs e, bool isMin)
     {
+        // Xử lý chuỗi nhập vào: "1,000,000" -> "1000000"
+        var inputVal = e.Value?.ToString()?.Replace(",", "").Replace(".", "").Trim();
+
+        if (decimal.TryParse(inputVal, out decimal val))
+        {
+            if (val > MAX_PRICE) val = MAX_PRICE;
+            if (val < 0) val = 0;
+
+            if (isMin)
+            {
+                if (val > _maxPrice) _minPrice = _maxPrice; // Đẩy max lên nếu min vượt
+                else _minPrice = val;
+            }
+            else
+            {
+                if (val < _minPrice) _minPrice = val; // Kéo min xuống nếu max tụt
+                _maxPrice = val;
+            }
+            RestartDebounce();
+        }
+        else
+        {
+            StateHasChanged(); // Reset nếu nhập chữ
+        }
+    }
+
+    // 3. Checkbox & Radio (Không cần debounce)
+    private async Task ToggleAccType(AccommodationTypeVM item)
+    {
+        item.IsSelected = !item.IsSelected;
+        await ApplyFilters();
+    }
+
+    private async Task ToggleAmenity(AmenityVM item)
+    {
+        item.IsSelected = !item.IsSelected;
+        await ApplyFilters();
+    }
+
+    private async Task ToggleService(ServicesVM item)
+    {
+        item.IsSelected = !item.IsSelected;
+        await ApplyFilters();
+    }
+
+    private async Task UpdateRating(int rating)
+    {
+        if (_selectedRating == rating) return;
         _selectedRating = rating;
-        TriggerFilter();
+        await ApplyFilters();
+    }
+
+    // --- LOGIC FILTER ---
+
+    private void RestartDebounce()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Start();
+    }
+
+    private async Task TriggerInstantFilter()
+    {
+        _debounceTimer?.Stop();
+        await ApplyFilters();
     }
 
     private async Task ApplyFilters()
     {
-        await OnFilterChanged.InvokeAsync();
+        // Gom dữ liệu
+        var filter = new FilterHotelsVM
+        {
+            PriceMin = _minPrice > 0 ? _minPrice : null,
+            PriceMax = _maxPrice < MAX_PRICE ? _maxPrice : null,
+            RatingMin = _selectedRating > 0 ? _selectedRating : null,
+            AccommodationTypeIds = GetSelectedIds(AccommodationTypes),
+            AmenityIds = GetSelectedIds(Amenities),
+            ServiceIds = GetSelectedIds(Services)
+        };
+
+        // Gửi ra cha
+        await OnFilterChanged.InvokeAsync(filter);
     }
 
-    // Đã sửa: async Task thay vì async void
-    private async Task TriggerFilter()
-    {
-        _filteredCount = 400 + Random.Shared.Next(800); // giả lập
-        StateHasChanged();
-        await OnFilterChanged.InvokeAsync();
-    }
-
+    // --- LOGIC RESET (FIX BUG) ---
     private async Task ResetAllFilters()
     {
+        // 1. Reset biến local
         _minPrice = 0;
-        _maxPrice = 10000000m;
+        _maxPrice = MAX_PRICE;
         _selectedRating = 0;
-        SelectedAccTypes.Clear();
-        SelectedAmenities.Clear();
-        FreeCancellation = false;
-        NoPrepayment = false;
-        await TriggerFilter();
+        AccommodationTypes.ForEach(x => x.IsSelected = false);
+        Amenities.ForEach(x => x.IsSelected = false);
+        Services.ForEach(s => s.IsSelected = false);
+        // 2. Ép UI render lại ngay lập tức để người dùng thấy các ô đã bỏ tick
+        StateHasChanged();
+        // 3. Gọi Filter để load lại list hotel gốc
+        await TriggerInstantFilter();
+    }
+
+    // Helpers
+    private string? GetSelectedIds<T>(List<T> list)
+    {
+        var selected = list.Where(x => (bool)((dynamic)x).IsSelected).Select(x => (int)((dynamic)x).Id);
+        return selected.Any() ? string.Join(",", selected) : null;
+    }
+
+    private async Task LoadMasterData()
+    {
+        var client = _httpClientFactory.CreateClient("HotelBookingAPI");
+        try
+        {
+            var accRes = await client.GetFromJsonAsync<ApiResponse<List<AccommodationTypeVM>>>("hotel/get-all-accommodations");
+            AccommodationTypes = accRes?.Content ?? new();
+
+            var amRes = await client.GetFromJsonAsync<ApiResponse<List<AmenityVM>>>("hotel/get-all-amenities");
+            Amenities = amRes?.Content?.Where(a => a.IsFilterable).ToList() ?? new();
+
+            var svRes = await client.GetFromJsonAsync<ApiResponse<List<ServicesVM>>>("hotel/get-featured-services");
+            Services = svRes?.Content ?? new();
+            SyncStateWithUrl();
+        }
+        catch { }
     }
 }

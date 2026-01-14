@@ -4,7 +4,8 @@
 @inject ISnackbar Snackbar
 
 <div class="container mt-15">
-    <h2 class="text-center fw-bold mb-5 text-primary-gradient">Loại hình lưu trú</h2>
+    <h2 class="handwriting text-center mb-5 text-primary-gradient" style="color: #54a9ffff;">Loại hình lưu trú</h2>
+    
 
     @if (accommodations == null)
     {
@@ -38,7 +39,6 @@
                             }
 
                             <h5 class="accommodation-title">@acc.Name</h5>
-                            <span class="accommodation-count">@(GetRandomCount()) chỗ ở</span>
                         </div>
                     </a>
                 </div>
@@ -86,6 +86,4 @@
         StateHasChanged();
     }
 
-    // Demo: sinh ngẫu nhiên số lượng chỗ ở
-    private string GetRandomCount() => $"{_rand.Next(100, 1500):N0}";
 }

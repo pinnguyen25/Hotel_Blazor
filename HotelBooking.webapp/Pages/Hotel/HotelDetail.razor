@@ -1,8 +1,9 @@
 @page "/Hotel/{HotelId:int}"
-@layout MainLayout
 
+@layout MainLayout
 @using Blazored.LocalStorage
 @using HotelBooking.webapp.ViewModels.Hotel
+@using Microsoft.AspNetCore.WebUtilities
 @using MudBlazor
 @using System.Globalization
 @using System.Text.Json
@@ -11,13 +12,15 @@
 @inject AuthenticationStateProvider _authStateProvider
 @inject IHttpClientFactory _httpClientFactory
 @inject ISnackbar Snackbar
+@inject BookingState _bookingState
 @inject NavigationManager _nav
 
+<Header IsFixed="false" />
 @if (hotelDetail == null && !isLoading)
 {
     <MudAlert Severity="Severity.Error">
         Không tìm thấy khách sạn hoặc lỗi server.
-        <MudButton Variant="Variant.Text" Color="Color.Primary" @onclick="Retry">Thử lại</MudButton>
+        <MudButton Variant="MudBlazor.Variant.Text" Color="Color.Primary" @onclick="Retry">Thử lại</MudButton>
     </MudAlert>
 }
 else if (isLoading)
@@ -30,7 +33,6 @@ else if (isLoading)
 else
 {
     <div class="container my-4">
-
         <!-- Nút quay lại -->
         <div class="row mb-4 mt-2 align-items-center">
             <div class="col-12 d-flex justify-content-between align-items-center">
@@ -45,18 +47,18 @@ else
                     <!-- 1. NÚT QUẢN LÝ (chỉ Owner chính chủ) -->
                     @if (IsOwner && hotelDetail?.OwnerId == CurrentOwnerId)
                     {
-                        <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Settings"
-                            Href="/owner/hotels" Style="border-radius:20px; padding:6px 16px;">
+                        <MudButton Variant="MudBlazor.Variant.Filled" Color="Color.Secondary"
+                            StartIcon="@Icons.Material.Filled.Settings" Href="/owner/hotels"
+                            Style="border-radius:20px; padding:6px 16px;">
                             Quản lý
                         </MudButton>
                     }
-
                     <!-- 2. WISHLIST (tất cả người dùng đã đăng nhập) -->
                     @if (IsAuthenticated)
                     {
                         <MudTooltip Text="@(hotelDetail.IsWishlist ? "Xóa khỏi yêu thích" : "Thêm vào yêu thích")">
                             <MudButton Class="d-flex align-items-center" Size="Size.Medium" Disabled="@isToggling"
-                                @onclick="HandleWishlistClick" Variant="Variant.Filled"
+                                @onclick="HandleWishlistClick" Variant="MudBlazor.Variant.Filled"
                                 Color="@(hotelDetail.IsWishlist ? Color.Error : Color.Primary)"
                                 Style="border-radius:20px; padding:6px 16px; min-width:120px;">
                                 <MudIcon
@@ -67,10 +69,8 @@ else
                         </MudTooltip>
                     }
                 </div>
-
             </div>
         </div>
-
         <!-- Ảnh của khách sạn -->
         <div Class="pb-5">
             <MudGrid>
@@ -81,7 +81,6 @@ else
                             style="width:100%; height:390px; object-fit:cover; border-radius:8px;" />
                     </div>
                 </MudItem>
-
                 <!-- Ảnh phụ -->
                 <MudItem xs="12" sm="6">
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
@@ -102,7 +101,6 @@ else
                 </MudItem>
             </MudGrid>
         </div>
-
         <div class="row g-4">
             <!-- Thông tin khách sạn -->
             <div class="col-12">
@@ -113,7 +111,6 @@ else
                         <h2 class="fw-bold ">@hotelDetail.HotelName</h2>
                         <p class="text-muted mb-0">@hotelDetail.Address</p>
                     </div>
-
                     <!-- Rating & Wishlist -->
                     <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
                         <div class="d-flex flex-column text-end">
@@ -123,9 +120,7 @@ else
                         <span
                             class="badge bg-warning text-dark fs-5 fw-bold">@hotelDetail.AverageRating.ToString("0.0")</span>
                     </div>
-
                 </div>
-
                 <!-- Tiện nghi & Mô tả-->
                 <div class="row mb-4">
                     <!-- Tiện nghi -->
@@ -148,115 +143,140 @@ else
                             }
                         </div>
                     </div>
-
                     <!-- Mô tả -->
                     <div class="col-12 col-md-6">
                         <h5>Mô tả</h5>
                         <p>@(hotelDetail.Description ?? "Không có mô tả")</p>
                     </div>
                 </div>
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="fw-bold text-dark">Chính sách lưu trú</h5>
+                        <div class="card border-0 bg-light rounded-3 p-3">
+                            <div class="row">
+                                @if (hotelDetail.Policies != null && hotelDetail.Policies.Any())
+                                {
+                                    @foreach (var policy in hotelDetail.Policies)
+                                    {
+                                        <div class="col-md-6 mb-2">
+                                            <div class="d-flex">
+                                                <i class="bi bi-info-circle-fill text-info me-2"></i>
+                                                <div>
+                                                    <span class="fw-bold text-dark">@policy.Name:</span>
+                                                    <span class="text-secondary">@policy.Description</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Chưa có thông tin chính sách.</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        <!-- Chính sách -->
     </div>
-
+    <div class="sticky-top-bar">
+        <SearchForm SearchResult="@CurrentSearch" OnSearchSubmit="HandleSearchUpdate"
+            FixedDestination="@hotelDetail.HotelName" />
+    </div>
 
     <!-- Danh sách phòng -->
-    <section class="w-100 py-5" style="background-color:#f8f9fa;">
-        <div class="container my-4">
-            <h5 class="mb-4 fw-semibold">Các loại phòng</h5>
-            @if (isLoading)
-            {
-                <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
-            }
-            else if (hotelDetail != null && hotelDetail.RoomTypes.Any())
-            {
-                <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
-                    @foreach (var room in hotelDetail.RoomTypes.Take(4))
-                    {
-                        <div class="col">
-                            <div class="card h-100 shadow-sm border-0">
-                                <img src="@(room.Images.Any() ? room.Images.First() : "/images/default-room.jpg")"
-                                    class="card-img-top" style="height:180px; object-fit:cover; border-radius:8px 8px 0 0;" />
-                                <div class="card-body d-flex flex-column">
-                                    <h6 class="card-title fw-semibold">@room.Name</h6>
-                                    <p class="card-text text-muted mb-2">Giá: @(room.PricePerNight.ToString("N0",
-                                                                    CultureInfo.InvariantCulture) ?? "Liên hệ") VND/đêm</p>
-                                    <p class="card-text text-muted mb-2">Phòng trống: @(room.AvailableRooms)</p>
-                                    <button class="btn btn-outline-primary mt-auto">Đặt ngay</button>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                </div>
-            }
-            else
-            {
-                <p class="text-muted">Không có phòng nào hiện tại.</p>
-            }
-        </div>
-    </section>
+    <RoomList RoomTypes="@hotelDetail.RoomTypes" HotelId="@HotelId" IsAuthenticated="@IsAuthenticated"
+        CheckInDate="@(CurrentSearch.CheckIn ?? DateTime.Today)"
+        CheckOutDate="@(CurrentSearch.CheckOut ?? DateTime.Today.AddDays(1))" SearchAdults="@CurrentSearch.Adults"
+        SearchChildren="@CurrentSearch.Children" OnOpenPopup="OpenRoomPopup" />
 
     <!-- Đánh giá -->
-    <div class="container my-5">
-        <h5 class="mb-4 fw-semibold text-primary">Đánh giá</h5>
-
-        @if (Reviews.Any())
-        {
-            <MudCarousel TData="ReviewVM" ShowArrows="true" AutoCycle="false" Class="py-4" Color="Color.Info">
-                @foreach (var review in Reviews)
-                {
-                    <MudCarouselItem>
-                        <div class="card border-0 shadow-sm p-4 d-flex flex-column align-items-center justify-content-center"
-                            style="min-height:250px; border-radius:16px; background-color:#ffffff;">
-                            <!-- Điểm đánh giá -->
-                            <span class="badge bg-info text-white fs-5 fw-bold mb-3 px-3 py-2" style="border-radius:12px;">
-                                @(review.Rating?.ToString("0.0") ?? "N/A") / 10
-                            </span>
-                            <!-- Nội dung -->
-                            <p class="text-center fst-italic text-secondary px-3 mb-3" style="font-size:1.05rem;">
-                                "@review.Comment"
-                            </p>
-                            <!-- Avatar + Tên -->
-                            <div class="d-flex align-items-center mt-auto">
-                                <i class="bi bi-person-circle fs-3 me-2 text-info"></i>
-                                <span class="fw-semibold text-dark">@review.UserName</span>
-                            </div>
-                            <!-- Ngày -->
-                            <small class="text-muted mt-2">
-                                @review.CreatedAt?.ToString("dd/MM/yyyy" ?? "N/A")
-                            </small>
-                        </div>
-                    </MudCarouselItem>
-                }
-            </MudCarousel>
-        }
-        else
-        {
-            <p class="text-muted">Chưa có đánh giá nào.</p>
-        }
-    </div>
-
+    <HotelReviews Reviews="@hotelDetail.Reviews" ReviewCount="@hotelDetail.ReviewCount"
+        AverageRating="@hotelDetail.AverageRating" />
+}
+@if (_selectedRoomId != null)
+{
+    <RoomTypeDetail RoomTypeId="@_selectedRoomId.Value" HotelId="@HotelId" OnClose="CloseRoomPopup" />
 }
 
+<style>
+    /* CSS cho thanh dính */
+    .sticky-top-bar {
+        position: -webkit-sticky;
+        /* Cho Safari */
+        position: sticky;
+        top: 0;
+        /* Dính chặt vào mép trên cùng */
+        z-index: 1000;
+        /* Nổi lên trên mọi thứ khác */
+        background-color: rgba(255, 255, 255, 0.95);
+        /* Màu nền trắng (hơi trong suốt xíu cho đẹp) */
+        backdrop-filter: blur(5px);
+        /* Hiệu ứng mờ nền đằng sau */
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        /* Đổ bóng nhẹ ngăn cách với nội dung */
+        border-bottom: 1px solid #eee;
+        transition: all 0.3s ease;
+    }
+</style>
+
 @code {
+
     [Parameter] public int HotelId { get; set; }
     private HotelDetailVM? hotelDetail { get; set; }
     private bool isLoading = true;
     private bool isToggling;
-
+    private List<ReviewVM> Reviews { get; set; } = new List<ReviewVM>();
     private bool IsAuthenticated { get; set; }
     private bool IsOwner { get; set; }
     private int CurrentOwnerId { get; set; } = 0;
     private bool IsMyHotel { get; set; }
-    private List<ReviewVM> Reviews { get; set; } = new List<ReviewVM>();
+    private int? _selectedRoomId = null; // null = đóng popup
+
+    // search
+    [SupplyParameterFromQuery] public string? CheckIn { get; set; }
+    [SupplyParameterFromQuery] public string? CheckOut { get; set; }
+    [SupplyParameterFromQuery] public int? Adults { get; set; }
+    [SupplyParameterFromQuery] public int? Children { get; set; }
+    [SupplyParameterFromQuery] public int? Rooms { get; set; }
+    private SearchResultVM CurrentSearch { get; set; } = new();
+    private void OpenRoomPopup(int id)
+    {
+        _selectedRoomId = id;
+    }
+
+    private void CloseRoomPopup()
+    {
+        _selectedRoomId = null;
+    }
 
     protected override async Task OnParametersSetAsync()
     {
+        DateTime today = DateTime.Today;
+        DateTime tomorrow = today.AddDays(1);
+
+        DateTime checkInDate = DateTime.TryParse(CheckIn, out var d1) ? d1 : today;
+        DateTime checkOutDate = DateTime.TryParse(CheckOut, out var d2) ? d2 : tomorrow;
+
+        // Validation cơ bản: CheckOut phải sau CheckIn
+        if (checkOutDate <= checkInDate) checkOutDate = checkInDate.AddDays(1);
+
+        CurrentSearch = new SearchResultVM
+        {
+            CheckIn = checkInDate,
+            CheckOut = checkOutDate,
+            Adults = Adults ?? 1,
+            Children = Children ?? 0,
+            Rooms = Rooms ?? 1,
+            @* Destination = hotelDetail?.HotelName // Để hiển thị chơi thôi *@
+        };
+
+        base.OnParametersSet();
         var authState = await _authStateProvider.GetAuthenticationStateAsync();
         IsAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
         IsOwner = authState.User.IsInRole("Owner");
-
         if (IsOwner && IsAuthenticated)
         {
             var ownerIdClaim = authState.User.FindFirst(ClaimTypes.NameIdentifier);
@@ -265,16 +285,49 @@ else
         }
         await LoadHotelDetails();
     }
+
+    // Hàm xử lý khi user bấm tìm kiếm lại ngay tại trang chi tiết
+    private void HandleSearchUpdate(SearchResultVM newSearch)
+    {
+        // Điều hướng lại trang chính nó với tham số mới
+        CurrentSearch = newSearch;
+        StateHasChanged();
+        var queryDict = new Dictionary<string, string>
+        {
+            ["checkin"] = newSearch.CheckIn?.ToString("yyyy-MM-dd") ?? "",
+            ["checkout"] = newSearch.CheckOut?.ToString("yyyy-MM-dd") ?? "",
+            ["adults"] = newSearch.Adults.ToString(),
+            ["children"] = newSearch.Children.ToString(),
+            ["rooms"] = newSearch.Rooms.ToString()
+        };
+        var url = QueryHelpers.AddQueryString($"/Hotel/{HotelId}", queryDict);
+
+        // replace: true để không tạo lịch sử duyệt web rác
+        _nav.NavigateTo(url, replace: true);
+    }
+
     protected async Task LoadHotelDetails()
     {
         isLoading = true;
         var httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
         try
         {
-            var response = await httpClient.GetFromJsonAsync<ApiResponse<HotelDetailVM>>($"Hotel/{HotelId}");
+            var response = await httpClient.GetFromJsonAsync<ApiResponse<HotelDetailVM>>($"hotel/{HotelId}");
             if (response?.StatusCode == StatusCodeResponse.Success && response.Content != null)
             {
                 hotelDetail = response.Content;
+                Reviews = hotelDetail.Reviews ?? new List<ReviewVM>();
+                    
+                await _bookingState.UpdateSearchCriteriaAsync(
+                HotelId,
+                hotelDetail.HotelName,
+                hotelDetail.CoverImageUrl ?? "",
+                CurrentSearch.CheckIn ?? DateTime.Today,
+                CurrentSearch.CheckOut ?? DateTime.Today.AddDays(1),
+                CurrentSearch.Adults,
+                CurrentSearch.Children
+
+                );
             }
             else
             {
@@ -313,11 +366,16 @@ else
         }
     }
 
+
     private async Task HandleWishlistClick()
     {
         if (isToggling || hotelDetail == null) return;
-       
         isToggling = true;
+
+        var oldState = hotelDetail.IsWishlist;
+
+        // Update UI ngay lập tức cho mượt
+        hotelDetail.IsWishlist = !hotelDetail.IsWishlist;
         var httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
         try
         {
@@ -325,20 +383,19 @@ else
             var token = await _localStorage.GetItemAsync<string>("accessToken");
             if (!string.IsNullOrEmpty(token))
             {
-                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer",
+                token);
             }
 
             var response = await httpClient.PostAsync($"Wishlist/toggle/{HotelId}", null);
             if (response.IsSuccessStatusCode)
             {
-                // Gỡ khỏi wishlist
-                hotelDetail.IsWishlist = !hotelDetail.IsWishlist;
                 Snackbar.Add(hotelDetail.IsWishlist ? "Đã thêm vào yêu thích." : "Đã gỡ khỏi yêu thích.", Severity.Success);
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
                 Snackbar.Add("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.", Severity.Error);
-                _nav.NavigateTo("/login");
+                _nav.NavigateTo("/customer-login");
             }
             else
             {
@@ -347,6 +404,7 @@ else
         }
         catch (Exception ex)
         {
+            hotelDetail.IsWishlist = oldState;
             Snackbar.Add($"Lỗi: {ex.Message}", Severity.Error);
         }
         finally
@@ -355,6 +413,7 @@ else
             StateHasChanged();
         }
     }
+
     private async Task Retry()
     {
         await LoadHotelDetails();
@@ -371,6 +430,8 @@ else
             _ => "Poor"
         };
     }
+
     // Quay về trang trước (hoặc một trang cụ thể)
     private void GoBack() => _nav.NavigateTo("/Hotels", true);
+
 }

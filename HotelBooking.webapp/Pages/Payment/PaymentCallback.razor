@@ -1,0 +1,115 @@
+@page "/booking/payment-callback"
+@using HotelBooking.webapp.ViewModels.Payment
+@using HotelBooking.webapp.ViewModels.Hotel
+@inject NavigationManager _nav
+@inject IHttpClientFactory _httpClientFactory
+@inject BookingState _bookingState
+
+<div class="container d-flex flex-column align-items-center justify-content-center mt-5">
+    <div class="card shadow-lg p-5 text-center" style="max-width: 500px; border-radius: 15px;">
+        @if (isProcessing)
+        {
+            <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+            <h4 class="text-primary">Đang xác thực giao dịch...</h4>
+            <p class="text-muted">Vui lòng không tắt trình duyệt.</p>
+        }
+        else if (isSuccess)
+        {
+            <div class="mb-3">
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+            </div>
+            <h3 class="fw-bold text-success">Thanh toán thành công!</h3>
+            <p class="text-muted">Mã đơn hàng: <b>#@orderId</b></p>
+            <p class="text-muted">Mã giao dịch: @transactionId</p>
+
+            <div class="mt-4">
+                <button class="btn btn-primary rounded-pill px-4" @onclick="GoHome">
+                    Về trang chủ
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="mb-3">
+                <i class="bi bi-x-circle-fill text-danger" style="font-size: 4rem;"></i>
+            </div>
+            <h3 class="fw-bold text-danger">Thanh toán thất bại</h3>
+            <p class="text-danger">@message</p>
+            <p class="small text-muted">Mã lỗi VNPAY: @vnpayCode</p>
+
+            <div class="mt-4">
+                <button class="btn btn-secondary rounded-pill px-4" @onclick="GoHome">
+                    Về trang chủ
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    bool isProcessing = true;
+    bool isSuccess = false;
+    string message = "";
+    string orderId = "";
+    string transactionId = "";
+    string vnpayCode = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. Lấy Query String từ VNPAY trả về
+        var uri = _nav.ToAbsoluteUri(_nav.Uri);
+        var query = uri.Query;
+
+        var client = _httpClientFactory.CreateClient("HotelBookingAPI");
+
+        try
+        {
+            // 2. Gọi về Backend để Validate chữ ký (Hash)
+            var response = await client.GetAsync($"Payment/callback{query}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                // SỬA LỖI: Dùng đúng class PaymentResponseVM vừa tạo
+                var result = await response.Content.ReadFromJsonAsync<PaymentResponseVM>();
+
+                if (result != null)
+                {
+                    isSuccess = result.Success;
+                    orderId = result.OrderId;
+                    transactionId = result.TransactionId;
+                    vnpayCode = result.VnPayResponseCode;
+
+                    if (isSuccess)
+                    {
+                        // QUAN TRỌNG: Thanh toán xong thì xóa giỏ hàng đi
+                        await _bookingState.ClearAsync();
+                        message = "Giao dịch hoàn tất.";
+                    }
+                    else
+                    {
+                        message = "Giao dịch bị hủy hoặc lỗi xác thực.";
+                    }
+                }
+            }
+            else
+            {
+                isSuccess = false;
+                message = "Không thể kết nối đến server kiểm tra.";
+            }
+        }
+        catch (Exception ex)
+        {
+            isSuccess = false;
+            message = "Lỗi hệ thống: " + ex.Message;
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void GoHome()
+    {
+        _nav.NavigateTo("/");
+    }
+}

@@ -15,8 +15,12 @@ public class SearchHotelResultDTO
     [Column(TypeName = "decimal(18,4)")]
     public decimal? AvgPrice { get; set; }
     public int AvailableRooms { get; set; }
-    public double AvgRating { get; set; }
+    public decimal AvgRating { get; set; }
     public int ReviewCount { get; set; }
     public string? Images { get; set; } = "[]";         // JSON string
     public string Amenities { get; set; } = string.Empty;   // JSON string
+    public string AccommodationType { get; set; } = string.Empty;  // ← từ act.Name
+    public string ChainName { get; set; } = string.Empty;
+    public string Services {get;set;} = string.Empty;
+    // public int TotalCount { get; set; } = 0;
 }

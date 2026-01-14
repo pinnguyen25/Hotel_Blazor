@@ -42,11 +42,27 @@ public class JwtAuthService
             .Include(ur => ur.Role)
             .Where(ur => ur.UserId == userSauKhiVerifyPass.Id)
             .ToList();
+
         foreach (var ur in userRoles)
         {
             claims.Add(new Claim(ClaimTypes.Role, ur.Role.Name));
+
+            // [MỚI] Nếu là Staff -> Lấy thêm HotelId nhét vào Token
+            if (ur.Role.Name == "Staff")
+            {
+                var staffInfo = _context.Staffs
+                    .AsNoTracking()
+                    .FirstOrDefault(s => s.UserId == userSauKhiVerifyPass.Id && s.IsActive && s.IsDeleted == false);
+
+                if (staffInfo != null)
+                {
+                    // Thêm Claim HotelId (để FE biết Staff này thuộc khách sạn nào)
+                    claims.Add(new Claim("HotelId", staffInfo.HotelId.ToString()));
+                }
+            }
         }
-        
+
+
         // Tạo khóa bí mật để ký token
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(key),

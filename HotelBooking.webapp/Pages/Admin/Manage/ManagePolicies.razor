@@ -245,8 +245,8 @@
         {
             await SetAuthHeader();
             var resp = currentType.Id > 0
-            ? await http!.PutAsJsonAsync($"hotel/update-policyType/{currentType.Id}", currentType)
-            : await http!.PostAsJsonAsync("hotel/create-policyType", currentType);
+            ? await http!.PutAsJsonAsync($"admin/policy-type/{currentType.Id}", currentType)
+            : await http!.PostAsJsonAsync("admin/policy-type", currentType);
 
             if (resp.IsSuccessStatusCode)
             {
@@ -270,8 +270,8 @@
         {
             await SetAuthHeader();
             var resp = currentPolicy.Id > 0
-            ? await http!.PutAsJsonAsync($"hotel/update-policy/{currentPolicy.Id}", currentPolicy)
-            : await http!.PostAsJsonAsync("hotel/create-policy", currentPolicy);
+            ? await http!.PutAsJsonAsync($"admin/policy/{currentPolicy.Id}", currentPolicy)
+            : await http!.PostAsJsonAsync("admin/policy", currentPolicy);
 
             if (resp.IsSuccessStatusCode)
             {
@@ -293,7 +293,7 @@
         if (confirm == true)
         {
             await SetAuthHeader();
-            var resp = await http!.DeleteAsync($"hotel/delete-policyType/{id}");
+            var resp = await http!.DeleteAsync($"admin/policy-type/{id}");
             Snackbar.Add(resp.IsSuccessStatusCode ? "Đã xóa!" : "Không thể xóa!",
             resp.IsSuccessStatusCode ? Severity.Success : Severity.Error);
             if (resp.IsSuccessStatusCode) await LoadPolicies();
@@ -310,7 +310,7 @@
         if (confirm == true)
         {
             await SetAuthHeader();
-            var resp = await http!.DeleteAsync($"hotel/delete-policy/{id}");
+            var resp = await http!.DeleteAsync($"admin/policy/{id}");
             Snackbar.Add(resp.IsSuccessStatusCode ? "Đã xóa!" : "Không thể xóa!",
             resp.IsSuccessStatusCode ? Severity.Success : Severity.Error);
             if (resp.IsSuccessStatusCode) await LoadPolicies();
@@ -331,7 +331,7 @@
         try
         {
             await SetAuthHeader();
-            var resp = await http!.PutAsync($"hotel/toggle-policyType-active/{id}", null);
+            var resp = await http!.PutAsync($"admin/policy-type/{id}/toggle", null);
 
             if (resp.IsSuccessStatusCode)
             {

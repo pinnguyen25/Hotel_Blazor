@@ -5,4 +5,5 @@ public class CurrentUserVM
     public string? Avatar { get; set; }
     public List<string>? Roles { get; set; }
     public int? UserId { get; set; }
+    public string? StaffHotelId { get; set; }
 }

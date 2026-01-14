@@ -1,438 +1,329 @@
 @page "/Hotels"
 @layout MainLayout
+@using Blazored.LocalStorage
 @using HotelBooking.webapp.ViewModels.Hotel
 @using MudBlazor
 @using System.Net.Http
 @using Microsoft.AspNetCore.WebUtilities
 @using System.Text.Json
+@using Microsoft.Extensions.Primitives
 @inject NavigationManager _nav
 @inject IHttpClientFactory _httpClientFactory
 @inject IHotelServices HotelServices
-
-<!-- Hero Section -->
+@inject ILocalStorageService _localStorage
+@inject ISnackbar Snackbar
+<Header IsFixed="true" />
 <section class="hero-section position-relative min-vh-100">
-    <div class="hero-bg">
-        <img src="https://your-cdn-link/hero-banner.jpg" alt="Hero Background" class="w-100 vh-100 object-fit-cover" />
+    <div class="hero-bg h-100 w-100">
+        @if (banners != null && banners.Any())
+        {
+            <MudCarousel Class="mud-width-full vh-100" ShowArrows="false" ShowBullets="false" AutoCycle="true"
+                TData="object" Interval="4000"> @foreach (var banner in banners)
+                {
+                    <MudCarouselItem Transition="Transition.Fade" Color="@Color.Transparent">
+                        <div class="d-flex h-100 w-100">
+                            @if (!string.IsNullOrEmpty(banner.LinkUrl))
+                            {
+                                <a href="@banner.LinkUrl" class="w-100 h-100 d-block">
+                                    <img src="@banner.ImageUrl" alt="@banner.Title" class="w-100 h-100 object-fit-cover" />
+                                </a>
+                            }
+                            else
+                            {
+                                <img src="@banner.ImageUrl" alt="@banner.Title" class="w-100 h-100 object-fit-cover" />
+                            }
+                        </div>
+                    </MudCarouselItem>
+                }
+            </MudCarousel>
+        }
+        else
+        {
+            <img src="" alt="Hero Background" class="w-100 vh-100 object-fit-cover" />
+        }
     </div>
 
-    <div class="hero-overlay"></div>
-
-    <div class="hero-title position-absolute top-50 start-50 translate-middle text-center text-white">
-        <h1 class="fw-bold display-5">
-            Trải nghiệm lưu trú 24 giờ <br /> với dịch vụ tự phục vụ 24/7
-        </h1>
-    </div>
-
-    <SearchForm />
+    @* <div class="hero-overlay"></div> *@
+    <SearchForm SearchResult="@currentSearchState" />
 </section>
 
-
-<!-- Hotels Section -->
 <section class="container my-5">
     <div class="row">
-        <!-- Sidebar / Filters -->
         <div class="col-lg-3">
-        <HotelsFilter OnFilterChanged="ApplyFilters" />
+            <HotelsFilter OnFilterChanged="ApplyFilterLocal" InitialState="@currentFilterState" />
         </div>
-        @* <div class="col-lg-3">
-            <div class="filter-sidebar rounded-4 p-4">
-                <!-- Header -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="fw-bold text-dark mb-0">
-                        <i class="bi bi-funnel me-2"></i>Bộ lọc tìm kiếm
-                    </h5>
-                    <button type="button" class="btn btn-link text-danger btn-reset p-0 text-decoration-none">
-                        Xóa
-                    </button>
-                </div>
 
-                <hr class="text-muted">
-
-                <!-- Thành phố -->
-                <div class="mb-4">
-                    <h6 class="fw-semibold text-dark mb-3">Thành phố</h6>
-                    <div class="vstack gap-2">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="city1">
-                            <label class="form-check-label" for="city1">Hà Nội <span class="text-muted">(248)</span></label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="city2" checked>
-                            <label class="form-check-label" for="city2">TP. Hồ Chí Minh <span class="text-muted">(512)</span></label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="city3">
-                            <label class="form-check-label" for="city3">Đà Nẵng <span class="text-muted">(189)</span></label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="city4">
-                            <label class="form-check-label" for="city4">Nha Trang <span class="text-muted">(97)</span></label>
-                        </div>
-                    </div>
-                </div>
-
-                <hr class="text-muted">
-
-                <!-- Loại hình lưu trú -->
-                <div class="mb-4">
-                    <h6 class="fw-semibold text-dark mb-3">Loại hình lưu trú</h6>
-                    <select class="form-select form-select-sm" multiple aria-label="Loại hình" style="height: 150px;">
-                        <option selected>Khách sạn</option>
-                        <option>Resort</option>
-                        <option selected>Homestay</option>
-                        <option>Villa</option>
-                        <option>Hostel</option>
-                        <option>Căn hộ</option>
-                    </select>
-                    <small class="text-muted">Giữ Ctrl để chọn nhiều</small>
-                </div>
-
-                <hr class="text-muted">
-
-                <!-- Khoảng giá -->
-                <div class="mb-4">
-                    <h6 class="fw-semibold text-dark mb-3">Giá mỗi đêm</h6>
-                    <div class="px-2">
-                        <input type="range" class="form-range" min="0" max="10000000" step="100000" value="2000000">
-                        <div class="d-flex justify-content-between text-muted small mt-2">
-                            <span>0 đ</span>
-                            <span class="fw-bold text-dark">2.000.000 đ</span>
-                            <span>10.000.000+ đ</span>
-                        </div>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <input type="text" class="form-control form-control-sm text-center" value="500.000" placeholder="Từ">
-                        <span class="mx-2 text-muted">→</span>
-                        <input type="text" class="form-control form-control-sm text-center" value="5.000.000" placeholder="Đến">
-                    </div>
-                </div>
-
-                <hr class="text-muted">
-
-                <!-- Điểm đánh giá -->
-                <div class="mb-4">
-                    <h6 class="fw-semibold text-dark mb-3">Điểm đánh giá</h6>
-                    <div class="vstack gap-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="rating" id="rating5">
-                            <label class="form-check-label d-flex align-items-center" for="rating5">
-                                <span class="me-2">5 sao</span>
-                                <div class="text-warning small">★★★★★</div>
-                                <span class="ms-auto text-muted">(89)</span>
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="rating" id="rating4" checked>
-                            <label class="form-check-label d-flex align-items-center" for="rating4">
-                                <span class="me-2">4 sao trở lên</span>
-                                <div class="text-warning small">★★★★☆</div>
-                                <span class="ms-auto text-muted">(312)</span>
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="rating" id="rating3">
-                            <label class="form-check-label d-flex align-items-center" for="rating3">
-                                <span class="me-2">3 sao trở lên</span>
-                                <div class="text-warning small">★★★☆☆</div>
-                                <span class="ms-auto text-muted">(567)</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <hr class="text-muted">
-
-                <!-- Tiện nghi phổ biến -->
-                <div class="mb-4">
-                    <h6 class="fw-semibold text-dark mb-3">Tiện nghi phổ biến</h6>
-                    <div class="row g-2">
-                        <div class="col-6"><div class="border rounded-3 p-3 text-center bg-light">WiFi miễn phí</div></div>
-                        <div class="col-6"><div class="border rounded-3 p-3 text-center bg-primary text-white">Hồ bơi</div></div>
-                        <div class="col-6"><div class="border rounded-3 p-3 text-center bg-light">Bãi đỗ xe</div></div>
-                        <div class="col-6"><div class="border rounded-3 p-3 text-center bg-light">Nhà hàng</div></div>
-                        <div class="col-6"><div class="border rounded-3 p-3 text-center bg-light">Gym</div></div>
-                        <div class="col-6"><div class="border rounded-3 p-3 text-center bg-light">Spa</div></div>
-                    </div>
-                </div>
-
-                <hr class="text-muted">
-
-                <!-- Kiểu giường & View -->
-                <div class="mb-4">
-                    <h6 class="fw-semibold text-dark mb-3">Kiểu giường</h6>
-                    <select class="form-select form-select-sm" multiple style="height: 100px;">
-                        <option>Giường đôi (Double)</option>
-                        <option selected>Giường king</option>
-                        <option>2 giường đơn</option>
-                    </select>
-                </div>
-
-                <div class="mb-4">
-                    <h6 class="fw-semibold text-dark mb-3">View phòng</h6>
-                    <div class="hstack gap-2 flex-wrap">
-                        <span class="badge badge-filter border rounded-pill px-3 py-2">Hướng biển</span>
-                        <span class="badge bg-light text-dark border rounded-pill px-3 py-2">Hướng thành phố</span>
-                        <span class="badge bg-light text-dark border rounded-pill px-3 py-2">Hướng hồ bơi</span>
-                    </div>
-                </div>
-
-                <hr class="text-muted">
-
-                <!-- Chuỗi khách sạn & Chính sách -->
-                <div class="mb-4">
-                    <h6 class="fw-semibold text-dark mb-3">Chuỗi khách sạn</h6>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="chain1" checked>
-                        <label class="form-check-label" for="chain1">Vinpearl</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="chain2">
-                        <label class="form-check-label" for="chain2">Marriott</label>
-                    </div>
-                </div>
-
-                <div class="mb-4">
-                    <h6 class="fw-semibold text-dark mb-3">Chính sách</h6>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="policy1" checked>
-                        <label class="form-check-label" for="policy1">Miễn phí hủy phòng</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="policy2">
-                        <label class="form-check-label" for="policy2">Không cần thanh toán trước</label>
-                    </div>
-                </div>
-
-                <!-- Nút áp dụng -->
-                <div class="d-grid">
-                    <button class="btn btn-primary btn-lg rounded-pill shadow-sm">
-                        <i class="bi bi-check2-all me-2"></i>Xem 1.248 khách sạn
-                    </button>
-                </div>
-
-            </div>
-        </div> *@
-    
-        <!-- Hotels List -->
         <div class="col-lg-9">
-            <h2 class="mb-4 text-center">@(isSearchResult ? $"Tất cả các địa điểm cho {searchDestination}" : "Tất cả địa                điểm")</h2>
+            <h2 class="handwriting mb-4 text-center" style="color: #54a9ffff">
+                @(string.IsNullOrEmpty(currentSearchState.Destination) ? "Tất cả địa điểm" : $"Kết quả cho {currentSearchState.Destination}")
+            </h2>
+
             @if (!string.IsNullOrEmpty(errorMessage))
             {
                 <MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
             }
-            @if (isLoading)
-            {
-                <div class="text-center mt-5">
-                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
-                    <p class="mt-2">Đang tải dữ liệu khách sạn...</p>
-                </div>
-            }
-            else if (!FilterHotelList.Any())
-            {
-                <MudAlert Severity="Severity.Info">Không tìm thấy khách sạn nào phù hợp với tiêu chí của bạn.</MudAlert>
-            }
-            else
-            {
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <MudText>Tìm thấy <b>@FilterHotelList.Count</b> chỗ ở phù hợp.</MudText>
-                </div>
-                <div class="row">
-                    @foreach (var hotel in FilterHotelList)
-                    {
-                        <div class="col-12 mb-4">
-                            <HotelListCard Hotel="@hotel" OnWishlistToggle="HandleWishlistToggle" />
-                        </div>
-                    }
-                </div>
-            }
+            <div class=" hotel-list-container">
+                @if (isLoading)
+                {
+                    <div class="text-center mt-5">
+                        <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+                        <p class="mt-2">Đang tải dữ liệu khách sạn...</p>
+                    </div>
+                }
+                else if (hotels == null || !hotels.Any())
+                {
+                    <MudAlert Severity="Severity.Info">Không tìm thấy khách sạn nào phù hợp.</MudAlert>
+                }
+                else
+                {
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <MudText>Tìm thấy <b>@hotels.Count</b> chỗ ở phù hợp.</MudText>
+                    </div>
+                    <div class="row">
+                        @foreach (var hotel in hotels)
+                        {
+                            <div class="col-12 mb-4">
+                                <HotelListCard Hotel="@hotel" OnWishlistToggle="HandleWishlistToggle" />
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
         </div>
     </div>
 </section>
 
+@code {
+    // 1. DATA
+    private List<HotelListItemVM> hotels = new();
+    private List<BannerVM> banners = new();
+    // 2. STATE
+    private SearchResultVM currentSearchState = new(); // Lưu thông tin Search (Destination, Date...)
+    private FilterHotelsVM currentFilterState = new(); // Lưu thông tin Filter (Price, Amenity...)
 
-
-@code
-{
-    // Danh sách khách sạn gốc
-    private List<HotelListItemVM> originHotelList = new List<HotelListItemVM>();
-    // Danh sách khách sạn hiển thị
-    private List<HotelListItemVM> FilterHotelList = new List<HotelListItemVM>();
-    // Các biến trạng thái cho bộ lọc
-    private decimal _priceRangeValue = 10000000m; // Giá trị khởi tạo cao để hiển thị tất cả
-    private HashSet<double> _selectedRatings = new() { 8, 6 };
-    private HashSet<int> loadingHotels = new HashSet<int>();
-    private string? errorMessage;
+    // 3. UI FLAGS
     private bool isLoading = true;
-    private bool isSearchResult;
-    private string searchDestination = "";
-    private SearchResultVM currentSearchQuery = new SearchResultVM();
+    private string? errorMessage;
+    private HashSet<int> loadingHotels = new HashSet<int>();
+
     protected override async Task OnInitializedAsync()
     {
+        // Chỉ lắng nghe URL khi người dùng Back/Forward trình duyệt
         _nav.LocationChanged += HandleLocationChanged;
-        await LoadHotelAsync();
+
+        // Lần đầu vào trang: Parse URL -> Load Data
+        var loadDataTask = LoadDataFromUrl();
+        var loadBannerTask = LoadBanners();
+
+        await Task.WhenAll(loadDataTask, loadBannerTask);
     }
 
     private async void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        await LoadHotelAsync();
+        // Khi URL thực sự đổi (VD: Bấm Back), ta load lại từ đầu
+        await LoadDataFromUrl();
+        StateHasChanged();
     }
 
-    private async Task LoadHotelAsync()
+    // --- LOGIC 1: XỬ LÝ KHI BẤM FILTER (Tại chỗ - Không đổi URL) ---
+    private async Task ApplyFilterLocal(FilterHotelsVM filter)
+    {
+        // 1. Cập nhật State Filter
+        currentFilterState = filter;
+
+        // 2. Lấy thông tin Search cơ bản (giữ nguyên từ lúc load trang)
+        // Ta cần kết hợp: [Search Params] + [New Filter Params]
+        var queryParams = new Dictionary<string, string?>();
+
+        // - Đưa Search Params vào (Destination, Date, Rooms...)
+        if (!string.IsNullOrEmpty(currentSearchState.Destination)) queryParams["destination"] = currentSearchState.Destination;
+        if (currentSearchState.CheckIn.HasValue) queryParams["checkIn"] =
+        currentSearchState.CheckIn.Value.ToString("yyyy-MM-dd");
+        if (currentSearchState.CheckOut.HasValue) queryParams["checkOut"] =
+        currentSearchState.CheckOut.Value.ToString("yyyy-MM-dd");
+        queryParams["adults"] = currentSearchState.Adults.ToString();
+        queryParams["children"] = currentSearchState.Children.ToString();
+        queryParams["rooms"] = currentSearchState.Rooms.ToString();
+
+        // - Đưa Filter Params mới vào
+        if (filter.PriceMin.HasValue && filter.PriceMin > 0) queryParams["priceMin"] = filter.PriceMin.ToString();
+        if (filter.PriceMax.HasValue && filter.PriceMax < 10000000m) queryParams["priceMax"] = filter.PriceMax.ToString();
+        if (filter.RatingMin.HasValue && filter.RatingMin > 0) queryParams["ratingMin"] = filter.RatingMin.ToString();
+        if (!string.IsNullOrEmpty(filter.AccommodationTypeIds)) queryParams["accommodationTypeIds"] =
+        filter.AccommodationTypeIds;
+        if (!string.IsNullOrEmpty(filter.AmenityIds)) queryParams["amenityIds"] = filter.AmenityIds;
+        if (!string.IsNullOrEmpty(filter.ServiceIds)) queryParams["serviceIds"] = filter.ServiceIds;
+        // 3. Build Query String thủ công để gọi API
+        var newQueryString = QueryHelpers.AddQueryString("", queryParams);
+
+        // 4. Gọi API Load lại List (Chỉ phần List xoay xoay, trang không cuộn)
+        await FetchHotelsApi(newQueryString);
+    }
+
+    // --- LOGIC 2: LOAD DỮ LIỆU BAN ĐẦU TỪ URL ---
+    private async Task LoadDataFromUrl()
+    {
+        var uri = _nav.ToAbsoluteUri(_nav.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        // Parse URL vào State
+        ParseUrlToState(query);
+
+        // Xử lý logic accTypeId (Category)
+        string queryString = uri.Query;
+        if (query.ContainsKey("accTypeId") && int.TryParse(query["accTypeId"], out int accId))
+        {
+            var prefix = string.IsNullOrEmpty(queryString) ? "?" : "&";
+            queryString += $"{prefix}accommodationTypeIds={accId}";
+        }
+
+        await FetchHotelsApi(queryString);
+    }
+
+    private async Task LoadBanners()
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("HotelBookingAPI");
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            // Gọi API lấy banner trang Home
+            var response = await client.GetAsync("hotel/get-by-page/Hotels");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var apiRes = await response.Content.ReadFromJsonAsync<ApiResponse<List<BannerVM>>>(options);
+                if (apiRes != null && apiRes.Content != null)
+                {
+                    banners = apiRes.Content;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Nếu lỗi kết nối, banners sẽ rỗng -> Hiển thị Fallback (Mục 3)
+            Console.WriteLine("Không thể tải banner từ API");
+        }
+    }
+
+    // --- LOGIC 3: GỌI API (Dùng chung) ---
+    private async Task FetchHotelsApi(string queryString)
     {
         isLoading = true;
-        await InvokeAsync(StateHasChanged);
-
-        var httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
-        var uri = _nav.ToAbsoluteUri(_nav.Uri);
-        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-
-        // lấy accTypeId từ query
-        int.TryParse(query["accTypeId"], out int accTypeId);
-
-        var queryParams = new SearchResultVM
-        {
-            Destination = query["destination"] ?? "",
-            CheckIn = DateTime.TryParse(query["checkin"], out var checkInDate) ? checkInDate : null,
-            CheckOut = DateTime.TryParse(query["checkout"], out var checkOutDate) ? checkOutDate : null,
-            Adults = int.TryParse(query["adults"], out var a) ? a : 1,
-            Children = int.TryParse(query["children"], out var c) ? c : 0,
-            Rooms = int.TryParse(query["rooms"], out var r) ? r : 1,
-        };
-        currentSearchQuery = queryParams;
+        errorMessage = null;
+        StateHasChanged(); // Bật loading spinner ngay
 
         try
         {
-            if (accTypeId > 0)
+            var client = _httpClientFactory.CreateClient("HotelBookingAPI");
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            // Nếu queryString bắt đầu bằng ? thì OK, nếu chưa có thì thêm (cho hàm AddQueryString trả về)
+            if (!string.IsNullOrEmpty(queryString) && !queryString.StartsWith("?")) queryString = "?" + queryString;
+
+            var endpoint = string.IsNullOrEmpty(queryString)
+            ? "Hotel/get-search-options"
+            : $"Hotel/get-search-options{queryString}";
+
+            var response = await client.GetAsync(endpoint);
+
+            if (response.IsSuccessStatusCode)
             {
-                var response = await httpClient.GetAsync($"Hotel/get-hotel-by-accTypeId/{accTypeId}");
-                if (!response.IsSuccessStatusCode)
-                {
-                    errorMessage = "Không thể tải danh sách khách sạn.";
-                    originHotelList = new List<HotelListItemVM>();
-                    return;
-                }
-
-                var json = await response.Content.ReadAsStringAsync();
-                var apiResponse = JsonSerializer.Deserialize<ApiResponse<List<HotelListItemVM>>>(json,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                originHotelList = apiResponse?.StatusCode == StatusCodeResponse.Success
-                ? apiResponse.Content ?? new List<HotelListItemVM>()
-                : new List<HotelListItemVM>();
-            }
-            else if (!string.IsNullOrEmpty(queryParams.Destination))
-            {
-                // truyền dữ liệu tìm kiếm vào searchform
-                isSearchResult = true;
-                searchDestination = queryParams.Destination;
-                var queryDict = new Dictionary<string, string?>
-                {
-                    ["destination"] = queryParams.Destination,
-                    ["checkIn"] = queryParams.CheckIn?.ToString("yyyy-MM-dd"),
-                    ["checkOut"] = queryParams.CheckOut?.ToString("yyyy-MM-dd"),
-                    ["adults"] = queryParams.Adults.ToString(),
-                    ["children"] = queryParams.Children.ToString(),
-                    ["rooms"] = queryParams.Rooms.ToString(),
-                };
-
-                var apiUrl = QueryHelpers.AddQueryString("Hotel/get-search-options", queryDict);
-                originHotelList = await httpClient.GetFromJsonAsync<List<HotelListItemVM>>(apiUrl) ?? new List<HotelListItemVM>();
+                hotels = await response.Content.ReadFromJsonAsync<List<HotelListItemVM>>(options) ?? new();
             }
             else
             {
-                // dữ liệu tìm kiếm null
-                isSearchResult = false;
-                originHotelList = await httpClient.GetFromJsonAsync<List<HotelListItemVM>>("Hotel/get-all") ?? new
-                List<HotelListItemVM>();
+                hotels.Clear();
             }
         }
         catch (Exception ex)
         {
-            errorMessage = "Đã có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại.";
-            Console.WriteLine($"Error loading hotels: {ex.Message}");
+            Console.WriteLine($"Error: {ex.Message}");
+            errorMessage = "Lỗi kết nối máy chủ.";
         }
         finally
         {
             isLoading = false;
-            ApplyFilters(); // Luôn gọi ApplyFilters sau khi tải xong, kể cả khi có lỗi
-            await InvokeAsync(StateHasChanged);
+            StateHasChanged(); // Tắt loading
         }
     }
 
-    private void ApplyFilters()
+    // Helper: Parse URL -> State
+    private void ParseUrlToState(Dictionary<string, StringValues> query)
     {
-        // Bắt đầu từ danh sách gốc
-        var query = originHotelList.AsQueryable();
-
-        // 1. Lọc theo giá
-        query = query.Where(h => (h.MinPricePerNight ?? 0) <= _priceRangeValue);
-
-        // 2. Lọc theo đánh giá
-        if (_selectedRatings.Any())
+        // Search State
+        currentSearchState = new SearchResultVM
         {
-            query = query.Where(h =>
-            _selectedRatings.Any(rating => h.AverageRating >= (decimal)rating && h.AverageRating < (decimal)rating + 2)
-            );
-        }
+            Destination = query.TryGetValue("destination", out var d) ? d.ToString() : "",
+            CheckIn = query.TryGetValue("checkIn", out var ci) && DateTime.TryParse(ci, out var d1) ? d1 : DateTime.Today,
+            CheckOut = query.TryGetValue("checkOut", out var co) && DateTime.TryParse(co, out var d2) ? d2 :
+        DateTime.Today.AddDays(1),
+            Adults = query.TryGetValue("adults", out var a) && int.TryParse(a, out int av) ? av : 1,
+            Children = query.TryGetValue("children", out var c) && int.TryParse(c, out int cv) ? cv : 0,
+            Rooms = query.TryGetValue("rooms", out var r) && int.TryParse(r, out int rv) ? rv : 1,
+        };
 
-        // 3. (Tùy chọn) Lọc theo các tiêu chí khác (Free Cancellation, etc.)
-        // if (freeCancellation) { query = query.Where(h => h.HasFreeCancellation); }
-
-        // Cập nhật danh sách hiển thị
-        FilterHotelList = query.ToList();
-
-        // render lại giao diện
-        StateHasChanged();
+        // Filter State
+        currentFilterState = new FilterHotelsVM
+        {
+            PriceMax = query.TryGetValue("priceMax", out var pm) && decimal.TryParse(pm, out var pmv) ? pmv : null,
+            RatingMin = query.TryGetValue("ratingMin", out var rm) && decimal.TryParse(rm, out var rmv) ? rmv : null,
+            AccommodationTypeIds = query.TryGetValue("accommodationTypeIds", out var acc) ? acc.ToString() : null,
+            AmenityIds = query.TryGetValue("amenityIds", out var am) ? am.ToString() : null,
+            ServiceIds = query.TryGetValue("serviceIds", out var sv) ? sv.ToString() : null
+        };
     }
 
-    private void OnRatingFilterChanged(bool isChecked, double ratingValue)
-    {
-        if (isChecked)
-        {
-            _selectedRatings.Add(ratingValue);
-        }
-        else
-        {
-            _selectedRatings.Remove(ratingValue);
-        }
-        ApplyFilters();
-    }
-    @* private HashSet<int> loadingHotels = new(); *@
     private async Task HandleWishlistToggle(int hotelId)
     {
+        // Giữ nguyên logic cũ của bạn
         if (loadingHotels.Contains(hotelId)) return;
+
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (string.IsNullOrEmpty(token)) return;
+
         loadingHotels.Add(hotelId);
-
-        try
+        var hotel = hotels.FirstOrDefault(h => h.HotelId == hotelId);
+        if (hotel != null)
         {
-            var hotel = originHotelList.FirstOrDefault(h => h.HotelId == hotelId);
-            if (hotel != null)
+            var oldState = hotel.IsWishlist;
+            hotel.IsWishlist = !oldState;
+            try
             {
-                var prevState = hotel.IsWishlist;
-                hotel.IsWishlist = !hotel.IsWishlist;
-
-                var httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
-                var res = await httpClient.PostAsync($"Wishlist/toggle/{hotelId}", null);
-
-                if (!res.IsSuccessStatusCode)
+                var client = _httpClientFactory.CreateClient("HotelBookingAPI");
+                client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                var res = await client.PostAsync($"Wishlist/toggle/{hotelId}", null);
+                if (res.IsSuccessStatusCode)
                 {
-                    hotel.IsWishlist = prevState;
+                    Snackbar.Add(hotel.IsWishlist ? "Đã lưu" : "Đã bỏ lưu", Severity.Success);
                 }
-                await InvokeAsync(StateHasChanged);
+                else if (res.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    // Token hết hạn -> Rollback & Logout
+                    hotel.IsWishlist = oldState;
+                    Snackbar.Add("Phiên đăng nhập hết hạn.", Severity.Error);
+                    await _localStorage.RemoveItemAsync("accessToken");
+                    _nav.NavigateTo("/customer-login");
+                }
+                else
+                {
+                    hotel.IsWishlist = oldState; // Rollback
+                    Snackbar.Add("Lỗi cập nhật.", Severity.Error);
+                }
+            }
+            catch
+            {
+                hotel.IsWishlist = oldState; // Rollback
+                Snackbar.Add("Lỗi kết nối.", Severity.Error);
+            }
+            finally
+            {
+                loadingHotels.Remove(hotelId);
+                StateHasChanged();
             }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error:{ex.Message}");
-        }
-        finally
-        {
-            loadingHotels.Remove(hotelId);
-        }
     }
 
-    public void Dispose()
-    {
-        _nav.LocationChanged -= HandleLocationChanged;
-    }
+    public void Dispose() => _nav.LocationChanged -= HandleLocationChanged;
 }

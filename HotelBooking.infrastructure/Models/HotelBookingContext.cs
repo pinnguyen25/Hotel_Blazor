@@ -21,6 +21,8 @@ public partial class HotelBookingContext : DbContext
 
     public virtual DbSet<Amenity> Amenities { get; set; }
 
+    public virtual DbSet<Banner> Banners { get; set; }
+
     public virtual DbSet<BedType> BedTypes { get; set; }
 
     public virtual DbSet<Booking> Bookings { get; set; }
@@ -47,15 +49,25 @@ public partial class HotelBookingContext : DbContext
 
     public virtual DbSet<HotelPolicy> HotelPolicies { get; set; }
 
+    public virtual DbSet<HotelServiceConfig> HotelServiceConfigs { get; set; }
+
+    public virtual DbSet<HotelUpdateRequest> HotelUpdateRequests { get; set; }
+
+    public virtual DbSet<HousekeepingTask> HousekeepingTasks { get; set; }
+
     public virtual DbSet<Message> Messages { get; set; }
 
     public virtual DbSet<Notification> Notifications { get; set; }
+
+    public virtual DbSet<OwnerWallet> OwnerWallets { get; set; }
 
     public virtual DbSet<Payment> Payments { get; set; }
 
     public virtual DbSet<Policy> Policies { get; set; }
 
     public virtual DbSet<PolicyType> PolicyTypes { get; set; }
+
+    public virtual DbSet<Promotion> Promotions { get; set; }
 
     public virtual DbSet<Review> Reviews { get; set; }
 
@@ -71,11 +83,15 @@ public partial class HotelBookingContext : DbContext
 
     public virtual DbSet<RoomType> RoomTypes { get; set; }
 
+    public virtual DbSet<RoomTypeService> RoomTypeServices { get; set; }
+
     public virtual DbSet<RoomViewType> RoomViewTypes { get; set; }
 
     public virtual DbSet<Service> Services { get; set; }
 
     public virtual DbSet<Staff> Staffs { get; set; }
+
+    public virtual DbSet<SystemSetting> SystemSettings { get; set; }
 
     public virtual DbSet<UpgradeRequest> UpgradeRequests { get; set; }
 
@@ -85,7 +101,11 @@ public partial class HotelBookingContext : DbContext
 
     public virtual DbSet<ViewType> ViewTypes { get; set; }
 
+    public virtual DbSet<WalletTransaction> WalletTransactions { get; set; }
+
     public virtual DbSet<Wishlist> Wishlists { get; set; }
+
+    public virtual DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         => optionsBuilder.UseSqlServer("Name=connectionStringHotelBooking");
@@ -165,6 +185,23 @@ public partial class HotelBookingContext : DbContext
                 .HasConstraintName("FK_Amenities_UpdatedBy");
         });
 
+        modelBuilder.Entity<Banner>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Banners__3214EC077414B536");
+
+            entity.HasIndex(e => e.Page, "IX_Banners_Page");
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.LinkUrl).HasMaxLength(500);
+            entity.Property(e => e.Page).HasMaxLength(50);
+            entity.Property(e => e.PublicId).HasMaxLength(200);
+            entity.Property(e => e.SortOrder).HasDefaultValue(0);
+            entity.Property(e => e.Title).HasMaxLength(200);
+        });
+
         modelBuilder.Entity<BedType>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__BedTypes__3214EC072F608EF8");
@@ -186,10 +223,25 @@ public partial class HotelBookingContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Bookings__3214EC0710412DC0");
 
+            entity.Property(e => e.ContactEmail)
+                .HasMaxLength(255)
+                .HasDefaultValue("");
+            entity.Property(e => e.ContactName)
+                .HasMaxLength(150)
+                .HasDefaultValue("");
+            entity.Property(e => e.ContactPhone)
+                .HasMaxLength(20)
+                .HasDefaultValue("");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
                 .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.DiscountAmount)
+                .HasDefaultValue(0m)
+                .HasColumnType("decimal(18, 2)");
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+            entity.Property(e => e.OriginalPrice)
+                .HasDefaultValue(0m)
+                .HasColumnType("decimal(18, 2)");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
                 .HasDefaultValue("PendingPayment");
@@ -210,10 +262,9 @@ public partial class HotelBookingContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Bookings_Hotels");
 
-            entity.HasOne(d => d.RoomType).WithMany(p => p.Bookings)
-                .HasForeignKey(d => d.RoomTypeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Bookings_RoomTypes");
+            entity.HasOne(d => d.Promotion).WithMany(p => p.Bookings)
+                .HasForeignKey(d => d.PromotionId)
+                .HasConstraintName("FK_Bookings_Promotions");
 
             entity.HasOne(d => d.UpdatedByNavigation).WithMany(p => p.BookingUpdatedByNavigations)
                 .HasForeignKey(d => d.UpdatedBy)
@@ -222,20 +273,31 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<BookingRoom>(entity =>
         {
-            entity.HasKey(e => new { e.BookingId, e.RoomTypeId });
+            entity.HasKey(e => e.Id).HasName("PK_BookingRooms_Id");
 
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
                 .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.GuestName).HasMaxLength(150);
+            entity.Property(e => e.PricePerNight).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.Quantity).HasDefaultValue(1);
 
             entity.HasOne(d => d.Booking).WithMany(p => p.BookingRooms)
                 .HasForeignKey(d => d.BookingId)
                 .HasConstraintName("FK_BookingRooms_Bookings");
 
+            entity.HasOne(d => d.Room).WithMany(p => p.BookingRooms)
+                .HasForeignKey(d => d.RoomId)
+                .HasConstraintName("FK_BookingRooms_Rooms");
+
             entity.HasOne(d => d.RoomType).WithMany(p => p.BookingRooms)
                 .HasForeignKey(d => d.RoomTypeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_BookingRooms_RoomTypes");
+
+            entity.HasOne(d => d.SelectedBedType).WithMany(p => p.BookingRooms)
+                .HasForeignKey(d => d.SelectedBedTypeId)
+                .HasConstraintName("FK_BookingRooms_BedTypes");
         });
 
         modelBuilder.Entity<BookingService>(entity =>
@@ -388,6 +450,9 @@ public partial class HotelBookingContext : DbContext
             entity.HasIndex(e => e.ChainId, "IX_Hotels_ChainId");
 
             entity.Property(e => e.Address).HasMaxLength(500);
+            entity.Property(e => e.AverageRating)
+                .HasDefaultValue(0m)
+                .HasColumnType("decimal(3, 1)");
             entity.Property(e => e.ContactEmail).HasMaxLength(255);
             entity.Property(e => e.ContactName).HasMaxLength(150);
             entity.Property(e => e.ContactPhone).HasMaxLength(20);
@@ -400,6 +465,7 @@ public partial class HotelBookingContext : DbContext
             entity.Property(e => e.IsVerified).HasDefaultValue(false);
             entity.Property(e => e.Name).HasMaxLength(200);
             entity.Property(e => e.NameUnaccented).HasMaxLength(200);
+            entity.Property(e => e.ReviewCount).HasDefaultValue(0);
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
                 .HasDefaultValue("Draft");
@@ -479,7 +545,11 @@ public partial class HotelBookingContext : DbContext
 
         modelBuilder.Entity<HotelPolicy>(entity =>
         {
-            entity.HasKey(e => new { e.HotelId, e.PolicyId }).HasName("PK__HotelPol__14E30845ED5B0213");
+            entity.HasKey(e => e.Id).HasName("PK_HotelPolicies_Id");
+
+            entity.HasIndex(e => new { e.HotelId, e.PolicyId }, "IX_HotelPolicies_UniqueSystemPolicy")
+                .IsUnique()
+                .HasFilter("([PolicyId] IS NOT NULL)");
 
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
@@ -491,7 +561,98 @@ public partial class HotelBookingContext : DbContext
 
             entity.HasOne(d => d.Policy).WithMany(p => p.HotelPolicies)
                 .HasForeignKey(d => d.PolicyId)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_HotelPolicies_Policies");
+        });
+
+        modelBuilder.Entity<HotelServiceConfig>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__HotelSer__3214EC070DCFA56A");
+
+            entity.ToTable("HotelServiceConfig");
+
+            entity.HasIndex(e => new { e.HotelId, e.ServiceId }, "UQ_HotelServiceConfig_Hotel_Service").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.Description).HasMaxLength(255);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Unit).HasMaxLength(50);
+            entity.Property(e => e.UpdatedAt).HasPrecision(0);
+
+            entity.HasOne(d => d.Hotel).WithMany(p => p.HotelServiceConfigs)
+                .HasForeignKey(d => d.HotelId)
+                .HasConstraintName("FK_HotelServiceConfig_Hotels");
+
+            entity.HasOne(d => d.Service).WithMany(p => p.HotelServiceConfigs)
+                .HasForeignKey(d => d.ServiceId)
+                .HasConstraintName("FK_HotelServiceConfig_Services");
+        });
+
+        modelBuilder.Entity<HotelUpdateRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__HotelUpd__3214EC071BE1FFC8");
+
+            entity.HasIndex(e => e.HotelId, "IX_HotelUpdateRequests_HotelId");
+
+            entity.HasIndex(e => e.Status, "IX_HotelUpdateRequests_Status");
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.ProcessedAt).HasPrecision(0);
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasDefaultValue("Pending");
+
+            entity.HasOne(d => d.Hotel).WithMany(p => p.HotelUpdateRequests)
+                .HasForeignKey(d => d.HotelId)
+                .HasConstraintName("FK_HotelUpdateRequests_Hotels");
+
+            entity.HasOne(d => d.Owner).WithMany(p => p.HotelUpdateRequestOwners)
+                .HasForeignKey(d => d.OwnerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_HotelUpdateRequests_Owners");
+
+            entity.HasOne(d => d.ProcessedByNavigation).WithMany(p => p.HotelUpdateRequestProcessedByNavigations)
+                .HasForeignKey(d => d.ProcessedBy)
+                .HasConstraintName("FK_HotelUpdateRequests_Admins");
+        });
+
+        modelBuilder.Entity<HousekeepingTask>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Housekee__3214EC07718D821A");
+
+            entity.HasIndex(e => new { e.StaffId, e.Status }, "IX_Housekeeping_Staff_Status");
+
+            entity.Property(e => e.AssignedAt).HasPrecision(0);
+            entity.Property(e => e.CompletedAt).HasPrecision(0);
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.Priority)
+                .HasMaxLength(20)
+                .HasDefaultValue("Normal");
+            entity.Property(e => e.StartedAt).HasPrecision(0);
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasDefaultValue("Pending");
+
+            entity.HasOne(d => d.Hotel).WithMany(p => p.HousekeepingTasks)
+                .HasForeignKey(d => d.HotelId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Housekeeping_Hotel");
+
+            entity.HasOne(d => d.Room).WithMany(p => p.HousekeepingTasks)
+                .HasForeignKey(d => d.RoomId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Housekeeping_Room");
+
+            entity.HasOne(d => d.Staff).WithMany(p => p.HousekeepingTasks)
+                .HasForeignKey(d => d.StaffId)
+                .HasConstraintName("FK_Housekeeping_Staff");
         });
 
         modelBuilder.Entity<Message>(entity =>
@@ -541,6 +702,24 @@ public partial class HotelBookingContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.NotificationUsers)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK_Notifications_Users");
+        });
+
+        modelBuilder.Entity<OwnerWallet>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__OwnerWal__3214EC0728E29416");
+
+            entity.HasIndex(e => e.OwnerId, "UQ__OwnerWal__819385B9ED91B11C").IsUnique();
+
+            entity.Property(e => e.Balance).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TotalEarnings).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+
+            entity.HasOne(d => d.Owner).WithOne(p => p.OwnerWallet)
+                .HasForeignKey<OwnerWallet>(d => d.OwnerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_OwnerWallets_Users");
         });
 
         modelBuilder.Entity<Payment>(entity =>
@@ -630,9 +809,31 @@ public partial class HotelBookingContext : DbContext
             entity.Property(e => e.TypeName).HasMaxLength(100);
         });
 
+        modelBuilder.Entity<Promotion>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Promotio__3214EC07A2098FDF");
+
+            entity.Property(e => e.Code).HasMaxLength(50);
+            entity.Property(e => e.DiscountValue).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.EndDate).HasColumnType("datetime");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+            entity.Property(e => e.MaxDiscountAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.MinBookingValue).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Name).HasMaxLength(200);
+            entity.Property(e => e.PromotionCategory).HasDefaultValue(0);
+            entity.Property(e => e.StartDate).HasColumnType("datetime");
+            entity.Property(e => e.UsedCount).HasDefaultValue(0);
+            entity.Property(e => e.UserUsageLimit).HasDefaultValue(1);
+        });
+
         modelBuilder.Entity<Review>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Reviews__3214EC0718171E72");
+
+            entity.HasIndex(e => e.BookingId, "UQ_Booking_Review")
+                .IsUnique()
+                .HasFilter("([IsDeleted]=(0))");
 
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
@@ -640,6 +841,11 @@ public partial class HotelBookingContext : DbContext
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.Rating).HasColumnType("decimal(3, 1)");
             entity.Property(e => e.UpdatedAt).HasPrecision(0);
+
+            entity.HasOne(d => d.Booking).WithOne(p => p.Review)
+                .HasForeignKey<Review>(d => d.BookingId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Reviews_Bookings");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.ReviewCreatedByNavigations)
                 .HasForeignKey(d => d.CreatedBy)
@@ -784,8 +990,6 @@ public partial class HotelBookingContext : DbContext
 
             entity.HasIndex(e => e.PricePerNight, "IX_RoomTypes_Price");
 
-            entity.HasIndex(e => new { e.HotelId, e.Name }, "UQ_RoomTypes_Name_Hotel").IsUnique();
-
             entity.Property(e => e.Area).HasColumnType("decimal(6, 2)");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
@@ -813,6 +1017,29 @@ public partial class HotelBookingContext : DbContext
             entity.HasOne(d => d.UpdatedByNavigation).WithMany(p => p.RoomTypeUpdatedByNavigations)
                 .HasForeignKey(d => d.UpdatedBy)
                 .HasConstraintName("FK_RoomTypes_UpdatedBy");
+        });
+
+        modelBuilder.Entity<RoomTypeService>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__RoomType__3214EC0791380C62");
+
+            entity.HasIndex(e => new { e.RoomTypeId, e.ServiceId }, "UQ_RoomType_Service").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+            entity.Property(e => e.Note).HasMaxLength(255);
+            entity.Property(e => e.Quantity).HasDefaultValue(1);
+            entity.Property(e => e.UpdatedAt).HasPrecision(0);
+
+            entity.HasOne(d => d.RoomType).WithMany(p => p.RoomTypeServices)
+                .HasForeignKey(d => d.RoomTypeId)
+                .HasConstraintName("FK_RoomTypeServices_RoomTypes");
+
+            entity.HasOne(d => d.Service).WithMany(p => p.RoomTypeServices)
+                .HasForeignKey(d => d.ServiceId)
+                .HasConstraintName("FK_RoomTypeServices_Services");
         });
 
         modelBuilder.Entity<RoomViewType>(entity =>
@@ -847,7 +1074,6 @@ public partial class HotelBookingContext : DbContext
             entity.Property(e => e.Description).HasMaxLength(255);
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.Name).HasMaxLength(100);
-            entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.UpdatedAt).HasPrecision(0);
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.ServiceCreatedByNavigations)
@@ -868,8 +1094,10 @@ public partial class HotelBookingContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
                 .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.Position).HasMaxLength(100);
+            entity.Property(e => e.Salary).HasColumnType("decimal(18, 2)");
 
             entity.HasOne(d => d.Hotel).WithMany(p => p.Staff)
                 .HasForeignKey(d => d.HotelId)
@@ -878,6 +1106,17 @@ public partial class HotelBookingContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.Staff)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK_Staffs_Users");
+        });
+
+        modelBuilder.Entity<SystemSetting>(entity =>
+        {
+            entity.HasKey(e => e.KeyWord).HasName("PK__SystemSe__CCAE50689E74B9A3");
+
+            entity.Property(e => e.KeyWord).HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(255);
+            entity.Property(e => e.UpdateAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
         });
 
         modelBuilder.Entity<UpgradeRequest>(entity =>
@@ -980,6 +1219,25 @@ public partial class HotelBookingContext : DbContext
             entity.Property(e => e.SortOrder).HasDefaultValue(0);
         });
 
+        modelBuilder.Entity<WalletTransaction>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__WalletTr__3214EC0728594343");
+
+            entity.HasIndex(e => e.WalletId, "IX_WalletTransactions_WalletId");
+
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.Description).HasMaxLength(255);
+            entity.Property(e => e.TransactionType).HasMaxLength(50);
+
+            entity.HasOne(d => d.Wallet).WithMany(p => p.WalletTransactions)
+                .HasForeignKey(d => d.WalletId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_WalletTransactions_Wallet");
+        });
+
         modelBuilder.Entity<Wishlist>(entity =>
         {
             entity.HasKey(e => new { e.UserId, e.HotelId }).HasName("PK__Wishlist__F3E8EFF1EF67BFFA");
@@ -995,6 +1253,37 @@ public partial class HotelBookingContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.Wishlists)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK_Wishlists_Users");
+        });
+
+        modelBuilder.Entity<WithdrawalRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Withdraw__3214EC0767EB2EDB");
+
+            entity.HasIndex(e => e.OwnerId, "IX_WithdrawalRequests_OwnerId");
+
+            entity.HasIndex(e => e.Status, "IX_WithdrawalRequests_Status");
+
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.BankAccountName).HasMaxLength(100);
+            entity.Property(e => e.BankAccountNumber).HasMaxLength(50);
+            entity.Property(e => e.BankName).HasMaxLength(100);
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.ProcessedAt).HasPrecision(0);
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasDefaultValue("Pending");
+
+            entity.HasOne(d => d.Owner).WithMany(p => p.WithdrawalRequests)
+                .HasForeignKey(d => d.OwnerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Withdrawal_Owner");
+
+            entity.HasOne(d => d.Wallet).WithMany(p => p.WithdrawalRequests)
+                .HasForeignKey(d => d.WalletId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Withdrawal_Wallet");
         });
 
         OnModelCreatingPartial(modelBuilder);

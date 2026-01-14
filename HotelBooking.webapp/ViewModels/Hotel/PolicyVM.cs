@@ -10,5 +10,5 @@ public class PolicyVM
     public DateTime CreatedAt { get; set; }
     public int? UpdatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
-    public PolicyTypeVM? PolicyType { get; set; }
+    public string? PolicyType { get; set; }
 }

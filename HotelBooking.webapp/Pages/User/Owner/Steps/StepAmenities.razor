@@ -16,7 +16,7 @@ else
         {
             var isSelected = FormState.SelectedAmenityIds.Contains(amenity.Id);
 
-            <MudChip T="string" @key="amenity.Id" Variant="@(isSelected? Variant.Filled: Variant.Outlined)"
+            <MudChip T="string" @key="amenity.Id" Variant="@(isSelected? MudBlazor.Variant.Filled: MudBlazor.Variant.Outlined)"
                 Color="@(isSelected ? Color.Primary : Color.Default)" Size="Size.Large"
                 OnClick="() => ToggleAmenity(amenity.Id)" Class="px-5 py-4 cursor-pointer transition-all hover:shadow-md"
                 Style="border-radius: 16px; min-width: 180px;">

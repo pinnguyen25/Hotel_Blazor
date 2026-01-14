@@ -8,5 +8,6 @@ public class UpgradeRequestDTO
     public string Address { get; set; } = "";
     public string TaxCode { get; set; } = "";
     public string Status { get; set; } = "Pending";
+    public string? AvatarUrl { get; set; }
     public DateTime RequestedAt { get; set; }
 }

@@ -13,7 +13,7 @@
 
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-0 fw-semibold">Quản lý tiện ích</h3>
+        <h3 class="mb-0 fw-semibold text-primary"> Quản lý tiện ích</h3>
         <button class="btn btn-primary d-flex align-items-center gap-2" @onclick="OpenAddModal">
             <i class="bi bi-plus-circle"></i> Thêm mới
         </button>
@@ -34,6 +34,7 @@
                             <th>Ngày tạo</th>
                             <th>Người cập nhật</th>
                             <th>Ngày cập nhật</th>
+                            <th style="width:150px;" class="text-center">Bộ lọc tìm kiếm</th>
                             <th class="text-end pe-3">Thao tác</th>
                         </tr>
                     </thead>
@@ -70,6 +71,16 @@
                                     <td>@amenity.CreatedAt.ToString("dd/MM/yyyy")</td>
                                     <td>@amenity.UpdatedByName</td>
                                     <td>@amenity.UpdatedAt?.ToString("dd/MM/yyyy")</td>
+
+                                    <td class="text-center">
+                                        <div class="form-check form-switch d-inline-block">
+                                            <input class="form-check-input" type="checkbox" role="switch"
+                                                   checked="@amenity.IsFilterable"
+                                                   @onchange="@(e => ToggleFilterable(amenity))" 
+                                                   style="cursor: pointer;"
+                                                   title="Bật/Tắt trên bộ lọc">
+                                        </div>
+                                    </td>
                                     <td class="text-end pe-3">
                                         <button class="btn btn-sm btn-outline-warning" @onclick="() => EditAmenity(amenity)"
                                             title="Sửa">
@@ -209,21 +220,21 @@
     private async Task CreateAmenity(AmenityVM model)
     {
         await SetAuthHeader();
-        var response = await _httpClient!.PostAsJsonAsync("hotel/create-amenity", model);
+        var response = await _httpClient!.PostAsJsonAsync("admin/create-amenity", model);
         await HandleResponse(response, "Tạo mới");
     }
 
     private async Task UpdateAmenity(AmenityVM model)
     {
         await SetAuthHeader();
-        var response = await _httpClient!.PutAsJsonAsync($"hotel/update-amenity/{model.Id}", model);
+        var response = await _httpClient!.PutAsJsonAsync($"admin/update-amenity/{model.Id}", model);
         await HandleResponse(response, "Cập nhật");
     }
 
     private async Task DeleteAmenity(int id)
     {
         await SetAuthHeader();
-        var response = await _httpClient!.DeleteAsync($"hotel/delete-amenity/{id}");
+        var response = await _httpClient!.DeleteAsync($"admin/delete-amenity/{id}");
         if (!response.IsSuccessStatusCode)
         {
             var msg = await response.Content.ReadAsStringAsync();
@@ -242,6 +253,38 @@
             Snackbar.Add(apiRes?.Message ?? "Xóa thất bại!", Severity.Error);
         }
 
+    }
+
+    private async Task ToggleFilterable(AmenityVM amenity)
+    {
+        // 1. Optimistic UI: Đảo trạng thái ngay lập tức cho mượt
+        amenity.IsFilterable = !amenity.IsFilterable;
+
+        try
+        {
+            await SetAuthHeader();
+            // Gọi API PATCH
+            var response = await _httpClient!.PatchAsync($"admin/toggle-filter-amenity/{amenity.Id}", null);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                // Revert nếu lỗi
+                amenity.IsFilterable = !amenity.IsFilterable;
+                Snackbar.Add("Cập nhật trạng thái thất bại", Severity.Error);
+                StateHasChanged();
+            }
+            else
+            {
+                var msg = amenity.IsFilterable ? "Đã bật hiển thị bộ lọc" : "Đã tắt hiển thị bộ lọc";
+                Snackbar.Add(msg, Severity.Success);
+            }
+        }
+        catch
+        {
+            amenity.IsFilterable = !amenity.IsFilterable; // Revert
+            Snackbar.Add("Lỗi kết nối", Severity.Error);
+            StateHasChanged();
+        }
     }
 
     private async Task HandleResponse(HttpResponseMessage response, string action)

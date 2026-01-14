@@ -1,0 +1,653 @@
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Net.Http.Headers
+@using System.Text.Json
+@inject IHttpClientFactory _httpClientFactory
+@inject ISnackbar Snackbar
+@inject ILocalStorageService _localStorage
+
+<MudOverlay Visible="true" DarkBackground="true" AutoClose="false" ZIndex="1300"
+    Style="position: fixed; overflow-y: auto;">
+
+    <MudPaper Class="mx-auto my-5 rounded-xl overflow-hidden shadow-lg"
+        Style="width: 1100px; max-width: 95vw; position: relative;">
+
+        <div class="d-flex justify-space-between align-center pa-4"
+            style="background-color: #f8f9fa; border-bottom: 1px solid #e0e0e0;">
+            <div class="d-flex align-center gap-3">
+                <MudAvatar Color="@(isEditMode? Color.Warning: Color.Primary)" Variant="MudBlazor.Variant.Filled">
+                    <MudIcon Icon="@(isEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)" />
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.h6" Class="fw-bold text-dark">
+                        @(isEditMode ? "Cập nhật loại phòng" : "Tạo loại phòng mới")
+                    </MudText>
+                    <MudText Typo="Typo.caption" Class="text-muted">Điền thông tin chi tiết và thiết lập dịch vụ
+                    </MudText>
+                </div>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="Cancel" Color="Color.Default" />
+        </div>
+
+        <div class="pa-6" style="max-height: 75vh; overflow-y: auto;">
+            <EditForm Model="model" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+
+                <MudGrid Spacing="4">
+                    <MudItem xs="12" md="7">
+
+                        <MudCard Elevation="0" Outlined="true" Class="mb-4 rounded-lg">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.subtitle1" Class="fw-bold text-primary">
+                                        <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2 mb-n1" />Thông tin cơ
+                                        bản
+                                    </MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                <MudGrid>
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="model.Name" Label="Tên loại phòng (VD: Deluxe King)"
+                                            Variant="MudBlazor.Variant.Outlined" Required="true" Margin="Margin.Dense" />
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudNumericField @bind-Value="model.PricePerNight" Label="Giá niêm yết (VNĐ)"
+                                            Format="N0" Variant="MudBlazor.Variant.Outlined" Adornment="Adornment.End"
+                                            AdornmentText="₫" Margin="Margin.Dense" Min="0" />
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudNumericField @bind-Value="model.Area" Label="Diện tích"
+                                            Variant="MudBlazor.Variant.Outlined" Adornment="Adornment.End" AdornmentText="m²"
+                                            Margin="Margin.Dense" Min="0" />
+                                    </MudItem>
+
+                                    <MudItem xs="4">
+                                        <MudNumericField @bind-Value="model.Quantity" Label="Số lượng phòng"
+                                            Variant="MudBlazor.Variant.Outlined" Min="1" Margin="Margin.Dense" />
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudNumericField @bind-Value="model.AdultCapacity" Label="Người lớn"
+                                            Variant="MudBlazor.Variant.Outlined" Min="1" Margin="Margin.Dense"
+                                            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" />
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudNumericField @bind-Value="model.ChildCapacity" Label="Trẻ em"
+                                            Variant="MudBlazor.Variant.Outlined" Min="0" Margin="Margin.Dense"
+                                            Adornment="Adornment.Start"
+                                            AdornmentIcon="@Icons.Material.Filled.ChildCare" />
+                                    </MudItem>
+
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="model.Description" Label="Mô tả chi tiết phòng"
+                                            Variant="MudBlazor.Variant.Outlined" Lines="3" Margin="Margin.Dense" />
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                        </MudCard>
+
+                        <MudCard Elevation="0" Outlined="true" Class="rounded-lg">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.subtitle1" Class="fw-bold text-primary">
+                                        <MudIcon Icon="@Icons.Material.Filled.Image" Class="mr-2 mb-n1" />Hình ảnh phòng
+                                    </MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                @if (isEditMode)
+                                {
+                                    <MultiImageUpload ExistingUrls="@existImages" MaxFiles="5" UploadUrl="@GetUploadUrl()"
+                                        DeleteUrl="@GetUploadUrl()" OnUrlsChanged="@((urls) => existImages = urls)" />
+                                }
+                                else
+                                {
+                                    <MudFileUpload T="IReadOnlyList<IBrowserFile>" FilesChanged="OnInputFilesChanged"
+                                        Accept=".jpg, .jpeg, .png" MaximumFileCount="5">
+                                        <ActivatorContent>
+                                            <MudButton Variant="MudBlazor.Variant.Filled" Color="Color.Secondary"
+                                                StartIcon="@Icons.Material.Filled.CloudUpload" FullWidth="true">
+                                                Chọn ảnh từ máy tính (@ImageFiles.Count/5)
+                                            </MudButton>
+                                        </ActivatorContent>
+                                    </MudFileUpload>
+
+                                    @if (ImageFiles.Any())
+                                    {
+                                        <div class="d-flex flex-wrap gap-3 mt-4">
+                                            @foreach (var img in ImageFiles)
+                                            {
+                                                <div class="position-relative shadow-sm rounded overflow-hidden"
+                                                    style="width: 100px; height: 100px;">
+                                                    <MudImage Src="@img.Url" ObjectFit="ObjectFit.Cover"
+                                                        Style="width:100%; height:100%;" />
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Error"
+                                                        Size="Size.Small"
+                                                        Class="position-absolute absolute-top-right bg-white pa-1 ma-1"
+                                                        OnClick="() => RemovePendingImage(img)" />
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+
+                                    @if (_showImageError)
+                                    {
+                                        <MudText Color="Color.Error" Typo="Typo.caption" Class="mt-2 d-block">
+                                            <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Small" Class="mb-n1" /> Vui
+                                            lòng chọn ít nhất 1 ảnh.
+                                        </MudText>
+                                    }
+                                }
+                            </MudCardContent>
+                        </MudCard>
+
+                    </MudItem>
+
+                    <MudItem xs="12" md="5">
+
+                        <MudCard Elevation="0" Outlined="true" Class="mb-4 rounded-lg bg-indigo-lighten-5"
+                            Style="border-color: #c5cae9;">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.subtitle1" Class="fw-bold text-dark">
+                                        <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Class="mr-2 mb-n1" />Chính
+                                        sách & Ưu đãi
+                                    </MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                <div class="d-flex flex-column gap-3">
+                                    <MudSwitch @bind-Value="model.IsFreeCancellation" Color="Color.Success"
+                                        Label="Cho phép hủy miễn phí"
+                                        ThumbIcon="@Icons.Material.Filled.EventAvailable" />
+
+                                    <MudDivider />
+
+                                    <div class="d-flex justify-space-between align-center">
+                                        <MudSwitch Value="model.IsBreakfastIncluded" Color="Color.Warning"
+                                            Label="Bao gồm ăn sáng" ThumbIcon="@Icons.Material.Filled.Restaurant"
+                                            Disabled="true" />
+
+                                        @if (model.IsBreakfastIncluded == true)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success"
+                                                Variant="MudBlazor.Variant.Filled">AUTO ON</MudChip>
+                                        }
+                                    </div>
+                                    <MudText Typo="Typo.caption" Class="text-muted mt-n2 ml-2">
+                                        * Tự động bật khi bạn chọn dịch vụ ăn uống (VD: Buffet sáng) ở bảng bên dưới.
+                                    </MudText>
+                                </div>
+                            </MudCardContent>
+                        </MudCard>
+
+                        <MudCard Elevation="0" Outlined="true" Class="mb-4 rounded-lg">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.subtitle1" Class="fw-bold text-primary">
+                                        <MudIcon Icon="@Icons.Material.Filled.RoomService" Class="mr-2 mb-n1" />Dịch vụ
+                                        đi kèm
+                                    </MudText>
+                                    <MudText Typo="Typo.caption">
+                                        Tick chọn dịch vụ để <b>miễn phí</b> cho khách.
+                                    </MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent Class="pa-0">
+                                @if (AvailableServices != null && AvailableServices.Any())
+                                {
+                                    <div style="max-height: 250px; overflow-y: auto;">
+                                        <MudTable Items="@AvailableServices" Hover="true" Dense="true" Elevation="0"
+                                            Breakpoint="Breakpoint.None" FixedHeader="true">
+                                            <HeaderContent>
+                                                <MudTh Style="width: 40px;"></MudTh>
+                                                <MudTh>Dịch vụ</MudTh>
+                                                <MudTh Style="text-align:right">Trạng thái</MudTh>
+                                            </HeaderContent>
+                                            <RowTemplate Context="service">
+                                                @{
+                                                    var selection = _selectedServices.FirstOrDefault(s => s.ServiceId ==
+                                                    service.ServiceId);
+                                                    bool isChecked = selection != null;
+                                                }
+                                                <MudTd>
+                                                    <MudCheckBox T="bool" Value="@isChecked" Color="Color.Success"
+                                                        ValueChanged="@((val) => ToggleService(service.ServiceId, val))"
+                                                        Dense="true" />
+                                                </MudTd>
+                                                <MudTd>
+                                                    <div class="d-flex flex-column">
+                                                        <span class="fw-bold">@service.ServiceName</span>
+                                                        <span class="text-muted small">@service.Price.ToString("N0") ₫ /
+                                                            @service.Unit</span>
+                                                    </div>
+                                                </MudTd>
+                                                <MudTd Style="text-align:right">
+                                                    @if (isChecked)
+                                                    {
+                                                        <MudChip T="string" Color="Color.Success" Size="Size.Small"
+                                                            Variant="MudBlazor.Variant.Text">MIỄN PHÍ</MudChip>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudChip T="string" Color="Color.Warning" Size="Size.Small"
+                                                            Variant="MudBlazor.Variant.Text">THU PHÍ</MudChip>
+                                                    }
+                                                </MudTd>
+                                            </RowTemplate>
+                                        </MudTable>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <MudAlert Severity="Severity.Info" Class="ma-2">Khách sạn chưa có dịch vụ nào.
+                                    </MudAlert>
+                                }
+                            </MudCardContent>
+                        </MudCard>
+
+                        <MudExpansionPanels Elevation="0" Outlined="true" Class="rounded-lg mb-4">
+                            <MudExpansionPanel Text="Cấu hình Giường ngủ" Icon="@Icons.Material.Filled.Bed">
+                                <div class="d-flex align-end gap-2 mb-3">
+                                    <MudSelect T="int" Label="Chọn loại giường" @bind-Value="selectedBedTypeId"
+                                        Dense="true" Margin="Margin.Dense" Variant="MudBlazor.Variant.Outlined"
+                                        AnchorOrigin="Origin.BottomCenter" Class="flex-grow-1">
+                                        <MudSelectItem Value="0">-- Chọn --</MudSelectItem>
+                                        @foreach (var bed in BedTypes)
+                                        {
+                                            <MudSelectItem Value="@bed.Id">@bed.Name</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                    <MudNumericField @bind-Value="bedQuantity" Label="SL" Variant="MudBlazor.Variant.Outlined"
+                                        Min="1" Max="10" Style="width: 70px;" Margin="Margin.Dense" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Add" Variant="MudBlazor.Variant.Filled"
+                                        Color="Color.Primary" OnClick="AddBed" Disabled="@(selectedBedTypeId == 0)"
+                                        Size="Size.Medium" />
+                                </div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var bed in model.Beds)
+                                    {
+                                        var bedInfo = BedTypes.FirstOrDefault(x => x.Id == bed.BedTypeId);
+                                        <MudChip T="string" Color="Color.Info" OnClose="() => model.Beds.Remove(bed)"
+                                            Size="Size.Small" Variant="MudBlazor.Variant.Outlined">
+                                            <b>@(bedInfo?.Name ?? "Unknown")</b> x @bed.Quantity
+                                        </MudChip>
+                                    }
+                                </div>
+                            </MudExpansionPanel>
+
+                            <MudExpansionPanel Text="Tiện ích trong phòng" Icon="@Icons.Material.Filled.Wifi">
+                                <div class="d-flex flex-wrap gap-2" style="max-height: 200px; overflow-y: auto;">
+                                    @foreach (var a in amenities)
+                                    {
+                                        var isSelected = model.AmenityIds.Contains(a.Id);
+                                        <MudChip T="string" Variant="@(isSelected? MudBlazor.Variant.Filled: MudBlazor.Variant.Outlined)"
+                                            Color="@(isSelected ? Color.Primary : Color.Default)"
+                                            OnClick="() => ToggleItem(model.AmenityIds, a.Id)" Size="Size.Small"
+                                            Class="cursor-pointer">
+                                            @a.Name
+                                        </MudChip>
+                                    }
+                                </div>
+                            </MudExpansionPanel>
+
+                            <MudExpansionPanel Text="Hướng nhìn (View)" Icon="@Icons.Material.Filled.Landscape">
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var v in ViewTypes)
+                                    {
+                                        <MudCheckBox T="bool" Value="@model.ViewIds.Contains(v.Id)" Label="@v.Name"
+                                            Dense="true" Color="Color.Success"
+                                            ValueChanged="@((val) => ToggleItem(model.ViewIds, v.Id))" />
+                                    }
+                                </div>
+                            </MudExpansionPanel>
+                        </MudExpansionPanels>
+
+                    </MudItem>
+                </MudGrid>
+            </EditForm>
+        </div>
+
+        <div class="d-flex justify-end gap-3 pa-4" style="background-color: #f8f9fa; border-top: 1px solid #e0e0e0;">
+            <MudButton OnClick="Cancel" Variant="MudBlazor.Variant.Outlined" Color="Color.Default">Hủy bỏ</MudButton>
+            <MudButton Color="Color.Primary" Variant="MudBlazor.Variant.Filled" OnClick="HandleSubmit" Disabled="isSubmitting"
+                StartIcon="@(isSubmitting ? Icons.Material.Filled.Loop : Icons.Material.Filled.Save)" Class="px-6">
+                @(isSubmitting ? "Đang lưu..." : "Lưu Loại Phòng")
+            </MudButton>
+        </div>
+
+    </MudPaper>
+</MudOverlay>
+
+@code {
+    // --- PARAMETER QUAN TRỌNG ĐỂ GIAO TIẾP VỚI CHA ---
+    [Parameter] public int HotelId { get; set; }
+    [Parameter] public int? RoomTypeId { get; set; } // Null = Add, Val = Edit
+    [Parameter] public List<OwnerHotelServiceVM> AvailableServices { get; set; } = new();
+    [Parameter] public EventCallback OnClose { get; set; } // Đóng popup
+    [Parameter] public EventCallback OnSuccess { get; set; } // Báo thành công -> Reload
+
+    private RoomTypeCreateOrUpdateVM model = new();
+    private List<RoomTypeServiceRequestVM> _selectedServices = new();
+    private List<AmenityVM> amenities = new();
+    private List<IconItemVM> BedTypes = new();
+    private List<IconItemVM> ViewTypes = new();
+
+    // Logic UI
+    private int selectedBedTypeId = 0;
+    private int bedQuantity = 1;
+    private bool isEditMode => RoomTypeId.HasValue && RoomTypeId.Value > 0;
+    private bool isSubmitting = false;
+    private HttpClient? _httpClient;
+
+    // Logic Ảnh
+    private List<string> existImages = new();
+    private List<ImagePreview> ImageFiles = new();
+    private bool _showImageError = false;
+    private const long MaxFileSize = 5 * 1024 * 1024;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_httpClient == null)
+        {
+            _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+            await SetAuthHeader();
+        }
+
+        // Load các danh sách phụ (Tiện ích, Giường, View) nếu chưa có
+        if (amenities.Count == 0)
+        {
+            await Task.WhenAll(LoadAmenities(), LoadBedTypes(), LoadViewTypes());
+        }
+
+        // 2. Reset form và Load dữ liệu dựa trên RoomTypeId
+        ResetForm();
+
+        if (isEditMode)
+        {
+            await LoadRoomType();
+        }
+        else
+        {
+            // Nếu là tạo mới -> Set mặc định một số trường cho tiện
+            model.Quantity = 1;
+            model.AdultCapacity = 2;
+            model.ChildCapacity = 0;
+        }
+    }
+
+    private void ResetForm()
+    {
+        model = new RoomTypeCreateOrUpdateVM();
+        _selectedServices = new();
+        existImages = new();
+        ImageFiles = new();
+        _showImageError = false;
+        selectedBedTypeId = 0;
+        bedQuantity = 1;
+    }
+    // cho phần tạo
+    private async Task OnInputFilesChanged(IReadOnlyList<IBrowserFile> files)
+    {
+        foreach (var file in files)
+        {
+            if (ImageFiles.Count >= 5) break;
+            if (!file.ContentType.StartsWith("image/")) continue;
+            var resizedFile = await file.RequestImageFileAsync(file.ContentType, 300, 300);
+            // Đọc stream và tạo chuỗi Base64
+            var buffer = new byte[resizedFile.Size];
+            await resizedFile.OpenReadStream().ReadAsync(buffer);
+            var base64 = Convert.ToBase64String(buffer);
+            var url = $"data:{file.ContentType};base64,{base64}";
+            ImageFiles.Add(new ImagePreview { File = file, Url = url });
+        }
+        if (ImageFiles.Any()) _showImageError = false;
+    }
+    private void RemovePendingImage(ImagePreview Image)
+    {
+        ImageFiles.Remove(Image);
+    }
+    // Hàm lấy URL API động
+    private string GetUploadUrl()
+    {
+        // Nếu tạo mới, dùng ID = 0
+        var id = RoomTypeId ?? 0;
+        return $"hotel/owner/roomtype/{id}/image";
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            _httpClient!.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+    }
+
+    private void SyncSmartFlags()
+    {
+        // Lấy tên các dịch vụ đã chọn
+        var selectedServiceNames = AvailableServices
+        .Where(s => _selectedServices.Any(sel => sel.ServiceId == s.ServiceId))
+        .Select(s => s.ServiceName)
+        .ToList();
+
+        // Kiểm tra keyword
+        bool hasBreakfast = selectedServiceNames.Any(name =>
+        name.Contains("sáng", StringComparison.OrdinalIgnoreCase) ||
+        name.Contains("breakfast", StringComparison.OrdinalIgnoreCase) ||
+        name.Contains("buffet", StringComparison.OrdinalIgnoreCase)
+        );
+
+        // Tự động cập nhật Switch
+        model.IsBreakfastIncluded = hasBreakfast;
+        // StateHasChanged(); // Không cần thiết nếu gọi trong luồng UI event, nhưng an toàn thì cứ để
+    }
+
+    private void ToggleService(int serviceId, bool isChecked)
+    {
+        if (isChecked)
+        {
+            if (!_selectedServices.Any(x => x.ServiceId == serviceId))
+            {
+                _selectedServices.Add(new RoomTypeServiceRequestVM { ServiceId = serviceId, Quantity = 1 });
+            }
+        }
+        else
+        {
+            var item = _selectedServices.FirstOrDefault(x => x.ServiceId == serviceId);
+            if (item != null) _selectedServices.Remove(item);
+        }
+        SyncSmartFlags();
+    }
+
+    private void UpdateRoomService(int serviceId, int qty)
+    {
+        var item = _selectedServices.FirstOrDefault(x => x.ServiceId == serviceId);
+        if (item != null) item.Quantity = qty;
+    }
+
+    private void UpdateServiceNote(int serviceId, string note)
+    {
+        var item = _selectedServices.FirstOrDefault(x => x.ServiceId == serviceId);
+        if (item != null) item.Note = note;
+    }
+
+    private async Task LoadAmenities()
+    {
+        try
+        {
+            var response = await _httpClient!.GetFromJsonAsync<ApiResponse<List<AmenityVM>>>("hotel/get-all-amenities");
+            amenities = response?.Content ?? new();
+            // Parse icon nếu cần
+            foreach (var a in amenities)
+            {
+                if (!string.IsNullOrWhiteSpace(a.Additional))
+                {
+                    try
+                    {
+                        var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(a.Additional);
+                        a.IconClass = dict?.GetValueOrDefault("IconClass") ?? "fa-bed";
+                        a.IconColor = dict?.GetValueOrDefault("IconColor") ?? "#666";
+                    }
+                    catch { }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi kết nối: {ex.Message}", Severity.Error);
+            amenities = new();
+        }
+    }
+
+    private async Task LoadBedTypes() => BedTypes = (await
+    _httpClient!.GetFromJsonAsync<ApiResponse<List<IconItemVM>>>("hotel/get-all-bedtypes"))?.Content ?? new();
+    private async Task LoadViewTypes() => ViewTypes = (await
+    _httpClient!.GetFromJsonAsync<ApiResponse<List<IconItemVM>>>("hotel/get-all-viewtypes"))?.Content ?? new();
+
+    private async Task LoadRoomType()
+    {
+        try
+        {
+            @* await SetAuthHeader(); *@
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+            var res = await _httpClient!.GetFromJsonAsync<ApiResponse<RoomTypeDetailVM>>(
+            $"hotel/roomtype-detail/{RoomTypeId}");
+
+            if (res?.StatusCode == StatusCodeResponse.Success && res.Content != null)
+            {
+                var rt = res.Content;
+                model = new()
+                {
+                    Name = rt.Name,
+                    Description = rt.Description,
+                    PricePerNight = rt.PricePerNight,
+                    AdultCapacity = rt.AdultCapacity,
+                    ChildCapacity = rt.ChildCapacity,
+                    IsFreeCancellation = rt.IsFreeCancellation,
+                    IsBreakfastIncluded = rt.IsBreakfastIncluded,
+                    Area = rt.Area,
+                    Quantity = rt.Quantity,
+
+                    Beds = rt.Beds?.Select(b => new RoomBedRequestVM
+                    {
+                        BedTypeId = b.BedTypeId,
+                        Quantity = b.Quantity
+                    }).ToList() ?? new(),
+
+                    ViewIds = rt.Views?.Select(v => v.ViewTypeId).ToList() ?? new(),
+                    AmenityIds = rt.Amenities.Select(a => a.Id).ToList(),
+                };
+                existImages = rt.RoomImages.ToList();
+
+                if (rt.RoomTypeServices != null)
+                {
+                    _selectedServices = rt.RoomTypeServices.Select(s => new RoomTypeServiceRequestVM
+                    {
+                        ServiceId = s.ServiceId,
+                        Quantity = s.Quantity,
+                        Note = s.Note
+                    }).ToList();
+                }
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Không tải được dữ liệu loại phòng.", Severity.Error);
+        }
+    }
+
+    private async Task AddBed()
+    {
+        if (selectedBedTypeId <= 0 || bedQuantity < 1) return;
+
+        var existing = model.Beds.FirstOrDefault(x => x.BedTypeId == selectedBedTypeId);
+        if (existing != null)
+            existing.Quantity += bedQuantity;
+        else
+            model.Beds.Add(new RoomBedRequestVM { BedTypeId = selectedBedTypeId, Quantity = bedQuantity });
+
+        selectedBedTypeId = 0;
+        bedQuantity = 1;
+        StateHasChanged();
+    }
+
+    private void ToggleItem(List<int> list, int id)
+    {
+        if (list.Contains(id)) list.Remove(id);
+        else list.Add(id);
+    }
+
+    // THAY ĐỔI HÀM CANCEL
+    private async Task Cancel()
+    {
+        await OnClose.InvokeAsync(); // Gọi Event đóng của cha
+    }
+
+    // THAY ĐỔI HÀM HANDLESUBMIT
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        try
+        {
+            model.RoomTypeServices = _selectedServices;
+            if (isEditMode)
+            {
+                var res = await _httpClient!.PutAsJsonAsync($"hotel/owner/roomtype/{RoomTypeId}", model);
+                if (!res.IsSuccessStatusCode) throw new Exception(await res.Content.ReadAsStringAsync());
+            }
+            else
+            {
+                var res = await _httpClient!.PostAsJsonAsync($"hotel/owner/{HotelId}/roomtypes", model);
+                if (!res.IsSuccessStatusCode) throw new Exception(await res.Content.ReadAsStringAsync());
+                // 2. Lấy ID vừa tạo để upload ảnh
+                var apiRes = await res.Content.ReadFromJsonAsync<ApiResponse<CreateRoomTypeResponseVM>>();
+                var newId = apiRes?.Content?.RoomTypeId ?? 0;
+
+                // 3. Upload ảnh trong hàng đợi (nếu có)
+                if (newId > 0 && ImageFiles.Any())
+                {
+                    await UploadImageFiles(newId);
+                }
+            }
+            if (!isEditMode && !ImageFiles.Any())
+            {
+                _showImageError = true; // <--- Bật lên để UI hiện đỏ
+                Snackbar.Add("Vui lòng chọn ít nhất 1 ảnh!", Severity.Warning);
+                return;
+            }
+
+            Snackbar.Add("Lưu thành công!", Severity.Success);
+
+            // BÁO THÀNH CÔNG VÀ ĐÓNG
+            await OnSuccess.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi: {ex.Message}", Severity.Error);
+        }
+        finally { isSubmitting = false; }
+    }
+
+    private async Task UploadImageFiles(int roomTypeId)
+    {
+        foreach (var item in ImageFiles)
+        {
+            try
+            {
+                using var content = new MultipartFormDataContent();
+                using var stream = item.File?.OpenReadStream(MaxFileSize);
+                var fileContent = new StreamContent(stream!);
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue(item.File!.ContentType);
+                content.Add(fileContent, "Image", item.File.Name);
+                await _httpClient!.PostAsync($"hotel/owner/roomtype/{roomTypeId}/image", content);
+            }
+            catch { /* Ignore individual upload error */ }
+        }
+    }
+
+}

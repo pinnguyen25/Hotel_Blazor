@@ -1,0 +1,136 @@
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using Blazored.LocalStorage
+@inject ISnackbar Snackbar
+@inject IHttpClientFactory _httpClientFactory
+@inject ILocalStorageService _localStorage
+
+<MudFileUpload T="IReadOnlyList<IBrowserFile>" FilesChanged="UploadFiles" Accept=".jpg, .jpeg, .png" MaximumFileCount="@MaxFiles">
+    <ActivatorContent>
+        <MudButton Variant="MudBlazor.Variant.Outlined" Color="Color.Primary" 
+                   StartIcon="@Icons.Material.Filled.CloudUpload"
+                   Disabled="@(_isUploading || ExistingUrls.Count >= MaxFiles)">
+            @if (_isUploading)
+            {
+                <MudProgressCircular Class="ms-n1 me-2" Size="Size.Small" Indeterminate="true"/>
+                <span>Đang tải lên...</span>
+            }
+            else
+            {
+                <span>Tải ảnh lên (@ExistingUrls.Count/@MaxFiles)</span>
+            }
+        </MudButton>
+    </ActivatorContent>
+</MudFileUpload>
+
+@if (ExistingUrls.Any())
+{
+    <div class="d-flex flex-wrap gap-3 mt-4">
+        @foreach (var url in ExistingUrls)
+        {
+            <div class="position-relative" style="width: 100px; height: 100px;">
+                <MudImage Src="@url" ObjectFit="ObjectFit.Cover" 
+                          Style="width:100%; height:100%; border-radius: 8px; border: 1px solid #ddd;" />
+                
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Error" Size="Size.Small"
+                               Class="position-absolute" 
+                               Style="top: -8px; right: -8px; background: white; padding: 2px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"
+                               OnClick="@(() => DeleteImage(url))" 
+                               Disabled="_isUploading"/>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public List<string> ExistingUrls { get; set; } = new();
+    [Parameter] public int MaxFiles { get; set; } = 5;
+    [Parameter] public string UploadUrl { get; set; } = "";
+    [Parameter] public string DeleteUrl { get; set; } = "";
+    [Parameter] public EventCallback<List<string>> OnUrlsChanged { get; set; }
+
+    private bool _isUploading = false;
+    private const long MaxFileSize = 10 * 1024 * 1024; // 10MB
+    private HttpClient? _httpClient;
+
+    protected override void OnInitialized()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            _httpClient!.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    }
+
+    private async Task UploadFiles(IReadOnlyList<IBrowserFile> files)
+    {
+        if (string.IsNullOrEmpty(UploadUrl)) return;
+
+        var slots = MaxFiles - ExistingUrls.Count;
+        if (slots <= 0)
+        {
+            Snackbar.Add($"Đã đạt tối đa {MaxFiles} ảnh", Severity.Warning);
+            return;
+        }
+
+        _isUploading = true;
+        try 
+        {
+            await SetAuthHeader();
+            foreach (var file in files.Take(slots))
+            {
+                using var content = new MultipartFormDataContent();
+                var fileContent = new StreamContent(file.OpenReadStream(MaxFileSize));
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+                content.Add(fileContent, "Image", file.Name);
+
+                var response = await _httpClient!.PostAsync(UploadUrl, content);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<ApiResponse<string>>(); 
+                    if (result?.Content != null)
+                    {
+                        ExistingUrls.Add(result.Content);
+                    }
+                }
+                else 
+                {
+                    Snackbar.Add($"Lỗi tải ảnh {file.Name}", Severity.Error);
+                }
+            }
+            await OnUrlsChanged.InvokeAsync(ExistingUrls);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isUploading = false;
+        }
+    }
+
+    private async Task DeleteImage(string url)
+    {
+        if (_isUploading) return;
+
+        // Xóa UI trước cho mượt
+        ExistingUrls.Remove(url);
+        await OnUrlsChanged.InvokeAsync(ExistingUrls);
+
+        // Gọi API xóa
+        if (!string.IsNullOrEmpty(DeleteUrl))
+        {
+            try 
+            {
+                await SetAuthHeader();
+                await _httpClient!.DeleteAsync($"{DeleteUrl}?imageUrl={Uri.EscapeDataString(url)}");
+            }
+            catch { /* Silent fail */ }
+        }
+    }
+}

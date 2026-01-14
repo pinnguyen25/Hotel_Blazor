@@ -59,33 +59,42 @@ window.disposeSwiper = function () {
 
 // Scroll highly rate hotel
 window.scrollContainer = (direction) => {
-
   const container = document.getElementById("hotelScrollContainer");
   if (!container) return;
 
-  const item = container.querySelector(".scroll-item");
-  if (!item) return;
+  // Lấy độ rộng card + gap
+  // Dự phòng gap = 24px nếu không lấy được style
+  const gap = parseFloat(window.getComputedStyle(container).columnGap) || 24;
+  const firstItem = container.querySelector(".scroll-item");
+  if (!firstItem) return;
+  
+  const itemWidth = firstItem.offsetWidth + gap;
 
-  const itemWidth = item.offsetWidth + 24;
-  const scrollAmount = itemWidth * 1 * direction;
+  // Vị trí hiện tại
+  const currentScroll = container.scrollLeft;
+  // Max scroll khả dụng
+  const maxScroll = container.scrollWidth - container.clientWidth;
 
-  //
-  targetScrollLeft += scrollAmount;
-  targetScrollLeft = Math.max(0, Math.min(targetScrollLeft, container.scrollWidth - container.clientWidth));
+  let newScroll;
 
-  if (scrollAnimation) {
-    cancelAnimationFrame(scrollAnimation);
+  if (direction > 0) { // NEXT
+    // Nếu còn ít hơn 10px là tới đích -> coi như đã tới, không cuộn nữa
+    if (maxScroll - currentScroll < 10) return;
+
+    newScroll = currentScroll + itemWidth;
+
+    // Nếu vị trí mới vượt quá max -> set bằng max để kích hoạt snap end
+    if (newScroll >= maxScroll) {
+      newScroll = maxScroll;
+    }
+  } else { // PREV
+    if (currentScroll < 10) return;
+    newScroll = currentScroll - itemWidth;
+    if (newScroll < 0) newScroll = 0;
   }
 
-  container.scrollBy({
-    left: scrollAmount,
+  container.scrollTo({
+    left: newScroll,
     behavior: "smooth"
   });
-
-  setTimeout(() => {
-    // Làm tròn vị trí về đúng card gần nhất
-    const snapped = Math.round(container.scrollLeft / itemWidth) * itemWidth;
-    container.scrollTo({ left: snapped, behavior: "auto" });
-    isScrolling = false;
-  }, 300);
 };

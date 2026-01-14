@@ -77,6 +77,10 @@ public partial class User
 
     public virtual ICollection<Hotel> HotelOwners { get; set; } = new List<Hotel>();
 
+    public virtual ICollection<HotelUpdateRequest> HotelUpdateRequestOwners { get; set; } = new List<HotelUpdateRequest>();
+
+    public virtual ICollection<HotelUpdateRequest> HotelUpdateRequestProcessedByNavigations { get; set; } = new List<HotelUpdateRequest>();
+
     public virtual ICollection<Hotel> HotelUpdatedByNavigations { get; set; } = new List<Hotel>();
 
     public virtual ICollection<User> InverseCreatedByNavigation { get; set; } = new List<User>();
@@ -90,6 +94,8 @@ public partial class User
     public virtual ICollection<Notification> NotificationCreatedByNavigations { get; set; } = new List<Notification>();
 
     public virtual ICollection<Notification> NotificationUsers { get; set; } = new List<Notification>();
+
+    public virtual OwnerWallet? OwnerWallet { get; set; }
 
     public virtual ICollection<Payment> PaymentCreatedByNavigations { get; set; } = new List<Payment>();
 
@@ -136,4 +142,6 @@ public partial class User
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
     public virtual ICollection<Wishlist> Wishlists { get; set; } = new List<Wishlist>();
+
+    public virtual ICollection<WithdrawalRequest> WithdrawalRequests { get; set; } = new List<WithdrawalRequest>();
 }

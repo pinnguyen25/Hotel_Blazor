@@ -23,5 +23,7 @@ public partial class BedType
 
     public string? Additional { get; set; }
 
+    public virtual ICollection<BookingRoom> BookingRooms { get; set; } = new List<BookingRoom>();
+
     public virtual ICollection<RoomBedType> RoomBedTypes { get; set; } = new List<RoomBedType>();
 }

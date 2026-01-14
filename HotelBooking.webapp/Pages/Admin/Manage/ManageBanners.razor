@@ -1,0 +1,262 @@
+@page "/admin/manages/manage-banners"
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.Components.Manage
+@using HotelBooking.webapp.ViewModels.Hotel
+@layout AdminLayout
+@inject IDialogService DialogService
+@inject IHttpClientFactory _clientFactory
+@inject ILocalStorageService _localStorage
+@using MudBlazor
+@using System.Text.Json
+@inject ISnackbar Snackbar
+
+<PageTitle>Quản lý Banner</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <MudText Typo="Typo.h5" Class="fw-bold">Quản lý Banner & Quảng cáo</MudText>
+        @if (_showCreateModal)
+        {
+            <BannerCreate OnClose="CloseCreateModal" OnSuccess="HandleCreateSuccess" />
+        }
+
+        @if (_showEditModal && _selectedBanner != null)
+        {
+            <BannerEdit Banner="_selectedBanner" OnClose="CloseEditModal" OnSuccess="HandleEditSuccess" />
+        }
+
+        <MudButton Variant="MudBlazor.Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+            OnClick="OpenCreateBanner">
+            Thêm Banner Mới
+        </MudButton>
+    </div>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="0" Outlined="true">
+        <MudChipSet T="string" SelectedValueChanged="OnPageFilterChanged" Filter="true" Mandatory="true">
+            <MudChip Value=@("All") Default="true" Color="Color.Default">Tất cả</MudChip>
+            <MudChip Value=@("Home") Color="Color.Info">Trang chủ</MudChip>
+            <MudChip Value=@("AboutUs") Color="Color.Info">Giới thiệu</MudChip>
+            <MudChip Value=@("Hotels") Color="Color.Info">Khách sạn</MudChip>
+            <MudChip Value=@("Rooms") Color="Color.Info">Phòng</MudChip>
+        </MudChipSet>
+    </MudPaper>
+
+    <MudTable Items="@FilteredBanners" Hover="true" Loading="@isLoading" Elevation="0" Outlined="true">
+        <HeaderContent>
+            <MudTh>Hình ảnh</MudTh>
+            <MudTh>Trang</MudTh>
+            <MudTh>Thông tin</MudTh>
+            <MudTh>Thứ tự</MudTh>
+            <MudTh>Trạng thái</MudTh>
+            <MudTh Style="text-align:right">Thao tác</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudImage Src="@context.ImageUrl" ObjectFit="ObjectFit.Cover" Width="160" Height="90" Class="rounded"
+                    Elevation="2" />
+            </MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Variant="MudBlazor.Variant.Text" Color="Color.Primary">@context.Page
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudText Typo="Typo.subtitle2" Class="fw-bold">@(context.Title ?? "---")</MudText>
+                @if (!string.IsNullOrEmpty(context.LinkUrl))
+                {
+                    <div class="d-flex align-center mt-1">
+                        <MudIcon Icon="@Icons.Material.Filled.Link" Size="Size.Small" Class="me-1 text-muted" />
+                        <a href="@context.LinkUrl" target="_blank"
+                            class="text-muted small text-decoration-none text-truncate" style="max-width: 200px;">
+                            @context.LinkUrl
+                        </a>
+                    </div>
+                }
+            </MudTd>
+            <MudTd>
+                <MudChip T="int" Size="Size.Small">@context.SortOrder</MudChip>
+            </MudTd>
+            <MudTd>
+                <MudSwitch T="bool" Value="@context.IsActive" Color="Color.Success"
+                    ValueChanged="@(async (bool val) => await ToggleActive(context,val))" />
+            </MudTd>
+            <MudTd Style="text-align:right">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Warning" Size="Size.Small"
+                    OnClick="@(() => OpenEditDialog(context))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                    OnClick="@(() => DeleteBanner(context))" />
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager />
+        </PagerContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private List<BannerVM> Banners = new();
+    private List<BannerVM> FilteredBanners = new();
+    private bool isLoading = true;
+    private string selectedPageFilter = "All";
+    private HttpClient? _httpClient;
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _clientFactory.CreateClient("HotelBookingAPI");
+        await LoadBanners();
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient!.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
+    }
+
+    private async Task LoadBanners()
+    {
+        isLoading = true;
+        try
+        {
+            await SetAuthHeader();
+            var res = await _httpClient!.GetAsync("admin/banners");
+
+            if (res.IsSuccessStatusCode)
+            {
+                // 2. Đọc content dạng string
+                var content = await res.Content.ReadAsStringAsync();
+                // 3. Cấu hình Option quan trọng này!
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+                var apiRes = JsonSerializer.Deserialize<ApiResponse<List<BannerVM>>>(content, options);
+
+                if (apiRes != null && apiRes.StatusCode == StatusCodeResponse.Success)
+                {
+                    Banners = apiRes.Content ?? new();
+                    FilterData();
+                }
+            }
+            else
+            {
+                Snackbar.Add($"Lỗi API: {res.StatusCode}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"LoadBanners Error: {ex.Message}");
+            Snackbar.Add("Không thể kết nối Server", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OnPageFilterChanged(string selectedValue)
+    {
+        selectedPageFilter = selectedValue;
+        FilterData();
+    }
+
+    private void FilterData()
+    {
+        if (selectedPageFilter == "All")
+            FilteredBanners = Banners;
+        else
+            FilteredBanners = Banners.Where(x => x.Page == selectedPageFilter).ToList();
+    }
+
+    // --- CÁC HÀM THAO TÁC ---
+    // CREATE
+    private bool _showCreateModal = false;
+    private async Task OpenCreateBanner()
+    {
+        _showCreateModal = true;
+    }
+
+    private void CloseCreateModal()
+    {
+        _showCreateModal = false;
+    }
+
+    private async Task HandleCreateSuccess()
+    {
+        _showCreateModal = false;
+        await LoadBanners(); // Tải lại danh sách
+    }
+    // EDIT
+    private bool _showEditModal = false;
+    private BannerVM? _selectedBanner;
+    private async Task OpenEditDialog(BannerVM banner)
+    {
+        _selectedBanner = banner; // Lưu banner được chọn
+        _showEditModal = true; // Hiển thị Modal
+    }
+
+    private void CloseEditModal()
+    {
+        _showEditModal = false;
+        _selectedBanner = null;
+    }
+
+    private async Task HandleEditSuccess()
+    {
+        _showEditModal = false;
+        _selectedBanner = null;
+        await LoadBanners(); // Load lại dữ liệu để cập nhật thông tin mới nhất từ DB
+    }
+    private async Task ToggleActive(BannerVM banner, bool value)
+    {
+        // Optimistic UI
+        var oldValue = banner.IsActive;
+        banner.IsActive = value;
+        StateHasChanged();
+        try
+        {
+            await SetAuthHeader();
+            var response = await _httpClient!.PatchAsync($"admin/banner/{banner.Id}/toggle", null);
+            if (response.IsSuccessStatusCode)
+                Snackbar.Add("Đã cập nhật trạng thái", Severity.Success);
+            else
+            {
+                banner.IsActive = oldValue;
+                var err = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Lỗi: {err}", Severity.Error);
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            banner.IsActive = oldValue;
+            Snackbar.Add("Lỗi cập nhật", Severity.Error);
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteBanner(BannerVM banner)
+    {
+        var confirm = await DialogService.ShowMessageBox("Xác nhận xóa",
+        "Bạn có chắc chắn muốn xóa banner này? Hành động này sẽ xóa ảnh vĩnh viễn.",
+        yesText: "Xóa", cancelText: "Hủy");
+
+        if (confirm == true)
+        {
+            try
+            {
+                await SetAuthHeader();
+                var res = await _httpClient!.DeleteAsync($"admin/banner/{banner.Id}");
+
+                if (res.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Đã xóa thành công", Severity.Success);
+                    await LoadBanners();
+                }
+            }
+            catch
+            {
+                Snackbar.Add("Lỗi khi xóa", Severity.Error);
+            }
+        }
+    }
+}

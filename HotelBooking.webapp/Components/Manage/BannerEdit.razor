@@ -1,0 +1,169 @@
+@using System.Net.Http.Headers
+@using Blazored.LocalStorage
+@using MudBlazor
+@using HotelBooking.webapp.ViewModels.Hotel
+@inject ISnackbar Snackbar
+@inject IHttpClientFactory _clientFactory
+@inject ILocalStorageService _localStorage
+
+<div class="modal-backdrop fade show" style="z-index: 1040;"></div>
+
+<div class="modal fade show d-block" tabindex="-1" role="dialog" style="z-index: 1050;">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            
+            <div class="modal-header border-bottom pb-3">
+                <div>
+                    <h5 class="modal-title fw-bold text-dark mb-0">
+                        <i class="bi bi-pencil-square me-2 text-warning"></i>Cập nhật Banner
+                    </h5>
+                    <small class="text-muted">Chỉnh sửa thông tin hiển thị và sắp xếp</small>
+                </div>
+                <button type="button" class="btn-close" @onclick="Cancel"></button>
+            </div>
+            
+            <div class="modal-body p-4">
+                <MudContainer>
+                    <div class="row">
+                        <div class="col-md-5 mb-4">
+                            <MudText Typo="Typo.subtitle2" Class="mb-2">Ảnh hiện tại (Không thể thay đổi):</MudText>
+                            <div class="rounded overflow-hidden shadow-sm border position-relative">
+                                <MudImage Src="@Banner.ImageUrl" ObjectFit="ObjectFit.Cover" Fluid="true" Class="w-100" style="height: 200px;" />
+                                <div class="position-absolute bottom-0 start-0 w-100 bg-dark bg-opacity-75 text-white p-2 text-center" style="font-size: 0.8rem;">
+                                    Để thay ảnh, vui lòng xóa và tạo mới.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-7">
+                            <div class="mb-3">
+                                <MudSelect T="string" Label="Vị trí hiển thị" @bind-Value="model.Page" 
+                                           Variant="MudBlazor.Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter">
+                                    <MudSelectItem Value="@("Home")">Trang chủ</MudSelectItem>
+                                    <MudSelectItem Value="@("AboutUs")">Giới thiệu</MudSelectItem>
+                                    <MudSelectItem Value="@("Hotels")">Khách sạn</MudSelectItem>
+                                    <MudSelectItem Value="@("Rooms")">Danh sách phòng</MudSelectItem>
+                                    <MudSelectItem Value="@("Contact")">Liên hệ</MudSelectItem>
+                                </MudSelect>
+                            </div>
+
+                            <div class="mb-3">
+                                <MudTextField @bind-Value="model.Title" Label="Tiêu đề" 
+                                              Variant="MudBlazor.Variant.Outlined" Margin="Margin.Dense" />
+                            </div>
+
+                            <div class="mb-3">
+                                <MudTextField @bind-Value="model.LinkUrl" Label="Link liên kết" 
+                                              Variant="MudBlazor.Variant.Outlined" Margin="Margin.Dense" 
+                                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Link"/>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-6">
+                                    <MudNumericField @bind-Value="model.SortOrder" Label="Thứ tự (Sort)" 
+                                                     Variant="MudBlazor.Variant.Outlined" Margin="Margin.Dense" Min="0" />
+                                </div>
+                                <div class="col-6 d-flex align-items-center">
+                                    <MudSwitch @bind-Value="model.IsActive" Color="Color.Success" Label="Đang hoạt động" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </MudContainer>
+            </div>
+
+            <div class="modal-footer border-top-0 pt-2 pb-4 px-4 bg-light rounded-bottom-4">
+                <MudButton OnClick="Cancel" Variant="MudBlazor.Variant.Text" Color="Color.Default" Class="me-2">Hủy bỏ</MudButton>
+                
+                <MudButton Color="Color.Warning" Variant="MudBlazor.Variant.Filled" OnClick="Submit" 
+                           Disabled="@isProcessing"
+                           StartIcon="@(isProcessing ? null : Icons.Material.Filled.Save)"
+                           Class="px-4 fw-bold text-white">
+                    @if (isProcessing)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                        <span class="ms-2">Đang lưu...</span>
+                    }
+                    else
+                    {
+                        <span>Cập nhật</span>
+                    }
+                </MudButton>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public BannerVM Banner { get; set; } = new(); // Dữ liệu từ cha truyền vào
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSuccess { get; set; }
+
+    private BannerUpdateModel model = new();
+    private bool isProcessing = false;
+
+    // Class nội bộ để map dữ liệu binding, khớp với BannerUpdateDTO của BE
+    public class BannerUpdateModel 
+    {
+        public string Page { get; set; } = "";
+        public string? Title { get; set; }
+        public string? LinkUrl { get; set; }
+        public int SortOrder { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    protected override void OnInitialized()
+    {
+        // Copy dữ liệu từ BannerVM sang Model để chỉnh sửa không ảnh hưởng trực tiếp list bên ngoài
+        if (Banner != null)
+        {
+            model = new BannerUpdateModel
+            {
+                Page = Banner.Page!,
+                Title = Banner.Title,
+                LinkUrl = Banner.LinkUrl,
+                SortOrder = Banner.SortOrder,
+                IsActive = Banner.IsActive
+            };
+        }
+    }
+
+    private async Task Cancel()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task Submit()
+    {
+        isProcessing = true;
+        try
+        {
+            var client = _clientFactory.CreateClient("HotelBookingAPI");
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            // Gọi API Update (Giả sử endpoint là PUT: hotel/update-banner/{id})
+            // Lưu ý: BE của bạn nhận BannerUpdateDTO, nên gửi JSON là chuẩn nhất.
+            var response = await client.PutAsJsonAsync($"admin/banner/{Banner.Id}", model);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Cập nhật banner thành công!", Severity.Success);
+                await OnSuccess.InvokeAsync();
+            }
+            else
+            {
+                var msg = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Lỗi: {msg}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi hệ thống: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+}

@@ -21,15 +21,28 @@ namespace HotelBooking.api.Controllers
             _hotelService = hotelService;
         }
 
+
+        #region Dashboard Owner
         [Authorize(Roles = "Owner")]
         [HttpGet("get-owner-dashboard")]
-        public async Task<IActionResult> GetOwnerDashboardAsync()
+        public async Task<IActionResult> GetOwnerDashboardAsync(int hotelId)
         {
             var ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-            var response = await _hotelService.GetOwnerDashBoard(ownerId);
+            var response = await _hotelService.GetOwnerDashboardStatsAsync(hotelId, ownerId);
             return Ok(response);
         }
+
+        [HttpGet("revenue-chart")]
+        [Authorize(Roles = "Owner")]
+        public async Task<IActionResult> GetRevenueChart(int hotelId, string viewType = "Week")
+        {
+            var ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.GetRevenueChartAsync(hotelId, ownerId, viewType);
+            return Ok(response);
+        }
+        #endregion
+
 
         [Authorize(Roles = "Owner")]
         [HttpGet("owner-hotels")]
@@ -49,13 +62,35 @@ namespace HotelBooking.api.Controllers
         [FromQuery] DateTime? checkOut,
         [FromQuery] int? adults,
         [FromQuery] int? children,
-        [FromQuery] int? rooms)
+        [FromQuery] int? rooms,
+        [FromQuery] decimal? priceMin,
+        [FromQuery] decimal? priceMax,
+        [FromQuery] decimal? ratingMin,
+        [FromQuery] string? accommodationTypeIds,
+        [FromQuery] string? amenityIds,
+        [FromQuery] string? bedTypeIds,
+        [FromQuery] string? viewTypeIds,
+        [FromQuery] string? chainIds,
+        [FromQuery] string? policyIds,
+        [FromQuery] string? serviceIds
+
+        )
         {
             int? userId = null;
             if (int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int uid))
                 userId = uid;
 
-            var response = await _hotelService.GetSearchOptionsAsync(destination, checkIn, checkOut, adults, children, rooms, userId);
+            var response = await _hotelService.GetSearchOptionsAsync(destination, checkIn, checkOut, adults, children, rooms, priceMin,                    // ← chưa dùng → để null
+            priceMax,
+            ratingMin,
+            accommodationTypeIds,
+            amenityIds,
+            bedTypeIds,
+            viewTypeIds,
+            chainIds,
+            policyIds,
+            serviceIds,
+            sortBy: "Recommended", userId);
             return Ok(response);
         }
 
@@ -197,7 +232,11 @@ namespace HotelBooking.api.Controllers
 
         #endregion
 
+
+
+
         #region Owner 
+
         // Lấy danh sách khách sạn của Owner (summary)
         [Authorize(Roles = "Owner")]
         [HttpGet("owner/summary")]
@@ -226,7 +265,7 @@ namespace HotelBooking.api.Controllers
             var response = await _hotelService.GetHotelDraftAsync(hotelId, ownerId);
             return ApiResponseHandlerHelper.HandleResponse(response);
         }
-        
+
         // Tạo khách sạn mới
         [Authorize(Roles = "Owner")]
         [HttpPost("owner/create-hotel")]
@@ -318,6 +357,44 @@ namespace HotelBooking.api.Controllers
             return ApiResponseHandlerHelper.HandleResponse(response);
         }
 
+        #region Staff Manage
+        [Authorize(Roles = "Owner")]
+        [HttpGet("owner/{hotelId}/staffs")]
+        public async Task<IActionResult> GetStaffs(int hotelId)
+        {
+            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.GetHotelStaffsAsync(hotelId, ownerId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [Authorize(Roles = "Owner")]
+        [HttpPost("owner/staff/create")]
+        public async Task<IActionResult> CreateStaff([FromBody] CreateStaffRequestDTO request)
+        {
+            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.CreateStaffAsync(request, ownerId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [Authorize(Roles = "Owner")]
+        [HttpPut("owner/staff/{staffId}/update")]
+        public async Task<IActionResult> UpdateStaff(int staffId, [FromBody] UpdateStaffRequestDTO request)
+        {
+            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.UpdateStaffAsync(staffId, request, ownerId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [Authorize(Roles = "Owner")]
+        [HttpDelete("owner/staff/{staffId}/delete")]
+        public async Task<IActionResult> DeleteStaff(int staffId)
+        {
+            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.DeleteStaffAsync(staffId, ownerId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+        #endregion
+
         #region Roomtype
         //Lấy danh sách loại phòng của khách sạn
         [Authorize(Roles = "Owner")]
@@ -329,11 +406,12 @@ namespace HotelBooking.api.Controllers
             return ApiResponseHandlerHelper.HandleResponse(response);
         }
 
-        [HttpGet("owner/roomtype-detail/{roomTypeId}")]
+        // cho khách
+        [HttpGet("roomtype-detail/{roomTypeId}")]
         public async Task<IActionResult> GetRoomTypeDetailAsync(int roomTypeId)
         {
-            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.GetRoomTypeDetailAsync(roomTypeId, ownerId);
+            // int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.GetRoomTypeDetailAsync(roomTypeId);
             return ApiResponseHandlerHelper.HandleResponse(response);
         }
 
@@ -342,15 +420,6 @@ namespace HotelBooking.api.Controllers
         {
             var result = await _hotelService.GetRoomOptionsAsync();
             return ApiResponseHandlerHelper.HandleResponse(result);
-        }
-
-        [Authorize(Roles = "Owner")]
-        [HttpPost("owner/{hotelId}/wizard/roomtype")]
-        public async Task<IActionResult> WizardCreateFirstRoomTypeAsync(int hotelId, [FromBody] WizardRoomTypeCreateDTO roomTypeDto)
-        {
-            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.WizardCreateFirstRoomTypeAsync(hotelId, roomTypeDto, ownerId);
-            return ApiResponseHandlerHelper.HandleResponse(response);
         }
 
         [Authorize(Roles = "Owner")]
@@ -424,6 +493,76 @@ namespace HotelBooking.api.Controllers
             return ApiResponseHandlerHelper.HandleResponse(response);
         }
 
+        [Authorize(Roles = "Owner")]
+        [HttpPost("owner/roomtype/clone/{sourceId}")]
+        public async Task<IActionResult> CloneRoomType(int sourceId)
+        {
+            // Giả sử bạn có hàm lấy CurrentUserId từ Token
+            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.CloneRoomTypeAsync(sourceId, ownerId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+        #region Rooms (Physical Rooms Management)
+
+        // 1. Lấy danh sách phòng vật lý (Dashboard)
+        [Authorize(Roles = "Owner,Staff")]
+        [HttpGet("owner/{hotelId}/rooms")]
+        public async Task<IActionResult> GetPhysicalRoomsAsync(int hotelId, [FromQuery] int? roomTypeId)
+        {
+            int requesterId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.GetPhysicalRoomsAsync(hotelId, requesterId, roomTypeId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        // 2. Tạo phòng vật lý mới (Thêm lẻ)
+        [Authorize(Roles = "Owner")]
+        [HttpPost("owner/room/{roomTypeId}/create")]
+        public async Task<IActionResult> CreatePhysicalRoomAsync(int roomTypeId, [FromBody] CreateRoomRequestDTO roomNumber)
+        {
+            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.CreatePhysicalRoomAsync(roomTypeId, roomNumber, ownerId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        // 3. Cập nhật phòng (Đổi tên, Đổi trạng thái Bảo trì)
+        [Authorize(Roles = "Owner, Staff")]
+        [HttpPut("owner/room/{roomId}/update")]
+        public async Task<IActionResult> UpdatePhysicalRoomAsync(int roomId, [FromBody] UpdateRoomPhysicalDTO request)
+        {
+            int requesterId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.UpdatePhysicalRoomAsync(roomId, request, requesterId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        // 4. Xóa phòng vật lý (Xóa lẻ)
+        [Authorize(Roles = "Owner")]
+        [HttpDelete("owner/room/{roomId}/delete")]
+        public async Task<IActionResult> DeletePhysicalRoomAsync(int roomId)
+        {
+            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.DeletePhysicalRoomAsync(roomId, ownerId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        // 5. Gán phòng cho Booking (Check-in / Xếp phòng) - Quan trọng!
+        [Authorize(Roles = "Owner, Staff")] // Hoặc "Owner,Staff" sau này
+        [HttpPost("owner/room/assign")]
+        public async Task<IActionResult> AssignRoomToBookingAsync([FromBody] AssignRoomRequestDTO request)
+        {
+            int requesterId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.AssignRoomToBookingAsync(request, requesterId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [Authorize(Roles = "Owner, Staff")]
+        [HttpGet("owner/{hotelId}/pending-bookings")]
+        public async Task<IActionResult> GetPendingBookings(int hotelId)
+        {
+            int requesterId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.GetPendingBookingsAsync(hotelId, requesterId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+        #endregion
 
         // ================= Submit KHÁCH SẠN ĐỂ DUYỆT ================
         // Submit khách sạn để duyệt
@@ -436,6 +575,64 @@ namespace HotelBooking.api.Controllers
             return ApiResponseHandlerHelper.HandleResponse(response);
         }
 
+
+        #region Service Owner
+
+        [Authorize(Roles = "Owner")]
+        [HttpGet("owner/get-owner-services/{hotelId}")]
+        public async Task<IActionResult> GetOwnerServices(int hotelId)
+        {
+            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var res = await _hotelService.GetOwnerHotelServicesAsync(hotelId, ownerId);
+            return ApiResponseHandlerHelper.HandleResponse(res);
+        }
+
+        [Authorize(Roles = "Owner")]
+        [HttpGet("owner/get-available-services/{hotelId}")]
+        public async Task<IActionResult> GetAvailable(int hotelId)
+        {
+            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var res = await _hotelService.GetAvailableServicesToAddAsync(hotelId, ownerId);
+            return ApiResponseHandlerHelper.HandleResponse(res);
+        }
+
+        [Authorize(Roles = "Owner")]
+        [HttpPost("owner/add-service")]
+        public async Task<IActionResult> AddService([FromBody] OwnerAddServiceDTO dto)
+        {
+            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var res = await _hotelService.AddServiceToHotelAsync(dto, ownerId);
+            return ApiResponseHandlerHelper.HandleResponse(res);
+        }
+
+        [Authorize(Roles = "Owner")]
+        [HttpPut("owner/update-service/{id}")]
+        public async Task<IActionResult> UpdateService(int id, [FromBody] OwnerUpdateServiceDTO dto)
+        {
+            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var res = await _hotelService.UpdateHotelServiceAsync(id, dto, ownerId);
+            return ApiResponseHandlerHelper.HandleResponse(res);
+        }
+
+        // 5. Xóa
+        [Authorize(Roles = "Owner")]
+        [HttpDelete("owner/remove-service/{id}")]
+        public async Task<IActionResult> RemoveService(int id)
+        {
+            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var res = await _hotelService.RemoveServiceFromHotelAsync(id, ownerId);
+            return ApiResponseHandlerHelper.HandleResponse(res);
+        }
+
+        [Authorize(Roles = "Owner")]
+        [HttpPatch("owner/toggle-active-service/{id}")]
+        public async Task<IActionResult> ToggleActiveOwnerService(int id)
+        {
+            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.ToggleActiveOwnerServiceAsync(id, ownerId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+        #endregion
         #endregion
 
         #endregion
@@ -451,33 +648,6 @@ namespace HotelBooking.api.Controllers
             return ApiResponseHandlerHelper.HandleResponse(response);
         }
 
-        [Authorize(Roles = "Admin")]
-        [HttpPost("create-amenity")]
-        public async Task<IActionResult> CreateAmenityAsync([FromBody] AmenityCreateOrUpdateDTO newAmenity)
-        {
-            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.CreateAmenityAsync(newAmenity, userId);
-            return ApiResponseHandlerHelper.HandleResponse(response);
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpPut("update-amenity/{id}")]
-        public async Task<IActionResult> UpdateAmenityAsync(int id, [FromBody] AmenityCreateOrUpdateDTO amenity)
-        {
-            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.UpdateAmenityAsync(id, amenity, userId);
-            return ApiResponseHandlerHelper.HandleResponse(response);
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("delete-amenity/{id}")]
-        public async Task<IActionResult> DeleteAmenityAsync(int id)
-        {
-            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.DeleteAmenityAsync(id, userId);
-            return ApiResponseHandlerHelper.HandleResponse(response);
-        }
-
         #endregion
 
         #region Polcicy
@@ -485,69 +655,6 @@ namespace HotelBooking.api.Controllers
         public async Task<IActionResult> GetAllPolicyAsync()
         {
             var response = await _hotelService.GetAllPolicyAsync();
-            return ApiResponseHandlerHelper.HandleResponse(response);
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpPost("create-policyType")]
-        public async Task<IActionResult> CreatePolicyTypeAsync([FromBody] PolicyTypeCreateOrUpdateDTO newPolicyType)
-        {
-            int adminId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.CreatePolicyTypeAsync(newPolicyType, adminId);
-            return ApiResponseHandlerHelper.HandleResponse(response);
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpPut("update-policyType/{id}")]
-        public async Task<IActionResult> UpdatePolicyTypeAsync(int id, [FromBody] PolicyTypeCreateOrUpdateDTO policyType)
-        {
-            int adminId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.UpdatePolicyTypeAsync(id, policyType, adminId);
-            return ApiResponseHandlerHelper.HandleResponse(response);
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("delete-policyType/{id}")]
-        public async Task<IActionResult> DeletePolicyTypeAsync(int id)
-        {
-            int adminId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.DeletePolicyTypeAsync(id, adminId);
-            return ApiResponseHandlerHelper.HandleResponse(response);
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpPost("create-policy")]
-        public async Task<IActionResult> CreatePolicyAsync([FromBody] PolicyCreateOrUpdateDTO newPolicyType)
-        {
-            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.CreatePolicyAsync(newPolicyType, userId);
-            return ApiResponseHandlerHelper.HandleResponse(response);
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpPut("update-policy/{id}")]
-        public async Task<IActionResult> UpdatePolicyAsync(int id, [FromBody] PolicyCreateOrUpdateDTO policyType)
-        {
-            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.UpdatePolicyAsync(id, policyType, userId);
-            return ApiResponseHandlerHelper.HandleResponse(response);
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("delete-policy/{id}")]
-        public async Task<IActionResult> DeletePolicyAsync(int id)
-        {
-            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.DeletePolicyAsync(id, userId);
-            return ApiResponseHandlerHelper.HandleResponse(response);
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpPut("toggle-policyType-active/{id}")]
-        public async Task<IActionResult> TogglePolicyTypeActiveAsync(int id)
-        {
-            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.TogglePolicyTypeActiveAsync(id, userId);
             return ApiResponseHandlerHelper.HandleResponse(response);
         }
 
@@ -625,34 +732,6 @@ namespace HotelBooking.api.Controllers
             return ApiResponseHandlerHelper.HandleResponse(response);
         }
 
-        [Authorize(Roles = "Admin")]
-        [HttpPost("create-bedtype")]
-        public async Task<IActionResult> CreateBedTypeAsync([FromBody] BedTypeCreateOrUpdateDTO bedTypeDto)
-        {
-            int adminId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.CreateBedTypeAsync(bedTypeDto, adminId);
-            return ApiResponseHandlerHelper.HandleResponse(response);
-        }
-
-        // Admin: Cập nhật loại giường
-        [Authorize(Roles = "Admin")]
-        [HttpPut("update-bedtype/{id}")]
-        public async Task<IActionResult> UpdateBedTypeAsync(int id, [FromBody] BedTypeCreateOrUpdateDTO bedTypeDto)
-        {
-            int adminId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.UpdateBedTypeAsync(id, bedTypeDto, adminId);
-            return ApiResponseHandlerHelper.HandleResponse(response);
-        }
-
-        // Admin: Xóa loại giường (soft delete hoặc hard tùy bạn)
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("delete-bedtype/{id}")]
-        public async Task<IActionResult> DeleteBedTypeAsync(int id)
-        {
-            int adminId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.DeleteBedTypeAsync(id, adminId);
-            return ApiResponseHandlerHelper.HandleResponse(response);
-        }
 
         #endregion
 
@@ -666,34 +745,333 @@ namespace HotelBooking.api.Controllers
         }
 
         // Admin: Tạo loại view mới
+
+        #endregion
+
+        #region Banners
         [Authorize(Roles = "Admin")]
-        [HttpPost("create-viewtype")]
-        public async Task<IActionResult> CreateViewTypeAsync([FromBody] ViewTypeCreateOrUpdateDTO viewTypeDto)
+        [HttpGet("get-all-banners")]
+        public async Task<IActionResult> GetAllBannersAsync()
         {
-            int adminId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.CreateViewTypeAsync(viewTypeDto, adminId);
+            var response = await _hotelService.GetAllBannersAsync();
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+        // user xem
+        [HttpGet("get-by-page/{page}")]
+        public async Task<IActionResult> GetByPageAsync(string page)
+        {
+            var response = await _hotelService.GetBannersByPageAsync(page);
             return ApiResponseHandlerHelper.HandleResponse(response);
         }
 
-        // Admin: Cập nhật loại view
-        [Authorize(Roles = "Admin")]
-        [HttpPut("update-viewtype/{id}")]
-        public async Task<IActionResult> UpdateViewTypeAsync(int id, [FromBody] ViewTypeCreateOrUpdateDTO viewTypeDto)
+
+        #endregion
+
+        #region Service Admin
+        [HttpGet("get-all-services")]
+        public async Task<IActionResult> GetAllServices([FromQuery] string? keyword, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
         {
-            int adminId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.UpdateViewTypeAsync(id, viewTypeDto, adminId);
+            var response = await _hotelService.GetAllServicesAsync(keyword, pageIndex, pageSize);
+            return ApiResponseHandlerHelper.HandleResponse(response); ;
+        }
+
+        // trang chủ
+        [HttpGet("get-featured-services")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetFeaturedServices()
+        {
+            var response = await _hotelService.GetFeaturedServicesAsync();
             return ApiResponseHandlerHelper.HandleResponse(response);
         }
 
-        // Admin: Xóa loại view
         [Authorize(Roles = "Admin")]
-        [HttpDelete("delete-viewtype/{id}")]
-        public async Task<IActionResult> DeleteViewTypeAsync(int id)
+        [HttpGet("get-detail-services/{id}")]
+        public async Task<IActionResult> GetServiceDetailWithUsage(int id)
         {
             int adminId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var response = await _hotelService.DeleteViewTypeAsync(id, adminId);
+            var response = await _hotelService.GetServiceDetailWithUsageAsync(id, adminId);
+            return ApiResponseHandlerHelper.HandleResponse(response); ;
+        }
+
+
+        #endregion
+
+        #region Housekeeping
+
+        // 2. Lấy danh sách việc (Task) -> Owner hoặc Staff gọi
+        [Authorize(Roles = "Owner, Staff")]
+        [HttpGet("housekeeping/tasks/{hotelId}")]
+        public async Task<IActionResult> GetHousekeepingTasks(int hotelId, [FromQuery] int? staffId)
+        {
+            int requesterId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.GetHousekeepingTasksAsync(hotelId, requesterId, staffId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        // 3. Giao việc (Assign) -> Owner gọi
+        [Authorize(Roles = "Owner")]
+        [HttpPost("owner/housekeeping/assign")]
+        public async Task<IActionResult> AssignTask([FromBody] AssignTaskRequestDTO request)
+        {
+            int ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.AssignHousekeepingTaskAsync(request, ownerId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        // 4. Cập nhật trạng thái (Cleaning/Completed/Maintenance) -> Staff gọi
+        [Authorize(Roles = "Owner, Staff")]
+        [HttpPut("housekeeping/update-status")]
+        public async Task<IActionResult> UpdateTaskStatus([FromBody] UpdateTaskStatusRequestDTO request)
+        {
+            int requesterId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.UpdateTaskStatusAsync(request, requesterId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        #endregion
+
+        #region Booking Owner
+        [Authorize(Roles = "Owner, Staff")]
+        [HttpGet("owner/booking/{bookingId}/rooms")]
+        public async Task<IActionResult> GetBookingRoomsDetails(int bookingId)
+        {
+            int requesterId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.GetBookingRoomsDetailsAsync(bookingId, requesterId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [Authorize(Roles = "Owner, Staff")]
+        [HttpPut("owner/booking-room/update-guest")]
+        public async Task<IActionResult> UpdateGuestNameAsync([FromBody] UpdateGuestNameDTO request)
+        {
+            int requesterId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.UpdateGuestNameAsync(request, requesterId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [HttpGet("owner/{hotelId}/calendar")]
+        [Authorize(Roles = "Owner, Staff")]
+        public async Task<IActionResult> GetCalendarBookings(
+            [FromRoute] int hotelId,
+            [FromQuery] DateTime start,
+            [FromQuery] DateTime end)
+        {
+            // Lấy ID User từ Token
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            var response = await _hotelService.GetBookingsForCalendarAsync(hotelId, userId, start, end);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [HttpPost("owner/booking/move")]
+        [Authorize(Roles = "Owner, Staff")]
+        public async Task<IActionResult> MoveBooking([FromBody] MoveBookingRequestDTO request)
+        {
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.MoveBookingAsync(request, userId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [HttpPost("owner/booking/walk-in")]
+        [Authorize(Roles = "Owner, Staff")]
+        public async Task<IActionResult> CreateWalkInBooking([FromBody] WalkInBookingRequestDTO request)
+        {
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.CreateWalkInBookingAsync(request, userId);
             return ApiResponseHandlerHelper.HandleResponse(response);
         }
         #endregion
+
+        #region Booking User
+
+        [Authorize]
+        [HttpPost("booking/create")]
+        public async Task<IActionResult> CreateBooking([FromBody] BookingCreateDTO request)
+        {
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.CreateBookingAsync(request, userId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [Authorize]
+        [HttpGet("booking/my-bookings")]
+        public async Task<IActionResult> GetMyBookings()
+        {
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.GetCustomerBookingsAsync(userId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [Authorize]
+        [HttpGet("booking/detail/{bookingId}")]
+        public async Task<IActionResult> GetBookingDetail(int bookingId)
+        {
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.GetBookingDetailForUserAsync(bookingId, userId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [Authorize] // Bắt buộc phải đăng nhập mới lấy được User Id
+        [HttpGet("booking/upcoming-trip")]
+        public async Task<IActionResult> GetUpcomingTrip()
+        {
+            // 1. Lấy UserId từ Token
+            var userIdString = User.FindFirst("id")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+            int userId = int.Parse(userIdString);
+            // 2. Gọi Service
+            var response = await _hotelService.GetUpcomingTripAsync(userId);
+
+            // 3. Trả về kết quả
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [Authorize]
+        [HttpPost("booking/cancel/{bookingId}")]
+        public async Task<IActionResult> CancelBooking(int bookingId)
+        {
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.CancelBookingAsync(bookingId, userId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+
+        [Authorize]
+        [HttpPost("booking/service/add")]
+        public async Task<IActionResult> AddServiceToBooking([FromBody] AddServiceRequestDTO request)
+        {
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.AddServiceToBookingAsync(request, userId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [Authorize]
+        [HttpPut("booking/service/update-qty")]
+        public async Task<IActionResult> UpdateServiceQuantity([FromBody] UpdateServiceQuantityDTO request)
+        {
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.UpdateServiceQuantityAsync(request, userId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [Authorize]
+        [HttpDelete("booking/service/remove/{bookingServiceId}")]
+        public async Task<IActionResult> DeleteServiceFromBooking(int bookingServiceId)
+        {
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.DeleteServiceFromBookingAsync(bookingServiceId, userId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+        // add service khi user đang tạo booking
+        [Authorize]
+        [HttpGet("services-add/{hotelId}")]
+        public async Task<IActionResult> GetAddOnServices(int hotelId)
+        {
+            var result = await _hotelService.GetAddOnServicesForBookingAsync(hotelId);
+            return ApiResponseHandlerHelper.HandleResponse(result);
+        }
+
+
+        #endregion
+
+        #region Payments
+        [Authorize]
+        [HttpPost("payment/confirm")]
+        public async Task<IActionResult> ConfirmPayment([FromBody] PaymentRequestDTO request)
+        {
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.ConfirmBookingPaymentAsync(request, userId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [Authorize(Roles = "Owner, Staff")]
+        [HttpGet("owner/booking/{bookingId}/invoice")]
+        public async Task<IActionResult> GetInvoicePreview([FromRoute] int bookingId)
+        {
+            // Lấy ID người đang thao tác
+            int requesterId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            // Gọi Service
+            var response = await _hotelService.GetInvoicePreviewAsync(bookingId, requesterId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        // thanh toán và dọn dẹp
+        [Authorize(Roles = "Owner, Staff")]
+        [HttpPost("owner/booking/{bookingId}/checkout")]
+        public async Task<IActionResult> ProcessCheckoutPayment(
+        [FromRoute] int bookingId,
+        [FromBody] PaymentRequestDTO request)
+        {
+            // Validate: Đảm bảo ID trên URL khớp với ID trong Body (nếu có gửi)
+            if (request.BookingId != 0 && request.BookingId != bookingId)
+            {
+                return BadRequest(ApiResponseHelper.BadRequest<bool>("Mã đơn phòng không khớp."));
+            }
+
+            request.BookingId = bookingId;
+            int requesterId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.ProcessCheckoutPaymentAsync(request, requesterId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+
+        #endregion
+
+        #region Reviews
+        [Authorize] // Owner role
+        [HttpPost("owner/review/reply")]
+        public async Task<IActionResult> ReplyReview([FromBody] ReplyReviewDTO request)
+        {
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.ReplyReviewAsync(request, userId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [AllowAnonymous]
+        [HttpGet("{hotelId}/reviews")]
+        public async Task<IActionResult> GetHotelReviews(int hotelId)
+        {
+            var response = await _hotelService.GetReviewsByHotelAsync(hotelId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [Authorize]
+        [HttpPost("review/create")]
+        public async Task<IActionResult> CreateReview([FromBody] ReviewCreateDTO request)
+        {
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.CreateReviewAsync(request, userId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+        #endregion
+
+        #region Poromotion
+        [Authorize]
+        [HttpPost("booking/preview-price")]
+        public async Task<IActionResult> PreviewPrice([FromBody] PriceCalculationDTO request)
+        {
+            // Lấy UserId từ Token để đảm bảo bảo mật
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Unauthorized();
+
+            request.UserId = int.Parse(userIdClaim.Value);
+
+            var result = await _hotelService.CalculateBookingPriceAsync(request);
+
+            // Trả về kết quả (PriceResultDTO)
+            return ApiResponseHandlerHelper.HandleResponse(result);
+        }
+
+
+
+        [Authorize]
+        [HttpGet("booking/available-promotions")]
+        public async Task<IActionResult> GetAvailablePromotions()
+        {
+            var response = await _hotelService.GetAvailablePromotionsForUserAsync();
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+        #endregion
+
     }
 }

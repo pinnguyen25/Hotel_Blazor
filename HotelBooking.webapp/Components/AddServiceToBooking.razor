@@ -1,0 +1,387 @@
+@* @using HotelBooking.webapp.ViewModels.Hotel
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+@inject IHttpClientFactory _clientFactory
+@inject ISnackbar _snackbar
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+@if (Show)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.6); z-index: 2000;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content border-0 shadow-lg overflow-hidden">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-basket2-fill me-2"></i>Quản lý Dịch vụ & Tiện ích</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="OnClose"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="row g-0" style="min-height: 500px;">
+
+                        <div class="col-md-7 p-4 bg-light border-end">
+                            <h6 class="fw-bold text-uppercase text-muted mb-3">Dịch vụ khả dụng</h6>
+
+                            @if (isLoadingServices)
+                            {
+                                <div class="text-center py-5">
+                                    <div class="spinner-border text-primary"></div>
+                                </div>
+                            }
+                            else if (availableServices.Any())
+                            {
+                                <div class="row g-3" style="max-height: 450px; overflow-y: auto;">
+                                    @foreach (var sv in availableServices)
+                                    {
+                                        <div class="col-md-12">
+                                            <div class="card border-0 shadow-sm service-card h-100">
+                                                <div class="card-body d-flex align-items-center p-3">
+                                                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center me-3"
+                                                        style="width: 50px; height: 50px;">
+                                                        <i class="bi bi-stars fs-4"></i>
+                                                    </div>
+
+                                                    <div class="flex-grow-1">
+                                                        <div class="fw-bold text-dark">@sv.Name</div>
+                                                        <div class="text-primary fw-bold small">@sv.Price.ToString("N0") ₫ <span
+                                                                class="text-muted fw-normal">/ @sv.Unit</span></div>
+                                                    </div>
+
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <input type="number"
+                                                            class="form-control form-control-sm text-center fw-bold"
+                                                            style="width: 60px;" min="1" max="10"
+                                                            @bind="@GetQty(sv.ServiceId).Value" @bind:event="oninput" />
+                                                        <button class="btn btn-sm btn-primary rounded-circle"
+                                                            style="width: 32px; height: 32px;" @onclick="() => AddService(sv)"
+                                                            disabled="@isProcessing">
+                                                            <i class="bi bi-plus-lg"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-secondary text-center">Không có dịch vụ nào.</div>
+                            }
+                        </div>
+
+                        <div class="col-md-5 p-4 bg-white d-flex flex-column">
+                            <h6 class="fw-bold text-uppercase text-muted mb-3 d-flex justify-content-between">
+                                <span>Dịch vụ đã chọn</span>
+                                <span class="badge bg-info text-dark">Phòng # @RoomNumber</span>
+                            </h6>
+
+                            <div class="flex-grow-1 overflow-auto pe-2" style="max-height: 350px;">
+                                @if (currentBookedServices.Any(x => x.IsPaid))
+                                {
+                                    <div class="mb-3">
+                                        <div class="text-uppercase small fw-bold text-success mb-2 border-bottom pb-1">
+                                            <i class="bi bi-check-circle-fill me-1"></i> Đã thanh toán / Kèm theo
+                                        </div>
+                                        <ul class="list-group list-group-flush">
+                                            @foreach (var item in currentBookedServices.Where(x => x.IsPaid))
+                                            {
+                                                <li
+                                                    class="list-group-item px-0 py-2 d-flex justify-content-between bg-light opacity-75">
+                                                    <div>
+                                                        <div class="fw-bold text-muted">@item.ServiceName</div>
+                                                        <div class="small text-muted">@item.Quantity x @item.Price.ToString("N0") ₫
+                                                        </div>
+                                                    </div>
+                                                    <div class="fw-bold text-muted">@((item.Price * item.Quantity).ToString("N0")) ₫
+                                                    </div>
+                                                </li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+
+                                <div class="mt-2">
+                                    <div class="text-uppercase small fw-bold text-primary mb-2 border-bottom pb-1">
+                                        <i class="bi bi-cart-plus-fill me-1"></i> Đang thêm (Chưa thanh toán)
+                                    </div>
+
+                                    @if (currentBookedServices.Any(x => !x.IsPaid))
+                                    {
+                                        <ul class="list-group list-group-flush">
+                                            @foreach (var item in currentBookedServices.Where(x => !x.IsPaid))
+                                            {
+                                                <li class="list-group-item px-0 py-3">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <div class="fw-bold text-dark">@item.ServiceName</div>
+                                                        <div class="fw-bold text-primary">@((item.Price *
+                                                                                                            item.Quantity).ToString("N0")) ₫</div>
+                                                    </div>
+
+                                                    <div
+                                                        class="d-flex justify-content-between align-items-center bg-light rounded p-2 border">
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <button class="btn btn-sm btn-white border px-2"
+                                                                @onclick="() => UpdateQty(item, -1)"
+                                                                disabled="@isProcessing">-</button>
+                                                            <span class="fw-bold px-2">@item.Quantity</span>
+                                                            <button class="btn btn-sm btn-white border px-2"
+                                                                @onclick="() => UpdateQty(item, 1)"
+                                                                disabled="@isProcessing">+</button>
+                                                        </div>
+                                                        <button class="btn btn-sm btn-outline-danger border-0"
+                                                            @onclick="() => DeleteService(item.Id)" disabled="@isProcessing"
+                                                            title="Xóa">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </li>
+                                            }
+                                        </ul>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center text-muted py-4 border border-dashed rounded mt-2">
+                                            <small>Chưa chọn thêm dịch vụ nào.</small>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="mt-auto border-top pt-3 bg-light p-3 rounded">
+                                @{
+                                    var newTotal = currentBookedServices.Where(x => !x.IsPaid).Sum(x => x.Price * x.Quantity);
+                                }
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="text-dark fw-bold">Thanh toán thêm:</span>
+                                    <span class="fs-4 fw-bold text-danger">@newTotal.ToString("N0") ₫</span>
+                                </div>
+                                <div class="d-grid">
+                                    <button class="btn btn-primary py-2 fw-bold" @onclick="OnClose">
+                                        <i class="bi bi-check2-circle me-2"></i>Xác nhận thay đổi
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public int BookingId { get; set; }
+    [Parameter] public int HotelId { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    // State Variables
+    private bool isLoadingServices = false;
+    private bool isProcessing = false;
+    private string RoomNumber = ""; // Để hiển thị cho đẹp
+    private List<ServiceAddOnVM> availableServices = new();
+    private List<BookingServiceVM> currentBookedServices = new(); // List bên phải
+
+    // Helper Class cho input số lượng
+    public class QtyWrapper { public int Value { get; set; } = 1; }
+    private Dictionary<int, QtyWrapper> qtyMap = new();
+
+    private decimal TotalAmount => currentBookedServices.Sum(x => x.Price * x.Quantity);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Show && BookingId > 0)
+        {
+            // Load song song cả 2 list
+            await LoadData();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        isLoadingServices = true;
+        try
+        {
+            var client = _clientFactory.CreateClient("HotelBookingAPI");
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            if (!string.IsNullOrEmpty(token)) client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
+            token);
+
+            // 1. Load Dịch vụ khả dụng (Menu)
+            var taskServices = client.GetFromJsonAsync<ApiResponse<List<ServiceAddOnVM>>>($"hotel/services-add/{HotelId}");
+
+            // 2. Load Chi tiết đơn hiện tại (Để lấy list dịch vụ đã đặt)
+            // Gọi API GetBookingDetailForUserAsync mà bạn đã có
+            var taskBooking = client.GetFromJsonAsync<ApiResponse<BookingDetailVM>>($"hotel/booking/detail/{BookingId}");
+
+            await Task.WhenAll(taskServices, taskBooking);
+
+            var resServices = taskServices.Result;
+            var resBooking = taskBooking.Result;
+
+            if (resServices != null && resServices.StatusCode == StatusCodeResponse.Success)
+            {
+                availableServices = resServices.Content;
+                // Init map số lượng mặc định = 1
+                foreach (var s in availableServices)
+                {
+                    if (!qtyMap.ContainsKey(s.ServiceId)) qtyMap[s.ServiceId] = new QtyWrapper();
+                }
+            }
+
+            if (resBooking != null && resBooking.StatusCode == StatusCodeResponse.Success)
+            {
+                currentBookedServices = resBooking.Content.Services; // List<BookingServiceDTO>
+                                                                     // Lấy số phòng đầu tiên để hiển thị cho đẹp (nếu có)
+                var room = resBooking.Content.Rooms.FirstOrDefault();
+                RoomNumber = room?.RoomNumber ?? "Chưa xếp";
+            }
+        }
+        catch (Exception ex)
+        {
+            _snackbar.Add("Lỗi tải dữ liệu", Severity.Error);
+        }
+        finally
+        {
+            isLoadingServices = false;
+        }
+    }
+
+    private QtyWrapper GetQty(int serviceId)
+    {
+        if (!qtyMap.ContainsKey(serviceId)) qtyMap[serviceId] = new QtyWrapper();
+        return qtyMap[serviceId];
+    }
+
+    // --- HÀM THÊM DỊCH VỤ ---
+    private async Task AddService(ServiceAddOnVM sv)
+    {
+        isProcessing = true;
+        try
+        {
+            int quantity = GetQty(sv.ServiceId).Value;
+            var req = new AddServiceRequestVM { BookingId = BookingId, ServiceId = sv.ServiceId, Quantity = quantity };
+
+            var client = _clientFactory.CreateClient("HotelBookingAPI");
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            if (!string.IsNullOrEmpty(token)) client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
+            token);
+
+            var res = await client.PostAsJsonAsync("hotel/booking/service/add", req);
+
+            if (res.IsSuccessStatusCode)
+            {
+                _snackbar.Add($"Đã thêm {sv.Name}", Severity.Success);
+                // Reload lại cột bên phải để thấy ngay kết quả
+                await RefreshBill();
+            }
+            else
+            {
+                _snackbar.Add("Thêm thất bại", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            _snackbar.Add("Lỗi hệ thống", Severity.Error);
+        }
+        finally { isProcessing = false; }
+    }
+
+    private async Task UpdateQty(BookingServiceVM item, int change)
+    {
+        // 1. Tính số lượng mới
+        int newQty = item.Quantity + change;
+
+        // 2. Nếu giảm về 0 -> Gọi hàm Xóa (Delete)
+        if (newQty <= 0)
+        {
+            await DeleteService(item.Id);
+            return;
+        }
+
+        isProcessing = true; // Khóa nút bấm tránh spam
+        try
+        {
+            // 3. Tạo DTO gửi lên BE
+            var req = new UpdateServiceQuantityVM
+            {
+                BookingServiceId = item.Id,
+                NewQuantity = newQty
+            };
+
+            var client = _clientFactory.CreateClient("HotelBookingAPI");
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            if (!string.IsNullOrEmpty(token))
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            // 4. Gọi API PUT (Endpoint khớp với Controller bạn gửi)
+            var res = await client.PutAsJsonAsync("hotel/booking/service/update-qty", req);
+
+            if (res.IsSuccessStatusCode)
+            {
+                // Update thành công -> Refresh lại list để cập nhật Tổng tiền
+                await RefreshBill();
+            }
+            else
+            {
+                var err = await res.Content.ReadAsStringAsync();
+                _snackbar.Add($"Không thể cập nhật: {err}", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            _snackbar.Add("Lỗi kết nối", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    // --- HÀM XÓA DỊCH VỤ ---
+    private async Task DeleteService(int bookingServiceId)
+    {
+        // Confirm dialog (Optional - dùng JS hoặc Blazor Dialog, ở đây làm nhanh xóa luôn)
+        isProcessing = true;
+        try
+        {
+            var client = _clientFactory.CreateClient("HotelBookingAPI");
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            if (!string.IsNullOrEmpty(token)) client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
+            token);
+
+            var res = await client.DeleteAsync($"hotel/booking/service/remove/{bookingServiceId}");
+
+            if (res.IsSuccessStatusCode)
+            {
+                _snackbar.Add("Đã xóa dịch vụ", Severity.Success);
+                await RefreshBill(); // Reload lại bill
+            }
+            else
+            {
+                _snackbar.Add("Không thể xóa", Severity.Warning);
+            }
+        }
+        catch (Exception ex) { _snackbar.Add("Lỗi xóa", Severity.Error); }
+        finally { isProcessing = false; }
+    }
+
+    // Hàm refresh nhẹ chỉ gọi lại API Booking Detail
+    private async Task RefreshBill()
+    {
+        try
+        {
+            var client = _clientFactory.CreateClient("HotelBookingAPI");
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            if (!string.IsNullOrEmpty(token)) client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
+            token);
+
+            var res = await client.GetFromJsonAsync<ApiResponse<BookingDetailVM>>($"hotel/booking/detail/{BookingId}");
+            if (res != null && res.StatusCode == StatusCodeResponse.Success)
+            {
+                currentBookedServices = res.Content.Services;
+                StateHasChanged();
+            }
+        }
+        catch { }
+    }
+} *@

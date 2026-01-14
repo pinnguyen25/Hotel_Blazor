@@ -49,6 +49,10 @@ public partial class Hotel
 
     public bool IsActive { get; set; }
 
+    public int? ReviewCount { get; set; }
+
+    public decimal? AverageRating { get; set; }
+
     public virtual AccommodationType? AccommodationType { get; set; }
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
@@ -66,6 +70,12 @@ public partial class Hotel
     public virtual ICollection<HotelImage> HotelImages { get; set; } = new List<HotelImage>();
 
     public virtual ICollection<HotelPolicy> HotelPolicies { get; set; } = new List<HotelPolicy>();
+
+    public virtual ICollection<HotelServiceConfig> HotelServiceConfigs { get; set; } = new List<HotelServiceConfig>();
+
+    public virtual ICollection<HotelUpdateRequest> HotelUpdateRequests { get; set; } = new List<HotelUpdateRequest>();
+
+    public virtual ICollection<HousekeepingTask> HousekeepingTasks { get; set; } = new List<HousekeepingTask>();
 
     public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
 

@@ -1,38 +1,432 @@
-@page "/admin"
+@page "/admin/dashboard"
+@using Blazored.LocalStorage
+@using MudBlazor
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Net.Http.Headers
+@inject NavigationManager _nav
+@inject IHttpClientFactory _httpClientFactory
+@inject ILocalStorageService _localStorage
+@inject ISnackbar Snackbar
 @layout AdminLayout
-<div class="container-fluid mt-5">
-    <h2 class="fw-bold mb-4">Welcome to Admin Dashboard</h2>
 
-    <div class="row g-4">
-        <div class="col-md-4">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h5 class="card-title text-primary"><i class="fa-solid fa-building me-2"></i>Hotels</h5>
-                    <p class="card-text">Manage hotel listings and their owners.</p>
-                    <a href="/admin/manages/manage-hotels" class="btn btn-primary btn-sm">Go</a>
-                </div>
-            </div>
-        </div>
+@attribute [Authorize(Roles = "Admin")]
 
-        <div class="col-md-4">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h5 class="card-title text-success"><i class="fa-solid fa-user-gear me-2"></i>Users</h5>
-                    <p class="card-text">View and manage user roles.</p>
-                    <a href="/admin/requests/upgrade-owner" class="btn btn-success btn-sm">Go</a>
-                </div>
-            </div>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4 pb-8 animate-fade-in">
+    <div class="d-flex justify-content-between align-items-end mb-6">
+        <div>
+            <MudText Typo="Typo.h4" Class="fw-bold text-dark">Trang quản trị</MudText>
+            <MudText Typo="Typo.subtitle1" Class="text-muted">Tổng quan tình hình kinh doanh của ChillZone</MudText>
         </div>
-
-        <div class="col-md-4">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h5 class="card-title text-info"><i class="fa-solid fa-chart-bar me-2"></i>Statistics</h5>
-                    <p class="card-text">View site activity and data summaries.</p>
-                    <a href="/admin/requests/requests-overview" class="btn btn-info btn-sm">Go</a>
-                </div>
-            </div>
-        </div>
+        <MudChip T="string" Icon="@Icons.Material.Filled.CalendarToday" Color="Color.Info" Variant="MudBlazor.Variant.Outlined">
+            Hôm nay: @DateTime.Now.ToString("dd/MM/yyyy")
+        </MudChip>
     </div>
 
-</div>
+    @if (stats == null)
+    {
+        <div class="py-10 d-flex justify-content-center">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        </div>
+    }
+    else
+    {
+        <div class="d-flex align-center mb-4">
+            <MudText Typo="Typo.h6" Class="fw-bold me-2 text-dark">Cần xử lý gấp</MudText>
+            <MudBadge Content="@(stats.PendingHotels + stats.PendingWithdrawals + stats.PendingUsers + stats.PendingUpdateRequests)" 
+                      Overlap="true" Class="p-3" Color="Color.Error">
+                <MudIcon Icon="@Icons.Material.Filled.NotificationsActive" Color="Color.Error" />
+            </MudBadge>
+        </div>
+
+        <MudGrid Class="mb-5">
+            <MudItem xs="12" sm="6" md="3">
+                <div class="metric-card bg-white p-4 rounded-4 shadow-sm border-start border-4 border-primary cursor-pointer"
+                     @onclick='() => NavTo("/admin/requests/overview")'>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small fw-bold text-uppercase ls-1">Duyệt Khách Sạn</div>
+                            <div class="fs-2 fw-bold text-primary">@stats.PendingHotels</div>
+                        </div>
+                        <div class="icon-circle bg-primary-subtle text-primary">
+                            <i class="bi bi-building-check fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <div class="metric-card bg-white p-4 rounded-4 shadow-sm border-start border-4 border-success cursor-pointer"
+                     @onclick='() => NavTo("/admin/finances")'>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small fw-bold text-uppercase ls-1">Duyệt Rút Tiền</div>
+                            <div class="fs-2 fw-bold text-success">@stats.PendingWithdrawals</div>
+                        </div>
+                        <div class="icon-circle bg-success-subtle text-success">
+                            <i class="bi bi-cash-stack fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <div class="metric-card bg-white p-4 rounded-4 shadow-sm border-start border-4 border-warning cursor-pointer"
+                     @onclick='() => NavTo("/admin/requests/overview")'>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small fw-bold text-uppercase ls-1">Nâng cấp Owner</div>
+                            <div class="fs-2 fw-bold text-warning">@stats.PendingUsers</div>
+                        </div>
+                        <div class="icon-circle bg-warning-subtle text-warning">
+                            <i class="bi bi-person-fill-up fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <div class="metric-card bg-white p-4 rounded-4 shadow-sm border-start border-4 border-info cursor-pointer"
+                     @onclick='() => NavTo("/admin/updates")'>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small fw-bold text-uppercase ls-1">Cập nhật TT</div>
+                            <div class="fs-2 fw-bold text-info">@stats.PendingUpdateRequests</div>
+                        </div>
+                        <div class="icon-circle bg-info-subtle text-info">
+                            <i class="bi bi-pencil-square fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid Class="mb-5">
+            <MudItem xs="12" md="8">
+                <MudPaper Class="p-5 rounded-4 shadow-sm h-100 border-0 d-flex flex-column" Elevation="0" Style="min-height: 480px;">
+                    <div class="d-flex align-items-center mb-4">
+                        <div>
+                            <h5 class="fw-bold m-0 text-dark">Biểu đồ Doanh Thu Sàn</h5>
+                            <small class="text-muted">Hoa hồng thực nhận năm <span class="fw-bold text-success">@_selectedYear</span></small>
+                        </div>
+                        <div class="ms-auto"></div>
+                        <div style="width: 110px;">
+                            <MudSelect T="int" Value="_selectedYear" ValueChanged="OnYearChanged"
+                                       Variant="MudBlazor.Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                                       AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                                       Class="bg-white rounded-3">
+                                @foreach (var year in _availableYears)
+                                {
+                                    <MudSelectItem Value="@year">@year</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </div>
+                    </div>
+
+                    <div class="flex-grow-1 d-flex align-items-center justify-content-center">
+                        @if (Series.Any())
+                        {
+                            <MudChart ChartType="ChartType.Bar" ChartSeries="@Series" XAxisLabels="@XAxisLabels" 
+                                      Width="100%" Height="350px" 
+                                      ChartOptions="@(new ChartOptions { ChartPalette = new[] { "#10B981" }, YAxisFormat = "N0" })" /> 
+                        }
+                        else
+                        {
+                            <div class="text-center">
+                                <MudProgressCircular Color="Color.Success" Indeterminate="true" Class="mb-2"/>
+                                <p class="text-muted small">Đang tải dữ liệu...</p>
+                            </div>
+                        }
+                    </div>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="4">
+                <MudPaper Class="rounded-4 shadow-sm border-0 h-100 d-flex flex-column" Elevation="0" Style="max-height: 480px;">
+                    <div class="p-4 border-bottom bg-white rounded-top-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="icon-circle bg-success-subtle text-success" style="width: 40px; height: 40px;">
+                                <i class="bi bi-activity fs-5"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold m-0 text-dark">Giao dịch mới nhất</h6>
+                                <small class="text-muted" style="font-size: 0.75rem;">Dòng tiền vừa ghi nhận</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-grow-1 overflow-auto custom-scrollbar p-0 bg-white">
+                        @if (revenueData?.RecentTransactions != null && revenueData.RecentTransactions.Any())
+                        {
+                            <MudList T="string" Dense="true" DisablePadding="true">
+                                @foreach (var item in revenueData.RecentTransactions)
+                                {
+                                    <div class="p-3 border-bottom d-flex align-items-start gap-3 hover-bg-light transition-fast">
+                                        <div class="mt-1">
+                                            <i class="bi bi-arrow-down-circle-fill text-success fs-5"></i>
+                                        </div>
+                                        <div class="flex-grow-1" style="min-width: 0;">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="fw-bold text-dark text-truncate pe-2" style="font-size: 0.85rem;">
+                                                    @ExtractHotelName(item.Description)
+                                                </span>
+                                                <span class="fw-bolder text-success small text-nowrap">
+                                                    +@item.Amount.ToString("N0")
+                                                </span>
+                                            </div>
+                                            <div class="text-muted small text-truncate mt-1" style="font-size: 0.75rem;">
+                                                @ExtractOrderInfo(item.Description)
+                                            </div>
+                                            <div class="d-flex align-items-center gap-1 mt-1 text-secondary" style="font-size: 0.7rem;">
+                                                <i class="bi bi-clock"></i> 
+                                                <span>@GetTimeAgo(item.Date)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </MudList>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-column justify-content-center align-items-center h-100 text-muted py-5">
+                                <i class="bi bi-inbox fs-1 opacity-25 mb-2"></i>
+                                <span class="small">Chưa có giao dịch nào</span>
+                            </div>
+                        }
+                    </div>
+                    
+                    <div class="p-2 border-top bg-light rounded-bottom-4 text-center">
+                        <a href="/admin/finances" class="text-decoration-none small fw-bold text-primary hover-underline">
+                            Xem tất cả <i class="bi bi-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <MudText Typo="Typo.h6" Class="mb-3 fw-bold text-dark">Chỉ số hoạt động</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="p-4 rounded-4 border-0 mud-theme-primary shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-start">
+                        <div>
+                            <MudText Typo="Typo.caption" Class="text-white-50 text-uppercase fw-bold">Tổng hoa hồng</MudText>
+                            <MudText Typo="Typo.h5" Class="fw-bold text-white mt-1">@stats.PlatformTotalCommission.ToString("N0") ₫</MudText>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.MonetizationOn" Color="Color.Surface" />
+                    </div>
+                    <MudDivider Class="my-2" Light="true"/>
+                    <MudText Typo="Typo.caption" Class="text-white">Tháng này: @stats.RevenueThisMonth.ToString("N0") ₫</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="p-4 rounded-4 border-0 bg-white shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-start">
+                        <div>
+                            <MudText Typo="Typo.caption" Class="text-muted text-uppercase fw-bold">Công nợ rút tiền</MudText>
+                            <MudText Typo="Typo.h5" Class="fw-bold text-danger mt-1">@stats.CurrentWithdrawalDebt.ToString("N0") ₫</MudText>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" Color="Color.Error" />
+                    </div>
+                    <MudText Typo="Typo.caption" Class="text-muted mt-2 d-block">Cần thanh toán ngay</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="p-4 rounded-4 border-0 bg-white shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-start">
+                        <div>
+                            <MudText Typo="Typo.caption" Class="text-muted text-uppercase fw-bold">Chất lượng sàn</MudText>
+                            <div class="d-flex align-center gap-1 mt-1">
+                                <MudText Typo="Typo.h5" Class="fw-bold text-warning">@(stats.SystemAvgRating / 2)</MudText>
+                                <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Color="Color.Warning"/>
+                            </div>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Warning" />
+                    </div>
+                    <MudText Typo="Typo.caption" Class="text-muted mt-2 d-block">Trên @stats.TotalReviews đánh giá</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="p-4 rounded-4 border-0 bg-white shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-start">
+                        <div>
+                            <MudText Typo="Typo.caption" Class="text-muted text-uppercase fw-bold">Quy mô hệ thống</MudText>
+                            <MudText Typo="Typo.h5" Class="fw-bold text-dark mt-1">@stats.TotalUsers.ToString("N0") Người dùng</MudText>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.Groups" Color="Color.Info" />
+                    </div>
+                    <div class="d-flex gap-2 mt-2">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="MudBlazor.Variant.Text" Class="ma-0">@stats.ActiveHotels Hotel</MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="MudBlazor.Variant.Text" Class="ma-0">@stats.TotalBookings Đơn</MudChip>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+<style>
+    /* CSS Tinh chỉnh */
+    .ls-1 { letter-spacing: 1px; }
+    .bg-primary-subtle { background-color: #ecf2ff; color: #5d87ff; }
+    .bg-success-subtle { background-color: #e6fffa; color: #13deb9; }
+    .bg-warning-subtle { background-color: #fef5e5; color: #ffae1f; }
+    .bg-info-subtle { background-color: #e8f7ff; color: #49beff; }
+    
+    .metric-card { transition: all 0.2s ease-in-out; }
+    .metric-card:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.08) !important; }
+    
+    .icon-circle { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+    .cursor-pointer { cursor: pointer; }
+    
+    .hover-bg-light:hover { background-color: #f8f9fa; cursor: default; }
+    .hover-underline:hover { text-decoration: underline !important; }
+    
+    /* Scrollbar đẹp cho list transaction */
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #bdbdbd; }
+</style>
+
+@code {
+    // --- Data Models ---
+    private AdminDashboardStatsVM? stats;
+    private AdminRevenueVM? revenueData;
+    
+    // --- Config & State ---
+    private int _selectedYear = DateTime.Now.Year;
+    private List<int> _availableYears = new();
+    private const int _startYear = 2024;
+    private System.Globalization.CultureInfo vnCulture = new("vi-VN");
+
+    // --- Chart Config ---
+    public List<ChartSeries> Series = new();
+    public string[] XAxisLabels = { "T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var currentYear = DateTime.Now.Year;
+        for (int y = currentYear; y >= _startYear; y--)
+        {
+            _availableYears.Add(y);
+        }
+        
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            // 1. Tạo Client chuẩn và gắn Token 1 lần duy nhất ở đây
+            var client = _httpClientFactory.CreateClient("HotelBookingAPI");
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            
+            if (!string.IsNullOrEmpty(token))
+            {
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+
+            // 2. Load Thống kê tổng quát (Cards)
+            var statsRes = await client.GetFromJsonAsync<ApiResponse<AdminDashboardStatsVM>>("admin/dashboard");
+            if (statsRes?.StatusCode == StatusCodeResponse.Success)
+            {
+                stats = statsRes.Content;
+            }
+
+            // 3. Load Biểu đồ (Truyền client đã có token vào hàm con)
+            await LoadRevenueChartOnly(client, _selectedYear);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Lỗi kết nối máy chủ: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task OnYearChanged(int year)
+    {
+        _selectedYear = year;
+        Series.Clear(); // Xóa dữ liệu cũ để tạo hiệu ứng loading trên UI
+        StateHasChanged(); // Render lại ngay lập tức
+        
+        try 
+        {
+            // Tạo client mới cho request này để đảm bảo thread-safe
+            var client = _httpClientFactory.CreateClient("HotelBookingAPI");
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            if (!string.IsNullOrEmpty(token)) 
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            // Gọi hàm load với client chuẩn
+            await LoadRevenueChartOnly(client, year); 
+        }
+        catch (Exception ex)
+        {
+             Snackbar.Add($"Không thể tải dữ liệu năm {year}", Severity.Error);
+        }
+    }
+
+    // --- HÀM QUAN TRỌNG ĐÃ SỬA ---
+    // Nhận HttpClient từ bên ngoài vào (Dependency Injection qua tham số)
+    private async Task LoadRevenueChartOnly(HttpClient client, int year)
+    {
+        try 
+        {
+            // Gọi API
+            var res = await client.GetFromJsonAsync<ApiResponse<AdminRevenueVM>>($"admin/revenue-stats?year={year}");
+            
+            if (res?.StatusCode == StatusCodeResponse.Success && res.Content != null)
+            {
+                // Cập nhật biến toàn cục revenueData để dùng cho UI nếu cần
+                revenueData = res.Content;
+                
+                // Cập nhật Series cho biểu đồ
+                if (revenueData.MonthlyData != null)
+                {
+                    Series.Clear();
+                    Series.Add(new ChartSeries 
+                    { 
+                        Name = $"Doanh thu sàn {year}", 
+                        Data = revenueData.MonthlyData.Select(x => (double)x.Value).ToArray()
+                    });
+                    
+                    // Cập nhật trục X (phòng trường hợp BE trả về label khác)
+                    XAxisLabels = revenueData.MonthlyData.Select(x => x.Label.Replace("Tháng ", "T")) 
+                                .ToArray();
+                }
+                
+                StateHasChanged(); // Bắt buộc gọi để vẽ lại biểu đồ
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chart Error: {ex.Message}");
+        }
+    }
+
+    private string ExtractHotelName(string? description)
+    {
+        if (string.IsNullOrEmpty(description)) return "Giao dịch hệ thống";
+        var parts = description.Split('-');
+        return parts.Length > 0 ? parts[0].Trim() : description;
+    }
+
+    private string ExtractOrderInfo(string? description)
+    {
+        if (string.IsNullOrEmpty(description)) return "";
+        var parts = description.Split('-');
+        if (parts.Length > 1) return parts[1].Replace("(CommissionFee)", "").Trim();
+        return "Thu phí dịch vụ";
+    }
+
+    private string GetTimeAgo(DateTime date)
+    {
+        var span = DateTime.Now - date;
+        if (span.TotalMinutes < 1) return "Vừa xong";
+        if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes}p trước";
+        if (span.TotalHours < 24) return $"{(int)span.TotalHours}h trước";
+        return date.ToString("dd/MM HH:mm");
+    }
+
+    private void NavTo(string url) => _nav.NavigateTo(url);
+}

@@ -1,4 +1,3 @@
-namespace HotelBooking.Client.Models;
 
 [Serializable]
 public class HotelDraftSavedState
@@ -11,5 +10,6 @@ public class HotelDraftSavedState
     public List<int> SelectedAmenityIds { get; set; } = new();
     public Dictionary<int, int> SelectedPolicyByType { get; set; } = new();
     public List<string> CustomPolicies { get; set; } = new();
+    public List<OwnerHotelServiceVM> HotelServices { get; set; } = new();
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }

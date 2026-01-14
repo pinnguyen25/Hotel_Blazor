@@ -25,6 +25,8 @@ public partial class Amenity
 
     public string? Additional { get; set; }
 
+    public bool IsFilterable { get; set; }
+
     public virtual User? CreatedByNavigation { get; set; }
 
     public virtual ICollection<HotelAmenity> HotelAmenities { get; set; } = new List<HotelAmenity>();

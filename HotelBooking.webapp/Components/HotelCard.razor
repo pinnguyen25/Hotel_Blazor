@@ -3,72 +3,64 @@
 @inject NavigationManager _nav
 @inject AuthenticationStateProvider _auth
 @inject ISnackbar Snackbar
-<MudPaper Class="p-3 mb-3 rounded shadow-sm d-flex flex-column hotel-card-half-color" Style="position: relative; cursor:pointer;"
-    @onclick="() => GoToDetail(Hotel.HotelId)">
 
-    <!-- Ảnh khách sạn -->
-    <div class="position-relative mb-3">
-        @{
-            var displayImages = GetDisplayImages();
-        }
+<MudPaper Class="p-3 mb-3 rounded hotel-card-container shadow-sm d-flex flex-column hotel-card-half-color"
+    Style="position: relative; cursor:pointer; height: 100%; min-height: 350px;" @onclick="() => GoToDetail(Hotel.HotelId)">
 
+    <div class="position-relative mb-3 rounded" style="width: 100%; height: 220px; flex-shrink: 0;">
+        
         @if (displayImages.Count > 1)
         {
-            <!-- Có nhiều ảnh → dùng Carousel -->
-            <MudCarousel TData="string" Items="displayImages" AutoCycle="false" Interval="4000" Class="rounded"
-                Style="width:100%; height:220px; overflow:hidden;">
-                <ItemTemplate Context="img">
-                    <MudImage Src="@img" Alt="@Hotel.HotelName" ObjectFit="ObjectFit.Cover"
-                        Style="width:100%; height:220px; border-radius:8px;" OnError="() => HandleImageError(img)" />
-                </ItemTemplate>
+            <MudCarousel Class="h-100 w-100" ShowArrows="true" ShowBullets="false" AutoCycle="false" TData="object">
+                @foreach (var img in displayImages)
+                {
+                    <MudCarouselItem>
+                        <div class="h-100 w-100">
+                            <img src="@img" alt="@Hotel.HotelName" style="width:100%; height:100%; object-fit:cover;" />
+                        </div>
+                    </MudCarouselItem>
+                }
             </MudCarousel>
         }
         else
         {
-            <!-- Chỉ 1 ảnh → hiển thị trực tiếp -->
-            <MudImage Src="@displayImages.First()" Alt="@Hotel.HotelName" ObjectFit="ObjectFit.Cover"
-                Style="width:100%; height:220px; border-radius:8px;"
-                OnError="() => HandleImageError(displayImages.First())" />
+            <img src="@displayImages.FirstOrDefault()" alt="@Hotel.HotelName"
+                 style="width:100%; height:100%; object-fit:cover;" />
         }
 
-        <!-- Wishlist button -->
-        <MudTooltip>
-            <MudButton Class="position-absolute top-0 end-0 m-2" Size="Size.Small" Disabled="@isToggling"
-                @onclick="HandleWishlistToggle" Style="z-index: 5;"
-                AriaLabel="@(Hotel.IsWishlist ? "Xóa khỏi danh sách yêu thích" : "Thêm vào danh sách yêu thích")">
+        <div class="position-absolute top-0 end-0 m-2" style="z-index: 10;" @onclick:stopPropagation="true">
+            <MudButton Size="Size.Small" Disabled="@isToggling" OnClick="HandleWishlistToggle" Variant="MudBlazor.Variant.Filled"
+                Color="@(Hotel.IsWishlist ? Color.Error : Color.Surface)" Class="rounded-circle shadow-sm"
+                Style="min-width: 36px; width: 36px; height: 36px; padding: 0;">
                 <MudIcon
-                    Icon="@(Hotel.IsWishlist ? @Icons.Material.Filled.Favorite : @Icons.Material.Outlined.FavoriteBorder)"
-                    Color="@(Hotel.IsWishlist ? Color.Error : Color.Default)" />
+                    Icon="@(Hotel.IsWishlist ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                    Size="Size.Small" />
             </MudButton>
-
-        </MudTooltip>
+        </div>
     </div>
 
-    <!-- Tên khách sạn -->
-    <MudText Typo="Typo.h6" Class="fw-bold mb-1">@Hotel.HotelName</MudText>
-    <MudText Typo="Typo.body2" Class="mb-1" Color="Color.Secondary">@Hotel.Address</MudText>
-    <MudText Typo="Typo.body2">@Hotel.City, @Hotel.Country</MudText>
-    <!-- Rating Stars -->
+    <MudText Typo="Typo.h6" Class="fw-bold mb-1 text-truncate">@Hotel.HotelName</MudText>
+    <MudText Typo="Typo.body2" Class="mb-1 text-truncate" Color="Color.Secondary">@Hotel.Address</MudText>
+    <MudText Typo="Typo.body2">@Hotel.City @Hotel.Country</MudText>
+
     <div class="d-flex align-items-center mb-3 mt-1">
         <div class="d-flex align-items-center gap-1">
             @for (int i = 1; i <= 5; i++)
             {
-                <MudIcon Icon="@GetStarIcon(i)" 
-                         Color="@GetStarColor(i)" 
-                         Style="font-size:1rem;" />
+                <MudIcon Icon="@GetStarIcon(i)" Color="@GetStarColor(i)" Style="font-size:1rem;" />
             }
         </div>
         <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ms-2">
             (@Hotel.ReviewCount reviews)
         </MudText>
     </div>
-    <!-- Giá -->
-    <div class="text-start mt-auto">
+
+    <div class="text-start mt-3" style="height: 20px;">
         @if (Hotel.MinPricePerNight.HasValue)
         {
             @if (Hotel.MaxPricePerNight.HasValue && Hotel.MinPricePerNight < Hotel.MaxPricePerNight)
             {
-                <MudText Typo="Typo.h6" Class="fw-bold text-success mb-0">
+                <MudText Typo="Typo.h6" Class="fw-bold text-success mb-0" Style="line-height: 1.2;">
                     @Hotel.MinPricePerNight.Value.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))
                 </MudText>
                 <MudText Typo="Typo.caption" Class="text-decoration-line-through text-muted">
@@ -77,9 +69,10 @@
             }
             else
             {
-                <MudText Typo="Typo.h6" Class="fw-bold text-dark mb-0">
+                <MudText Typo="Typo.h6" Class="fw-bold text-dark mb-0" Style="line-height: 1.2;">
                     @Hotel.MinPricePerNight.Value.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))
                 </MudText>
+                <div style="height: 18px;"></div>
             }
         }
         else
@@ -89,21 +82,65 @@
     </div>
 </MudPaper>
 
+
+<style>
+  /* 1. Đảm bảo Card tuân thủ width của scroll-item và không bị nội dung đẩy phình ra */
+  .hotel-card-container {
+    width: 100% !important;
+    min-width: 0 !important;
+    /* Quan trọng: Cho phép card co lại đúng calc của scroll-item */
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s;
+  }
+
+  /* 2. Cố định dòng cho Tên khách sạn (1 dòng) */
+  .hotel-name-limit {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    height: 1.5rem;
+    /* Cố định chiều cao dòng */
+    line-height: 1.5rem;
+  }
+
+  /* 3. Cố định dòng cho Địa chỉ (2 dòng) giúp các card cao bằng nhau */
+  .hotel-address-limit {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    height: 3rem;
+    /* (1.5rem * 2) */
+    line-height: 1.5rem;
+    font-size: 0.875rem;
+  }
+</style>
+
 @code {
     [Parameter] public HotelListItemVM Hotel { get; set; } = null!;
     [Parameter] public EventCallback<int> OnWishlistToggle { get; set; }
     private bool isToggling = false;
+    private List<string> displayImages = new();
 
     // Tính toán sao (5 sao)
     private double StarRating => (double)Hotel.AverageRating / 2.0;
 
+    protected override void OnParametersSet()
+    {
+        displayImages = GetDisplayImages();
+    }
     private string GetStarIcon(int starIndex)
     {
         if (starIndex <= Math.Floor(StarRating))
-            return Icons.Material.Filled.Star; // Sao đầy
+            return Icons.Material.Filled.Star;
         if (starIndex <= Math.Ceiling(StarRating))
-            return Icons.Material.Filled.StarHalf; // Nửa sao
-        return Icons.Material.Filled.StarBorder; // Sao rỗng
+            return Icons.Material.Filled.StarHalf;
+        return Icons.Material.Filled.StarBorder;
     }
 
     private Color GetStarColor(int starIndex)
@@ -123,53 +160,42 @@
         }
 
         // 2. Thêm các ảnh khác từ ImageUrls (loại trùng)
-        if (Hotel.ImageUrls != null)
+        if (Hotel.ImageUrls != null && Hotel.ImageUrls.Any())
         {
-            foreach (var url in Hotel.ImageUrls)
-            {
-                if (!string.IsNullOrWhiteSpace(url) && !images.Contains(url))
-                {
-                    images.Add(url);
-                }
-            }
+            images.AddRange(Hotel.ImageUrls
+            .Where(u => !string.IsNullOrWhiteSpace(u) && !images.Contains(u))
+            .Take(5));
         }
 
         // 3. Nếu vẫn không có ảnh → dùng placeholder
         if (images.Count == 0)
         {
-            // Ảnh ngẫu nhiên 800x600 từ Picsum
-            images.Add("https://picsum.photos/800/600?random=" + Hotel.HotelId);
+            images.Add("/images/default-Hotels.jpg");
         }
 
         return images;
     }
 
-    private void HandleImageError(string failedUrl)
-    {
-        Console.WriteLine($"Lỗi tải ảnh: {failedUrl}");
-    }
-
     private async Task HandleWishlistToggle()
     {
         if (isToggling) return;
-        // kiểm tra đăng nhập
+
         var authState = await _auth.GetAuthenticationStateAsync();
-        // nếu chưa đăng nhập
         if (authState.User?.Identity?.IsAuthenticated != true)
         {
             Snackbar.Add("Bạn cần đăng nhập để lưu vào yêu thích!", Severity.Warning);
             return;
         }
-        // đã đăng nhập, tiếp tục xử lý
+
         isToggling = true;
         try
         {
-            await OnWishlistToggle.InvokeAsync(Hotel.HotelId);
+            if (OnWishlistToggle.HasDelegate)
+                await OnWishlistToggle.InvokeAsync(Hotel.HotelId);
         }
         finally
         {
             isToggling = false;
-            StateHasChanged();
         }
     }
 

@@ -47,3 +47,9 @@ public class HotelImagesVM
     public int TotalImages => (CoverImageUrl != null ? 1 : 0) + GalleryImageUrls.Count;
     public bool IsComplete => CoverImageUrl != null && GalleryImageUrls.Count >= 4;
 }
+
+public class HotelPoliciesVM
+{
+    public List<int> PolicyIds { get; set; } = new();
+    public List<OwnerCustomPolicyVM>? OwnerCustomPolicies { get; set; } = new();
+}

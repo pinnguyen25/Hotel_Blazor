@@ -8,7 +8,7 @@ public class AmenityDTO
     public string? IconClass { get; set; }
     public string? Description { get; set; }
     public string? Additional { get; set; }
-    
+    public bool IsFilterable { get; set; }
     public bool IsDeleted { get; set; } = false;
     public string? CreatedByName { get; set; }
     public string? UpdatedByName { get; set; }

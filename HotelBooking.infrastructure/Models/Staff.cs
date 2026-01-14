@@ -21,7 +21,13 @@ public partial class Staff
 
     public string? Additional { get; set; }
 
+    public bool IsActive { get; set; }
+
+    public decimal? Salary { get; set; }
+
     public virtual Hotel Hotel { get; set; } = null!;
+
+    public virtual ICollection<HousekeepingTask> HousekeepingTasks { get; set; } = new List<HousekeepingTask>();
 
     public virtual User User { get; set; } = null!;
 }

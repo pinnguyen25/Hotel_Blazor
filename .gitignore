@@ -54,3 +54,5 @@ project.assets.json
 ## ===== Others =====
 *.DS_Store
 Thumbs.db
+
+.fake

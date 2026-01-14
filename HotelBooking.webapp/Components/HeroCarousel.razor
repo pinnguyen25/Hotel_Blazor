@@ -1,27 +1,113 @@
-@* Components/Home/HeroCarousel.razor *@
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Text.Json
+@inject IHttpClientFactory _clientFactory
+
 <div id="heroCarousel" class="carousel slide carousel-fade position-relative" data-bs-ride="carousel">
-  <div class="carousel-inner">
-    <div class="carousel-item active vh-100 bg-cover"
-      style="background-image: url('https://source.unsplash.com/1600x900/?hotel=1');"></div>
-    <div class="carousel-item vh-100 bg-cover"
-      style="background-image: url('https://source.unsplash.com/1600x900/?resort');"></div>
-    <div class="carousel-item vh-100 bg-cover"
-      style="background-image: url('https://source.unsplash.com/1600x900/?beach,hotel');"></div>
-  </div>
+    
+    @if (banners != null && banners.Count > 1)
+    {
+        <div class="carousel-indicators" style="z-index: 20;">
+            @for (int i = 0; i < banners.Count; i++)
+            {
+                <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="@i" 
+                        class="@(i == 0 ? "active" : "")" aria-current="@(i == 0 ? "true" : "false")" 
+                        aria-label="Slide @(i + 1)"></button>
+            }
+        </div>
+    }
 
-  <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
-    <span class="carousel-control-prev-icon"></span>
-  </button>
-  <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
-    <span class="carousel-control-next-icon"></span>
-  </button>
+    <div class="carousel-inner">
+        @if (banners != null && banners.Any())
+        {
+            @for (int i = 0; i < banners.Count; i++)
+            {
+                var item = banners[i];
+                <div class="carousel-item @(i == 0 ? "active" : "") vh-100 bg-cover position-relative"
+                     style="background-image: url('@item.ImageUrl');">
+                    
+                    @if (!string.IsNullOrEmpty(item.LinkUrl))
+                    {
+                        <a href="@item.LinkUrl" class="d-block w-100 h-100 text-decoration-none"></a>
+                    }
+                    
+                    <div class="carousel-caption d-flex flex-column justify-content-center h-100" style="pointer-events: none;">
+                        @if (!string.IsNullOrEmpty(item.Title))
+                        {
+                            <h1 class="handwriting fw-bold display-4 text-shadow animate-up">@item.Title</h1>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
 
-  <div class="overlay position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-25"></div>
+    @if (banners != null && banners.Count > 1)
+    {
+        <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" style="z-index: 20;">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" style="z-index: 20;">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+        </button>
+    }
 
-  <div class="carousel-caption d-flex flex-column justify-content-center h-100">
-    <h1 class="fw-bold display-4">Enjoy Your Stay</h1>
-    <p class="lead">Find the best deals for your perfect vacation</p>
-  </div>
+    <div class="overlay position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-25" style="z-index: 1;"></div>
 
-  <SearchForm />
+    <SearchForm />
 </div>
+
+<style>
+    .bg-cover {
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        width: 100%;
+    }
+    .text-shadow {
+        text-shadow: 2px 2px 8px rgba(0,0,0,0.6);
+    }
+    /* Animation chữ bay lên */
+    .animate-up {
+        animation: fadeInUp 1s ease-out;
+    }
+    @@keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .media (max-width: 768px) {
+        .vh-100 { height: 70vh; } /* Trên điện thoại chỉ cần cao 70% màn hình */
+        .display-4 { font-size: 2.5rem; } /* Chữ nhỏ lại xíu */
+    }
+</style>
+
+@code {
+    private List<BannerVM> banners = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var client = _clientFactory.CreateClient("HotelBookingAPI");
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            // Gọi API lấy banner trang Home
+            var response = await client.GetAsync("hotel/get-by-page/Home");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var apiRes = await response.Content.ReadFromJsonAsync<ApiResponse<List<BannerVM>>>(options);
+                if (apiRes != null && apiRes.Content != null)
+                {
+                    banners = apiRes.Content;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Nếu lỗi kết nối, banners sẽ rỗng -> Hiển thị Fallback (Mục 3)
+            Console.WriteLine("Không thể tải banner từ API");
+        }
+    }
+}

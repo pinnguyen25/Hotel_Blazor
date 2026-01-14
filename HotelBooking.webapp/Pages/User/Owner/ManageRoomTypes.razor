@@ -1,231 +1,353 @@
 @page "/owner/hotels/{HotelId:int}/room-types"
 @using Blazored.LocalStorage
 @using System.Text.Json
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Net.Http.Headers
 @layout OwnerLayout
-@using HotelBooking.webapp.ViewModels
 @attribute [Authorize(Roles = "Owner")]
 @inject IHttpClientFactory _httpClientFactory
 @inject ISnackbar Snackbar
 @inject ILocalStorageService _localStorage
 @inject NavigationManager _nav
-@inject IJSRuntime JSRuntime
+@inject IDialogService DialogService
 
 <PageTitle>Quản lý loại phòng</PageTitle>
 
-<style>
-    .room-img {
-        width: 60px;
-        height: 60px;
-        object-fit: cover;
-    }
-
-    .badge {
-        font-size: 0.75rem;
-    }
-</style>
-
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-0 fw-semibold">Loại phòng - Khách sạn ID: @HotelId</h3>
-        <a href="/owner/hotels/@HotelId/room-types/add" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Thêm loại phòng
-        </a>
-    </div>
-
-    <div class="card shadow-sm border-0">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Ảnh</th>
-                            <th>Tên</th>
-                            <th>Giá/đêm</th>
-                            <th>Sức chứa</th>
-                            <th>Phòng</th>
-                            <th>Loại Giường</th>
-                            <th>View</th>
-                            <th>Tiện ích</th>
-                            <th>Trạng thái</th>
-                            <th class="text-end">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (roomTypes == null)
-                        {
-                            <tr>
-                                <td colspan="7" class="text-center py-4">
-                                    <div class="spinner-border">
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                        else if (!roomTypes.Any())
-                        {
-                            <tr>
-                                <td colspan="8" class="text-center py-5 text-muted">Chưa có loại phòng</td>
-                            </tr>
-                        }
-                        else
-                        {
-                            @foreach (var roomType in roomTypes)
-                            {
-                                <tr>
-                                    <td>
-                                        <img src="@(roomType.DefaultImageUrl ?? "/images/no-image.png")"
-                                            class="rounded room-img" />
-                                    </td>
-                                    <td class="fw-medium">@roomType.Name</td>
-                                    <td>@roomType.PricePerNight ₫</td>
-                                    <td>@roomType.AdultCapacity <i class="bi bi-person"></i> + @roomType.ChildCapacity <i
-                                            class="bi bi-person-heart"></i></td>
-                                    <td>@roomType.TotalRooms (còn @roomType.AvailableRooms)</td>
-
-                                    <!-- GIƯỜNG -->
-                                    <td>
-                                        @if (roomType.Beds.Any())
-                                        {
-                                            @foreach (var bed in roomType.Beds.Take(2))
-                                            {
-                                                <span class="badge bg-info small me-1">
-                                                    <i class="@bed.BedTypeIconClass"></i>
-                                                    @bed.BedTypeName × @bed.Quantity
-                                                </span>
-                                            }
-                                            @if (roomType.Beds.Count > 2)
-                                            {
-                                                <span class="badge bg-secondary small">+@(roomType.Beds.Count - 2)</span>
-                                            }
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted small">—</span>
-                                        }
-                                    </td>
-                                    <!-- VIEW -->
-                                    <td>
-                                        @if (roomType.Views.Any())
-                                        {
-                                            var primary = roomType.Views.FirstOrDefault(v => v.IsPrimary) ?? roomType.Views.First();
-                                            <span class="badge bg-success small">
-                                                <i class="@primary.ViewTypeIconClass"></i>
-                                                @primary.ViewTypeName
-                                            </span>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted small">—</span>
-                                        }
-                                    </td>
-                                    <!-- TIỆN ÍCH -->
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            @foreach (var a in roomType.Amenities.Take(3))
-                                            {
-                                                <span class="badge bg-light text-dark border small">
-                                                    <i class="@a.IconClass"></i>
-                                                </span>
-                                            }
-                                            @if (roomType.Amenities.Count > 3)
-                                            {
-                                                <span class="badge bg-secondary small">+@(roomType.Amenities.Count - 3)</span>
-                                            }
-                                        </div>
-                                    </td>
-
-                                    <td>
-                                        <span class="badge @(roomType.IsActive ? "bg-success" : "bg-secondary")">
-                                            @(roomType.IsActive ? "Hiển thị" : "Ẩn")
-                                        </span>
-                                    </td>
-
-                                    <td class="text-end">
-                                        <a href="/owner/hotels/@HotelId/room-types/edit/@roomType.Id"
-                                            class="btn btn-sm btn-outline-warning">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        <button class="btn btn-sm btn-outline-danger ms-1" @onclick="() => Delete(roomType.Id)">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            }
-                        }
-                    </tbody>
-                </table>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4 mb-5">
+    <div class="d-flex flex-column flex-sm-row justify-space-between align-start align-sm-center mb-4 gap-3">
+        <div>
+            <MudText Typo="Typo.h5" Class="fw-bold text-primary">Danh sách loại phòng</MudText>
+            <div class="d-flex align-center gap-2">
+                <MudIcon Icon="@Icons.Material.Filled.Hotel" Size="Size.Small" Color="Color.Default"/>
+                <MudText Typo="Typo.caption" Class="text-muted">Khách sạn ID: @HotelId</MudText>
             </div>
         </div>
+        <MudButton Variant="MudBlazor.Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="() => OpenEditor(null)" Class="rounded-pill px-4 shadow-sm w-sm">
+            Thêm loại phòng
+        </MudButton>
     </div>
-</div>
 
-@code
+    <MudTable Items="@roomTypes" Hover="true" Loading="@isLoading" Elevation="2" Outlined="true" 
+              Class="rounded-lg" Breakpoint="Breakpoint.Md">
+        <HeaderContent>
+            <MudTh>Ảnh</MudTh>
+            <MudTh>Tên loại phòng</MudTh>
+            <MudTh>Giá/Đêm</MudTh>
+            <MudTh>Sức chứa</MudTh>
+            <MudTh>Số lượng</MudTh>
+            <MudTh>Tiện ích & View</MudTh>
+            <MudTh Style="text-align:center">Trạng thái</MudTh>
+            <MudTh Style="text-align:right">Thao tác</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Ảnh">
+                <MudImage Rounded="true" Size="Size.Large" Width="100" Height="70" ObjectFit="ObjectFit.Cover"
+                          Src="@(context.DefaultImageUrl ?? "/images/no-image.png")" Class="rounded-lg shadow-sm" />
+            </MudTd>
+
+            <MudTd DataLabel="Tên loại phòng">
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle2" Class="fw-bold text-primary">@context.Name</MudText>
+                    @if (!string.IsNullOrEmpty(context.Description))
+                    {
+                        <MudText Typo="Typo.caption" Class="text-muted" Style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                            @context.Description
+                        </MudText>
+                    }
+                </MudStack>
+            </MudTd>
+
+            <MudTd DataLabel="Giá/Đêm">
+                <MudText Color="Color.Success" Typo="Typo.body2" Class="fw-bold">
+                    @context.PricePerNight.ToString("N0") ₫
+                </MudText>
+            </MudTd>
+
+            <MudTd DataLabel="Sức chứa">
+                <MudStack Row="true" AlignItems="MudBlazor.AlignItems.Center" Spacing="2">
+                    <MudTooltip Text="Người lớn">
+                        <div class="d-flex align-center bg-light rounded px-2 py-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                            <span class="ms-1 fw-bold">@context.AdultCapacity</span>
+                        </div>
+                    </MudTooltip>
+                    
+                    @if (context.ChildCapacity > 0)
+                    {
+                        <MudTooltip Text="Trẻ em">
+                            <div class="d-flex align-center bg-light rounded px-2 py-1 text-muted">
+                                <MudIcon Icon="@Icons.Material.Filled.ChildCare" Size="Size.Small" />
+                                <span class="ms-1">@context.ChildCapacity</span>
+                            </div>
+                        </MudTooltip>
+                    }
+                </MudStack>
+            </MudTd>
+
+            <MudTd DataLabel="Số lượng">
+                <MudStack Spacing="1">
+                    <div class="d-flex justify-space-between align-center" style="min-width: 100px;">
+                        <span class="text-muted small">Tổng:</span>
+                        <span class="fw-bold text-success">@context.Quantity</span>
+                    </div>
+             
+                    <div class="d-flex justify-space-between align-center">
+                        <span class="text-muted small">Trống:</span>
+                        <span class="fw-bold text-success">@context.AvailableRooms</span>
+                    </div>
+                </MudStack>
+            </MudTd>
+
+            <MudTd DataLabel="Tiện ích & View">
+                <MudStack Spacing="1">
+                    <div class="d-flex align-start gap-1 text-muted small">
+                        <MudIcon Icon="@Icons.Material.Filled.Bed" Size="Size.Small" Class="mt-1" />
+                        <div>
+                            @if (context.Beds.Any())
+                            {
+                                @foreach(var bed in context.Beds)
+                                {
+                                    <div style="white-space: nowrap;">@bed.Quantity x @bed.BedTypeName</div>
+                                }
+                            }
+                            else
+                            {
+                                <span class="fst-italic">Chưa cấu hình</span>
+                            }
+                        </div>
+                    </div>
+
+                    @if (context.Views.Any())
+                    {
+                        <div class="d-flex align-center gap-1 text-muted small">
+                            <MudIcon Icon="@Icons.Material.Filled.Landscape" Size="Size.Small" />
+                            <span class="text-truncate" style="max-width: 150px;">
+                                @string.Join(", ", context.Views.Select(v => v.ViewTypeName))
+                            </span>
+                        </div>
+                    }
+                </MudStack>
+            </MudTd>
+
+            <MudTd DataLabel="Trạng thái" Style="text-align:center">
+                @if (context.IsActive == true)
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle">Hoạt động</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Default" Size="Size.Small" Icon="@Icons.Material.Filled.VisibilityOff">Ẩn</MudChip>
+                }
+            </MudTd>
+
+            <MudTd DataLabel="Thao tác" Style="text-align:right">
+                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="0">
+                    <MudTooltip Text="Nhân bản">
+                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Color="Color.Info"
+                                       OnClick="@(async () => await CloneRoomType(context))" />
+                    </MudTooltip>
+                    <MudTooltip Text="Chỉnh sửa">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Warning" Size="Size.Small"
+                                       OnClick="() => OpenEditor(context.Id)" />
+                    </MudTooltip>
+                    <MudTooltip Text="Xóa">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => Delete(context))" />
+                    </MudTooltip>
+                </MudStack>
+            </MudTd>
+        </RowTemplate>
+
+        <PagerContent>
+            <MudTablePager RowsPerPageString="Số dòng:" />
+        </PagerContent>
+
+        <NoRecordsContent>
+            <div class="d-flex flex-column align-center py-10">
+                <MudIcon Icon="@Icons.Material.Outlined.Hotel" Size="Size.Large" Color="Color.Default" style="font-size: 4rem; opacity: 0.5;" />
+                <MudText Typo="Typo.h6" Class="mt-3 text-muted">Chưa có loại phòng nào</MudText>
+                <MudButton Variant="MudBlazor.Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="() => OpenEditor(null)">
+                    Tạo mới ngay
+                </MudButton>
+            </div>
+        </NoRecordsContent>
+    </MudTable>
+</MudContainer>
+
+@if (_showEditor)
 {
-    [Parameter]
-    public int HotelId { get; set; }
-    private List<RoomTypeForOwnerVM>? roomTypes = new();
+    <RoomTypeEditor HotelId="@HotelId" RoomTypeId="@_selectedRoomId" AvailableServices="@availableServices"
+                    OnClose="CloseEditor" OnSuccess="ReloadList" />
+}
+
+@code {
+    [Parameter] public int HotelId { get; set; }
+
+    // Dùng VM chuẩn Display
+    private List<RoomTypeDetailVM> roomTypes = new();
+    private List<OwnerHotelServiceVM> availableServices = new();
+    private bool isLoading = true;
+    private bool _showEditor = false;
+    private int? _selectedRoomId = null;
     private HttpClient? _httpClient;
+
     protected override async Task OnInitializedAsync()
     {
         _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
         await SetAuthHeader();
-        await LoadRoomTypes();
+        await LoadServices();
+        await LoadData();
     }
 
     private async Task SetAuthHeader()
     {
         var token = await _localStorage.GetItemAsync<string>("accessToken");
         if (!string.IsNullOrEmpty(token))
-        {
-            _httpClient!.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-        }
-        else
-        {
-            Snackbar.Add("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.", Severity.Error);
-            _nav.NavigateTo("/login");
-        }
+            _httpClient!.DefaultRequestHeaders.Authorization = new("Bearer", token);
     }
-
-    private async Task LoadRoomTypes()
+    private async Task LoadServices()
     {
         try
         {
+            var res = await
+            _httpClient!.GetFromJsonAsync<ApiResponse<List<OwnerHotelServiceVM>>>($"hotel/owner/get-owner-services/{HotelId}");
+            availableServices = res?.Content ?? new();
+        }
+        catch { }
+    }
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+            // Set token header (Có thể tách thành helper hoặc dùng Custom HTTP Handler)
             await SetAuthHeader();
-            var response = await
-            _httpClient!.GetFromJsonAsync<ApiResponse<List<RoomTypeForOwnerVM>>>($"hotel/owner/{HotelId}/roomtypes");
-            if (response?.StatusCode == StatusCodeResponse.Success && response.Content != null)
+
+            // API endpoint đúng
+            var res = await _httpClient!.GetFromJsonAsync<ApiResponse<List<RoomTypeDetailVM>>>($"hotel/owner/{HotelId}/roomtypes");
+
+            if (res?.StatusCode == StatusCodeResponse.Success)
             {
-                roomTypes = response.Content;
+                roomTypes = res.Content ?? new();
             }
             else
             {
-                roomTypes = new();
-                Snackbar.Add(response?.Message ?? "Không tải được dữ liệu", Severity.Warning);
+                Snackbar.Add(res?.Message ?? "Lỗi tải dữ liệu", Severity.Error);
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Lỗi khi tải loại phòng: {ex.Message}", Severity.Error);
-            roomTypes = new List<RoomTypeForOwnerVM>();
+            Snackbar.Add($"Lỗi kết nối: {ex.Message}", Severity.Error);
         }
+        finally { isLoading = false; }
     }
 
-    private async Task Delete(int id)
+    private void OpenEditor(int? id)
     {
-        var confirm = await JSRuntime.InvokeAsync<bool>("confirm", "Xóa loại phòng này?");
-        if (!confirm) return;
-
-        var res = await _httpClient!.DeleteAsync($"hotel/owner/roomtype/{id}");
-        if (res.IsSuccessStatusCode)
-        {
-            Snackbar.Add("Xóa thành công!", Severity.Success);
-            await LoadRoomTypes();
-        }
-        else
-        {
-            var msg = await res.Content.ReadAsStringAsync();
-            Snackbar.Add($"Lỗi: {msg}", Severity.Error);
-        }
+        _selectedRoomId = id;
+        _showEditor = true;
+    }
+    private void CloseEditor()
+    {
+        _showEditor = false;
+        _selectedRoomId = null;
+    }
+    private async Task ReloadList()
+    {
+        _showEditor = false;
+        _selectedRoomId = null;
+        await LoadData(); // Tải lại danh sách để thấy thay đổi
     }
 
+    private async Task CloneRoomType(RoomTypeDetailVM item)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+        "Xác nhận tạo",
+        (MarkupString)$"Bạn muốn tạo thêm <b>{item.Name}</b> gói giá mới?",
+        yesText: "Tạo ngay", cancelText: "Hủy");
+
+        if (confirm == true)
+        {
+            isLoading = true; // Hiện loading quay quay
+            try
+            {
+                await SetAuthHeader();
+                // Gọi API Clone ở Backend
+                // Lưu ý: Endpoint này phải khớp với cái bạn đã viết ở Backend (HotelController)
+                var res = await _httpClient!.PostAsync($"hotel/owner/roomtype/clone/{item.Id}", null);
+
+                if (res.IsSuccessStatusCode)
+                {
+                    // Backend trả về chi tiết phòng vừa tạo (RoomTypeForOwnerDTO)
+                    var apiRes = await res.Content.ReadFromJsonAsync<ApiResponse<RoomTypeDetailVM>>();
+
+                    if (apiRes?.StatusCode == StatusCodeResponse.Success && apiRes.Content != null)
+                    {
+                        // 1. Tải lại danh sách để thấy dòng mới
+                        await LoadData();
+
+                        // 2. Thông báo
+                        Snackbar.Add("Tạo thành công! Hãy cập nhật giá và số lượng.", Severity.Success);
+
+                        // 3. MỞ NGAY FORM EDIT CHO PHÒNG VỪA TẠO (UX tốt)
+                        OpenEditor(apiRes.Content.Id);
+                    }
+                    else
+                    {
+                        Snackbar.Add(apiRes?.Message ?? "Lỗi xử lý kết quả", Severity.Error);
+                    }
+                }
+                else
+                {
+                    var error = await res.Content.ReadAsStringAsync();
+                    Snackbar.Add($"Lỗi nhân bản: {error}", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Lỗi exception: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                isLoading = false;
+            }
+        }
+    }
+    
+    private async Task Delete(RoomTypeDetailVM item)
+    {
+        // Dùng Dialog chuẩn của MudBlazor
+        var confirm = await DialogService.ShowMessageBox(
+        "Xác nhận xóa",
+        (MarkupString)$"Bạn có chắc chắn muốn xóa loại phòng <b>{item.Name}</b>?<br/>Toàn bộ phòng vật lý thuộc loại này cũng sẽ bị xóa.",
+        yesText: "Xóa ngay", cancelText: "Hủy",
+        options: new MudBlazor.DialogOptions { MaxWidth = MaxWidth.ExtraSmall });
+
+        if (confirm == true)
+        {
+            try
+            {
+                await SetAuthHeader();
+                var res = await _httpClient!.DeleteAsync($"hotel/owner/roomtype/{item.Id}");
+
+                if (res.IsSuccessStatusCode)
+                {
+                    roomTypes.Remove(item); // Xóa khỏi UI
+                    StateHasChanged();
+                    Snackbar.Add("Xóa thành công", Severity.Success);
+                }
+                else
+                {
+                    var msg = await res.Content.ReadAsStringAsync();
+                    Snackbar.Add($"Không thể xóa: {msg}", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Lỗi: {ex.Message}", Severity.Error);
+            }
+        }
+    }
 }

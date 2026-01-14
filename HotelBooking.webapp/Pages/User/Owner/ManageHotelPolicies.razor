@@ -1,0 +1,325 @@
+@page "/owner/hotels/{HotelId:int}/policies"
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Net.Http.Headers
+@layout OwnerLayout
+@attribute [Authorize(Roles = "Owner")]
+@inject IHttpClientFactory _httpClientFactory
+@inject ISnackbar Snackbar
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+
+<PageTitle>Quản lý Chính sách & Quy định</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4 mb-5">
+    @* --- HEADER --- *@
+    <div class="d-flex justify-space-between align-center mb-4">
+        <div>
+            <MudText Typo="Typo.h5" Class="fw-bold text-primary">Chính sách khách sạn</MudText>
+        </div>
+        <MudButton Variant="MudBlazor.Variant.Filled" 
+                   Color="Color.Primary" 
+                   StartIcon="@Icons.Material.Filled.Save" 
+                   OnClick="SaveChanges" 
+                   Class="rounded-pill px-4 shadow-sm"
+                   Disabled="@_isSaving">
+            @(_isSaving ? "Đang lưu..." : "Lưu thay đổi")
+        </MudButton>
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="d-flex justify-center my-10">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        </div>
+    }
+    else
+    {
+        <MudGrid Spacing="4">
+            @* --- CỘT TRÁI: CHÍNH SÁCH HỆ THỐNG (SYSTEM POLICIES) --- *@
+            <MudItem xs="12" md="7">
+                <MudCard Elevation="0" Outlined="true" Class="rounded-lg h-100">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6" Class="fw-bold text-primary">
+                                <MudIcon Icon="@Icons.Material.Filled.LibraryBooks" Class="mr-2 mb-n1"/>
+                                Chính sách hệ thống
+                            </MudText>
+                            <MudText Typo="Typo.caption">Chọn các quy định có sẵn áp dụng cho khách sạn</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_systemPolicyTypes != null && _systemPolicyTypes.Any())
+                        {
+                            <MudExpansionPanels MultiExpansion="true" Elevation="0">
+                                @foreach (var type in _systemPolicyTypes)
+                                {
+                                    <MudExpansionPanel Text="@type.Name" IsExpanded="true" Class="fw-bold border mb-2 rounded">
+                                        <MudGrid>
+                                            @if (type.Policies != null)
+                                            {
+                                                @foreach (var policy in type.Policies)
+                                                {
+                                                    // Kiểm tra xem policy này đã được chọn chưa
+                                                    var isChecked = policy.Id.HasValue && _selectedPolicyIds.Contains(policy.Id.Value);
+                                                    
+                                                    <MudItem xs="12" sm="6">
+                                                        <MudCheckBox T="bool" 
+                                                                     Value="@isChecked" 
+                                                                     ValueChanged="@((v) => TogglePolicy(policy.Id, v))"
+                                                                     Label="@policy.Name" 
+                                                                     Color="Color.Primary" 
+                                                                     Dense="true" />
+                                                        @if (!string.IsNullOrEmpty(policy.Description))
+                                                        {
+                                                            <MudText Typo="Typo.caption" Class="ml-7 d-block text-muted mt-n1">
+                                                                @policy.Description
+                                                            </MudText>
+                                                        }
+                                                    </MudItem>
+                                                }
+                                            }
+                                        </MudGrid>
+                                    </MudExpansionPanel>
+                                }
+                            </MudExpansionPanels>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info">Không có chính sách hệ thống nào.</MudAlert>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            @* --- CỘT PHẢI: CHÍNH SÁCH TÙY CHỈNH (CUSTOM POLICIES) --- *@
+            <MudItem xs="12" md="5">
+                <MudCard Elevation="0" Outlined="true" Class="rounded-lg h-100 bg-gray-50">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6" Class="fw-bold text-secondary">
+                                <MudIcon Icon="@Icons.Material.Filled.EditNote" Class="mr-2 mb-n1" />
+                                Quy định riêng
+                            </MudText>
+                            <MudText Typo="Typo.caption">Thêm các quy định đặc thù của riêng bạn</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudTooltip Text="Thêm dòng mới">
+                                <MudIconButton Icon="@Icons.Material.Filled.AddCircle" 
+                                               Color="Color.Success" 
+                                               OnClick="AddCustomPolicy" />
+                            </MudTooltip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <div class="d-flex flex-column gap-3">
+                            @if (_customPolicies.Any())
+                            {
+                                @foreach (var custom in _customPolicies.Select((value, index) => new { value, index }))
+                                {
+                                    <MudPaper Class="p-3 relative" Elevation="0" Outlined="true">
+                                        <div class="d-flex gap-2 align-start">
+                                            <div class="flex-grow-1">
+                                                @* Tên quy định *@
+                                                <MudTextField @bind-Value="custom.value.Name" 
+                                                              Label="Tên quy định (Ví dụ: Giờ giới nghiêm)" 
+                                                              Variant="MudBlazor.Variant.Text" 
+                                                              Margin="Margin.Dense"
+                                                              Required="true"
+                                                              RequiredError="Bắt buộc nhập tên" />
+                                                
+                                                @* Mô tả *@
+                                                <MudTextField @bind-Value="custom.value.Description" 
+                                                              Label="Mô tả chi tiết (Tùy chọn)" 
+                                                              Variant="MudBlazor.Variant.Text" 
+                                                              Margin="Margin.Dense" 
+                                                              Lines="2" />
+                                                
+                                                @* Chọn nhóm (Nếu muốn map vào PolicyType, không bắt buộc) *@
+                                                @if(_systemPolicyTypes != null)
+                                                {
+                                                    <MudSelect T="int" Label="Nhóm" @bind-Value="custom.value.PolicyTypeId" Margin="Margin.Dense" Class="mt-2" Variant="MudBlazor.Variant.Text">
+                                                        <MudSelectItem Value="0">Khác</MudSelectItem>
+                                                        @foreach(var type in _systemPolicyTypes)
+                                                        {
+                                                            <MudSelectItem Value="@type.Id">@type.Name</MudSelectItem>
+                                                        }
+                                                    </MudSelect>
+                                                }
+                                            </div>
+                                            
+                                            @* Nút xóa *@
+                                            <div class="mt-2">
+                                                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" 
+                                                               Color="Color.Error" 
+                                                               Size="Size.Small"
+                                                               OnClick="() => RemoveCustomPolicy(custom.value)" 
+                                                               Title="Xóa" />
+                                            </div>
+                                        </div>
+                                    </MudPaper>
+                                }
+                            }
+                            else
+                            {
+                                <div class="d-flex flex-column align-center py-5 text-muted border-dashed rounded bg-white">
+                                    <MudIcon Icon="@Icons.Material.Outlined.NoteAdd" Size="Size.Large" Class="mb-2"/>
+                                    <MudText Typo="Typo.body2">Chưa có quy định riêng nào.</MudText>
+                                    <MudButton Variant="MudBlazor.Variant.Text" Color="Color.Primary" OnClick="AddCustomPolicy" Size="Size.Small">Thêm ngay</MudButton>
+                                </div>
+                            }
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int HotelId { get; set; }
+
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+    private HttpClient? _httpClient;
+
+    // --- DATA MODELS ---
+    private List<PolicyTypeVM> _systemPolicyTypes = new(); // Danh sách Policy hệ thống (để render checkbox)
+    private HashSet<int> _selectedPolicyIds = new();       // Các ID hệ thống đã tick chọn (dùng HashSet để tra cứu nhanh)
+    private List<OwnerCustomPolicyVM> _customPolicies = new(); // Danh sách Policy tự nhập
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+        await SetAuthHeader();
+        await LoadData();
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            _httpClient!.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            _isLoading = true;
+
+            // 1. Gọi API lấy danh sách toàn bộ Policy Hệ thống
+            var resSystem = await _httpClient!.GetFromJsonAsync<ApiResponse<List<PolicyTypeVM>>>("hotel/get-all-policy");
+            if (resSystem?.Content != null)
+            {
+                _systemPolicyTypes = resSystem.Content;
+            }
+
+            // 2. Gọi API lấy dữ liệu Hotel Draft hiện tại (để biết đã chọn cái gì)
+            var resHotel = await _httpClient!.GetFromJsonAsync<ApiResponse<HotelDraftVM>>($"hotel/owner/{HotelId}/draft");
+            
+            if (resHotel?.Content != null)
+            {
+                // Map dữ liệu từ Backend về biến Frontend
+                
+                // a. Map System Policies (ID)
+                _selectedPolicyIds = resHotel.Content.SelectedPolicyIds.ToHashSet();
+
+                // b. Map Custom Policies
+                // Lưu ý: PropertyNameCaseInsensitive đã xử lý ở BE, nhưng ở đây ta map thủ công từ DTO sang VM
+                if (resHotel.Content.CustomPolicies != null)
+                {
+                    _customPolicies = resHotel.Content.CustomPolicies.Select(c => new OwnerCustomPolicyVM
+                    {
+                        Name = c.Name,
+                        Description = c.Description,
+                        PolicyTypeId = c.PolicyTypeId,
+                        PolicyTypeName = c.PolicyTypeName
+                    }).ToList();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi tải dữ liệu: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    // --- LOGIC UI ---
+
+    // Xử lý Checkbox System Policy
+    private void TogglePolicy(int? policyId, bool isChecked)
+    {
+        if (!policyId.HasValue) return;
+
+        if (isChecked)
+            _selectedPolicyIds.Add(policyId.Value);
+        else
+            _selectedPolicyIds.Remove(policyId.Value);
+    }
+
+    // Xử lý Custom Policy (Thêm dòng mới)
+    private void AddCustomPolicy()
+    {
+        _customPolicies.Add(new OwnerCustomPolicyVM 
+        { 
+            Name = "", 
+            Description = "",
+            PolicyTypeId = 0 // Mặc định là 0 (Khác) hoặc bạn có thể set default type
+        });
+    }
+
+    // Xử lý Custom Policy (Xóa dòng)
+    private void RemoveCustomPolicy(OwnerCustomPolicyVM item)
+    {
+        _customPolicies.Remove(item);
+    }
+
+    // --- LƯU DỮ LIỆU ---
+    private async Task SaveChanges()
+    {
+        // 1. Validate Frontend
+        if (_customPolicies.Any(x => string.IsNullOrWhiteSpace(x.Name)))
+        {
+            Snackbar.Add("Vui lòng nhập tên cho tất cả các quy định riêng.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            _isSaving = true;
+            
+            // 2. Chuẩn bị Payload gửi lên API SelectPolicyToHotelAsync
+            var payload = new HotelPoliciesVM
+            {
+                PolicyIds = _selectedPolicyIds.ToList(),
+                OwnerCustomPolicies = _customPolicies
+            };
+
+            // 3. Gọi API
+            var response = await _httpClient!.PostAsJsonAsync($"hotel/owner/{HotelId}/select-policies", payload);
+            var result = await response.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+
+            // 4. Xử lý kết quả
+            if (response.IsSuccessStatusCode && result?.StatusCode == StatusCodeResponse.Success)
+            {
+                Snackbar.Add("Lưu chính sách thành công!", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Lưu thất bại: {result?.Message ?? "Lỗi không xác định"}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi kết nối: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+    
+}

@@ -1,0 +1,393 @@
+@page "/owner/hotels/{HotelId:int}/bookings/calendar"
+@layout OwnerLayout
+@attribute [Authorize(Roles = "Owner, Staff")]
+
+@using Radzen
+@using Radzen.Blazor
+@using HotelBooking.webapp.ViewModels.Hotel
+
+@inject IHttpClientFactory HttpClientFactory
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject ISnackbar Snackbar
+@inject TooltipService TooltipService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Lịch xếp phòng</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="fw-bold text-primary mb-1">Lịch đặt phòng</h4>
+            <small class="text-muted">Xem lịch theo tháng/tuần. Click ô trống để tạo đơn.</small>
+        </div>
+
+        <div class="d-flex gap-3 small fw-bold">
+            <div class="d-flex align-items-center"><span class="badge bg-success me-1">&nbsp;</span> Đã cọc</div>
+            <div class="d-flex align-items-center"><span class="badge bg-danger me-1">&nbsp;</span> Đang ở</div>
+            <div class="d-flex align-items-center"><span class="badge bg-warning text-dark me-1">&nbsp;</span> Chờ TT
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else
+    {
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-0">
+                <RadzenScheduler @ref=@scheduler style="height: 800px;" TItem="SchedulerBookingVM" Data="@bookings"
+                    StartProperty="StartTime" EndProperty="EndTime" TextProperty="GuestName" SelectedIndex="0"
+                    LoadData="@OnLoadData" AppointmentRender=@OnAppointmentRender
+                    AppointmentMouseEnter=@OnAppointmentMouseEnter SlotSelect=@OnSlotSelect
+                    AppointmentSelect=@OnAppointmentSelect>
+
+                    <RadzenMonthView />
+                    <RadzenWeekView />
+                    <RadzenDayView />
+                </RadzenScheduler>
+            </div>
+        </div>
+    }
+</div>
+
+@if (showWalkInModal)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold">Tạo Booking Nhanh</h5>
+                    <button type="button" class="btn-close btn-close-white"
+                        @onclick="() => showWalkInModal = false"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Chọn Phòng *</label>
+                        <select class="form-select fw-bold" @bind="walkInRequest.PhysicalRoomId">
+                            <option value="0">-- Chọn phòng --</option>
+                            @foreach (var r in rooms)
+                            {
+                                <option value="@r.Id">@r.RoomNumber - @r.RoomTypeName</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label text-muted small fw-bold">Check-in</label>
+                            <input type="date" class="form-control" @bind="walkInRequest.CheckIn" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-muted small fw-bold">Check-out</label>
+                            <input type="date" class="form-control" @bind="walkInRequest.CheckOut" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Tên khách *</label>
+                        <input type="text" class="form-control" @bind="walkInRequest.GuestName" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">SĐT</label>
+                        <input type="text" class="form-control" @bind="walkInRequest.Phone" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Giá tiền *</label>
+                        <input type="number" class="form-control fw-bold text-success" @bind="walkInRequest.Price" />
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-secondary" @onclick="() => showWalkInModal = false">Hủy</button>
+                    <button type="button" class="btn btn-primary fw-bold" @onclick="SubmitWalkInBooking">Tạo đơn</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showEditModal && editingBooking != null)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5); z-index: 1050;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-white border-bottom">
+                    <div>
+                        <h5 class="modal-title fw-bold text-primary">
+                            <i class="bi bi-pencil-square me-2"></i>Chi tiết đặt phòng
+                        </h5>
+                        <small class="text-muted">Mã đơn: #@editingBooking.BookingId | Phòng:
+                            @editingBooking.RoomName</small>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="() => showEditModal = false"></button>
+                </div>
+
+                <div class="modal-body p-4 bg-light">
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-body p-3">
+                            <label class="form-label small fw-bold text-muted">Tên khách hàng</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control fw-bold" @bind="editingBooking.GuestName" />
+                                <button class="btn btn-outline-primary" @onclick="UpdateGuestName" title="Lưu tên mới">
+                                    <i class="bi bi-save"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body p-3">
+                            <h6 class="fw-bold mb-3 small text-muted text-uppercase">Điều chỉnh lịch / Phòng</h6>
+
+                            <div class="mb-3">
+                                <label class="form-label small text-muted">Chọn phòng mới</label>
+                                <select class="form-select" @bind="moveRequest.NewRoomId">
+                                    @foreach (var r in rooms)
+                                    {
+                                        <option value="@r.Id">@r.RoomNumber - @r.RoomTypeName</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small text-muted">Check-in</label>
+                                    <input type="date" class="form-control" @bind="moveRequest.NewCheckIn" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small text-muted">Check-out</label>
+                                    <input type="date" class="form-control" @bind="moveRequest.NewCheckOut" />
+                                </div>
+                            </div>
+
+                            <button class="btn btn-warning w-100 mt-3 fw-bold" @onclick="SubmitMoveBooking">
+                                <i class="bi bi-arrow-left-right me-2"></i> Lưu thay đổi Lịch/Phòng
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 pt-0 bg-light d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-danger" @onclick="CancelBooking">
+                        <i class="bi bi-trash me-2"></i> Hủy đơn này
+                    </button>
+
+                    <button type="button" class="btn btn-secondary" @onclick="() => showEditModal = false">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .rz-scheduler-nav {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .rz-event-content {
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+</style>
+
+@code {
+    [Parameter] public int HotelId { get; set; }
+
+    private RadzenScheduler<SchedulerBookingVM>? scheduler;
+    private List<SchedulerBookingVM> bookings = new();
+    private List<RoomPhysicalVM> rooms = new();
+    private bool isLoading = true;
+    private HttpClient? _httpClient;
+
+    // Modal Variables
+    private bool showWalkInModal = false;
+    private WalkInBookingRequestVM walkInRequest = new();
+
+    private bool showEditModal = false;
+    private SchedulerBookingVM? editingBooking;
+    private MoveBookingRequestVM moveRequest = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");
+        var token = await localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer",
+            token);
+
+        await LoadRooms();
+    }
+
+    private async Task LoadRooms()
+    {
+        try
+        {
+            var res = await _httpClient!.GetFromJsonAsync<ApiResponse<List<RoomPhysicalVM>>>($"hotel/owner/{HotelId}/rooms");
+            if (res?.Content != null) rooms = res.Content.OrderBy(r => r.Floor).ThenBy(r => r.RoomNumber).ToList();
+        }
+        catch { }
+        finally { isLoading = false; }
+    }
+
+    private async Task OnLoadData(SchedulerLoadDataEventArgs args)
+    {
+        try
+        {
+            var url = $"hotel/owner/{HotelId}/calendar?start={args.Start:yyyy-MM-dd}&end={args.End:yyyy-MM-dd}";
+            var res = await _httpClient!.GetFromJsonAsync<ApiResponse<List<SchedulerBookingVM>>>(url);
+            if (res?.Content != null) bookings = res.Content;
+        }
+        catch { }
+    }
+
+    // 1. CLICK Ô TRỐNG -> MỞ MODAL TẠO ĐƠN
+    void OnSlotSelect(SchedulerSlotSelectEventArgs args)
+    {
+        if (args.Start.Date < DateTime.Today)
+        {
+            Snackbar.Add("Không thể tạo đơn quá khứ", Severity.Warning);
+            return;
+        }
+
+        // Vì không có Resource View nên không biết click vào phòng nào -> Phải chọn tay
+        walkInRequest = new WalkInBookingRequestVM
+        {
+            CheckIn = args.Start,
+            CheckOut = args.Start.AddDays(1),
+            PhysicalRoomId = 0, // Sẽ chọn trong Modal
+            Price = 0
+        };
+        showWalkInModal = true;
+    }
+
+    private async Task SubmitWalkInBooking()
+    {
+        if (walkInRequest.PhysicalRoomId <= 0)
+        {
+            Snackbar.Add("Vui lòng chọn phòng.", Severity.Warning);
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(walkInRequest.GuestName))
+        {
+            Snackbar.Add("Vui lòng nhập tên khách.", Severity.Warning);
+            return;
+        }
+
+        var res = await _httpClient!.PostAsJsonAsync("hotel/owner/booking/walk-in", walkInRequest);
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Tạo đơn thành công!", Severity.Success);
+            showWalkInModal = false;
+            await scheduler!.Reload();
+        }
+        else
+        {
+            var err = await res.Content.ReadAsStringAsync();
+            Snackbar.Add($"Lỗi: {err}", Severity.Error);
+        }
+    }
+
+    // 2. CLICK VÀO BOOKING -> MỞ MODAL SỬA (THAY VÌ KÉO THẢ)
+    async Task OnAppointmentSelect(SchedulerAppointmentSelectEventArgs<SchedulerBookingVM> args)
+    {
+        editingBooking = args.Data;
+        moveRequest = new MoveBookingRequestVM
+        {
+            BookingId = editingBooking.BookingId,
+            NewRoomId = editingBooking.RoomId,
+            NewCheckIn = editingBooking.StartTime,
+            NewCheckOut = editingBooking.EndTime
+        };
+        showEditModal = true;
+    }
+
+    private async Task SubmitMoveBooking()
+    {
+        var res = await _httpClient!.PostAsJsonAsync("hotel/owner/booking/move", moveRequest);
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Cập nhật thành công!", Severity.Success);
+            showEditModal = false;
+            await scheduler!.Reload();
+        }
+        else
+        {
+            var err = await res.Content.ReadAsStringAsync();
+            Snackbar.Add($"Lỗi: {err}", Severity.Error);
+        }
+    }
+
+    private async Task UpdateGuestName()
+    {
+        if (editingBooking == null) return;
+
+        var req = new UpdateGuestNameVM
+        {
+            BookingRoomId = editingBooking.Id, // Dùng ID Detail (BookingRoomId)
+            GuestName = editingBooking.GuestName
+        };
+
+        // Gọi API Update Guest (API này bạn đã có ở RoomDetailForm)
+        var res = await _httpClient!.PutAsJsonAsync("hotel/owner/booking-room/update-guest", req);
+
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Đã cập nhật tên khách!", Severity.Success);
+            await scheduler!.Reload(); // Reload để lịch hiện tên mới
+        }
+        else
+        {
+            Snackbar.Add("Lỗi cập nhật tên", Severity.Error);
+        }
+    }
+
+    // --- LOGIC 2: HỦY ĐƠN ---
+    private async Task CancelBooking()
+    {
+        if (editingBooking == null) return;
+
+        // (Optional) Nên thêm Dialog confirm ở đây nếu muốn chắc chắn
+        bool confirm = await JSRuntime.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn HỦY đơn đặt phòng này không?");
+        if (!confirm) return;
+
+        // Gọi API Hủy (BookingId Master)
+        var res = await _httpClient!.PostAsync($"hotel/booking/cancel/{editingBooking.BookingId}", null);
+
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Đã hủy đơn thành công.", Severity.Success);
+            showEditModal = false;
+            await scheduler!.Reload(); // Booking sẽ biến mất khỏi lịch
+        }
+        else
+        {
+            var err = await res.Content.ReadAsStringAsync();
+            Snackbar.Add($"Không thể hủy: {err}", Severity.Error);
+        }
+    }
+
+    // --- UI Helpers ---
+    void OnAppointmentRender(SchedulerAppointmentRenderEventArgs<SchedulerBookingVM> args)
+    {
+        string color = "#6c757d";
+        if (args.Data.Status == "Confirmed") color = "#198754";
+        if (args.Data.Status == "CheckedIn") color = "#dc3545";
+        if (args.Data.Status == "PendingPayment") color = "#ffc107";
+        args.Attributes["style"] = $"background-color: {color}; border-radius: 4px; font-size: 12px; font-weight: 500;";
+    }
+
+    void OnAppointmentMouseEnter(SchedulerAppointmentMouseEventArgs<SchedulerBookingVM> args)
+    {
+        TooltipService.Open(args.Element, ds =>
+        @<div style="padding: 5px; min-width: 200px;">
+            <strong>Khách:</strong> @args.Data.GuestName <br />
+            <strong>Phòng:</strong> @args.Data.RoomName <br />
+            <strong>Ngày:</strong> @args.Data.StartTime.ToString("dd/MM") - @args.Data.EndTime.ToString("dd/MM") <br />
+            <strong>Trạng thái:</strong> @args.Data.Status
+        </div>,
+        new TooltipOptions { Duration = 5000 });
+    }
+
+}

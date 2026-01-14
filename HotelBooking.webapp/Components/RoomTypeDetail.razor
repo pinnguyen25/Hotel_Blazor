@@ -1,0 +1,141 @@
+@using MudBlazor
+@inject IHttpClientFactory _httpClientFactory
+@inject NavigationManager _nav
+
+@* Overlay *@
+<div class="room-detail-overlay" @onclick="Close">
+    <MudPaper Class="room-detail-card rounded-xl" Elevation="4" @onclick:stopPropagation="true" Style="max-height: 90vh; height: 80vh;">
+
+        @* Nút đóng *@
+        <div class="d-flex justify-end pt-2 pe-2" style="position: absolute; top: 0; right: 0; z-index: 10;">
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" OnClick="Close" Style="background-color: rgba(255,255,255,0.7);" />
+        </div>
+
+        @* Nội dung chính *@
+        <div class="d-flex flex-column" style="height: 100%; width: 100%;">
+            @if (isLoading)
+            {
+                <div class="d-flex justify-center align-center" style="height: 100%;">
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                </div>
+            }
+            else if (roomDetail == null)
+            {
+                <div class="d-flex justify-center align-center" style="height: 100%;">
+                    <MudAlert Severity="Severity.Error">Không thể tải hình ảnh phòng.</MudAlert>
+                </div>
+            }
+            else
+            {
+                @* CAROUSEL ẢNH *@
+                <MudCarousel Class="mud-width-full" Style="height: 100%; flex-grow: 1;" ShowArrows="true" ShowBullets="true" AutoCycle="false" TData="object">
+                    @if (roomDetail.RoomImages != null && roomDetail.RoomImages.Any())
+                    {
+                        foreach (var img in roomDetail.RoomImages)
+                        {
+                            <MudCarouselItem Transition="Transition.Slide">
+                                <div class="d-flex" style="height:100%; width: 100%; background-color: #000;">
+                                    @* Dùng object-fit: contain để thấy hết ảnh *@
+                                    <img src="@img" style="object-fit:contain; width:100%; height:100%; display: block; margin: auto;" />
+                                </div>
+                            </MudCarouselItem>
+                        }
+                    }
+                    else
+                    {
+                        <MudCarouselItem>
+                             <div class="d-flex" style="height:100%; width: 100%; background-color: #000;">
+                                <img src="/images/default-room.jpg" style="object-fit:cover; width:100%; height:100%" />
+                            </div>
+                        </MudCarouselItem>
+                    }
+                </MudCarousel>
+            }
+        </div>
+    </MudPaper>
+</div>
+
+<style>
+    .room-detail-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(0, 0, 0, 0.85); /* Nền tối đậm hơn */
+        z-index: 9999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(3px);
+    }
+
+    .room-detail-card {
+        width: 90%;
+        max-width: 1000px; 
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        animation: fadeIn 0.3s ease-in-out;
+        background-color: #000;
+        position: relative; 
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    
+    .mud-carousel-arrow-button, .mud-carousel-bullet {
+        color: white !important; 
+    }
+    .mud-carousel-bullet-active {
+         color: var(--mud-palette-primary) !important;
+    }
+</style>
+
+@code {
+    [Parameter] public int RoomTypeId { get; set; }
+    
+    // --- QUAN TRỌNG: Phải giữ dòng này để hứng tham số từ cha truyền xuống ---
+    [Parameter] public int HotelId { get; set; } 
+    // ------------------------------------------------------------------------
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private RoomTypeDetailVM? roomDetail;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoomDetail();
+    }
+
+    private async Task LoadRoomDetail()
+    {
+        isLoading = true;
+        try
+        {
+            var client = _httpClientFactory.CreateClient("HotelBookingAPI");
+            // API lấy chi tiết phòng (bao gồm danh sách ảnh)
+            var response = await client.GetFromJsonAsync<ApiResponse<RoomTypeDetailVM>>($"hotel/roomtype-detail/{RoomTypeId}");
+            if (response.StatusCode == StatusCodeResponse.Success && response.Content != null)
+            {
+                roomDetail = response.Content;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+}

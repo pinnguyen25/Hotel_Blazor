@@ -1,9 +1,11 @@
 // Services/HotelFormState.cs
 using System.Net.Http.Headers;
 using Blazored.LocalStorage;
-using HotelBooking.Client.Models;
+// using HotelBooking.Client.Models;
 using Microsoft.AspNetCore.Components.Forms;
 using MudBlazor;
+using Microsoft.JSInterop;
+using HotelBooking.webapp.ViewModels.Hotel;
 using System.Text.Json;
 public sealed class HotelFormState
 {
@@ -11,12 +13,17 @@ public sealed class HotelFormState
     private readonly ILocalStorageService _localStorage;
     private readonly ISnackbar _snackbar;
     private const string STORAGE_KEY = HotelDraftSavedState.STORAGE_KEY;
-
+    private System.Timers.Timer _saveTimer;
     public HotelFormState(IHttpClientFactory factory, ILocalStorageService localStorage, ISnackbar snackbar)
     {
         _httpClient = factory.CreateClient("HotelBookingAPI");
         _localStorage = localStorage;
         _snackbar = snackbar;
+
+        // Setup timer auto-save (sau 1.5s ngừng gõ sẽ lưu xuống LocalStorage)
+        _saveTimer = new System.Timers.Timer(1500);
+        _saveTimer.Elapsed += async (sender, e) => await PersistAsync();
+        _saveTimer.AutoReset = false;
     }
 
     // TRẠNG THÁI CHUNG
@@ -31,16 +38,34 @@ public sealed class HotelFormState
     public Dictionary<int, int?> SelectedPolicyByType { get; private set; } = new(); // Key: PolicyTypeId, Value: PolicyId
     public List<string> CustomPolicies { get; private set; } = new();
     // Danh sách load từ API
-    public List<CityVM> Cities {get;private set;} = new();
+    public List<CityVM> Cities { get; private set; } = new();
     public List<AmenityVM> AllAmenities { get; set; } = new();
     public List<PolicyTypeVM> PolicyGroups { get; set; } = new();
-
+    public List<RoomTypeDetailVM> RoomTypes { get; private set; } = new();
+    public List<AccommodationTypeVM> AccommodationTypes { get; private set; } = new();
+    public List<OwnerHotelServiceVM> HotelServices { get; private set; } = new();
     public event Action? OnChange;
 
     public void Notify()
     {
+        _saveTimer.Stop();
+        _saveTimer.Start();
         OnChange?.Invoke();
     }
+
+    // --- VALIDATION LOGIC (Tập trung tại đây) ---
+    public bool BasicInfoIsValid =>
+        !string.IsNullOrWhiteSpace(BasicInfo.Name) &&
+        !string.IsNullOrWhiteSpace(BasicInfo.Address) &&
+        BasicInfo.CityId > 0 &&
+        !string.IsNullOrWhiteSpace(BasicInfo.ContactPhone);
+
+    // Kiểm tra ảnh kỹ hơn: Có cover và ít nhất 1 ảnh gallery
+    public bool ImagesIsValid =>
+        !string.IsNullOrEmpty(Images.CoverImageUrl) &&
+        Images.GalleryImageUrls != null &&
+        Images.GalleryImageUrls.Any();
+
 
     // load city
     public async Task LoadCitiesAsync()
@@ -49,17 +74,15 @@ public sealed class HotelFormState
         {
             await SetAuthHeader();
             var response = await _httpClient.GetAsync("hotel/get-cityName");
-            var cities = await response.Content.ReadFromJsonAsync<List<CityVM>>();
-
-            if (cities != null && cities.Any())
+            if (response.IsSuccessStatusCode)
             {
-                Cities = cities;
-                BasicInfo.Cities = Cities;
-                Notify(); // cập nhật MudSelect ngay lập tức
-            }
-            else
-            {
-                _snackbar.Add("Danh sách thành phố trống", Severity.Info);
+                var cities = await response.Content.ReadFromJsonAsync<List<CityVM>>();
+                if (cities != null)
+                {
+                    Cities = cities;
+                    BasicInfo.Cities = Cities; // Nếu VM có property này
+                    Notify();
+                }
             }
         }
         catch (Exception ex)
@@ -115,6 +138,70 @@ public sealed class HotelFormState
         }
     }
 
+    public async Task LoadRoomTypesAsync()
+    {
+        if (DraftHotelId == 0) return;
+        try
+        {
+            await SetAuthHeader();
+            var response = await _httpClient.GetFromJsonAsync<ApiResponse<List<RoomTypeDetailVM>>>($"hotel/owner/{DraftHotelId}/roomtypes");
+            if (response?.StatusCode == StatusCodeResponse.Success)
+            {
+                RoomTypes = response.Content ?? new();
+            }
+            Notify();
+        }
+        catch (Exception ex)
+        {
+            _snackbar.Add("Lỗi tải loại phòng: " + ex.Message, Severity.Error);
+        }
+    }
+
+    public async Task LoadAccommodationTypesAsync()
+    {
+        if (AccommodationTypes.Any()) return;
+        try
+        {
+            await SetAuthHeader();
+            var response = await _httpClient.GetFromJsonAsync<ApiResponse<List<AccommodationTypeVM>>>("hotel/get-all-accommodations");
+            AccommodationTypes = response?.Content ?? new();
+        }
+        catch (Exception ex)
+        {
+            _snackbar.Add($"Lỗi tải mô hình lưu trú: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // load hotelservice
+    public async Task LoadHotelServicesAsync()
+    {
+        if (DraftHotelId <= 0)
+        {
+            HotelServices = new();
+            return;
+        }
+
+        try
+        {
+            await SetAuthHeader();
+            var response = await _httpClient.GetFromJsonAsync<ApiResponse<List<OwnerHotelServiceVM>>>($"hotel/owner/get-owner-services/{DraftHotelId}");
+            if (response?.StatusCode == StatusCodeResponse.Forbidden || response?.StatusCode == StatusCodeResponse.NotFound)
+            {
+                _snackbar.Add("Phiên làm việc bản nháp đã hết hạn hoặc không hợp lệ. Đang tạo mới...", Severity.Warning);
+                await ClearDraftAsync(); // <--- Xóa rác trong LocalStorage ngay
+                return;
+
+            }
+            HotelServices = response?.Content ?? new();
+            Notify();
+        }
+        catch (Exception ex)
+        {
+            _snackbar.Add($"Lỗi tải dịch vụ: {ex.Message}", Severity.Error);
+        }
+
+    }
+
     // Load từ localStorage khi khởi động
     public async Task LoadFromStorageAsync()
     {
@@ -134,11 +221,13 @@ public sealed class HotelFormState
             SelectedPolicyByType = saved.SelectedPolicyByType?.ToDictionary(x => x.Key, x => (int?)x.Value)
                                      ?? new Dictionary<int, int?>();
             CustomPolicies = saved.CustomPolicies?.ToList() ?? new List<string>();
+            HotelServices = saved.HotelServices ?? new List<OwnerHotelServiceVM>();
             Notify();
 
             if (IsDraftCreated)
             {
                 await SyncImagesFromServerAsync();
+                await LoadRoomTypesAsync();
             }
         }
     }
@@ -146,53 +235,175 @@ public sealed class HotelFormState
     // Lưu vào localStorage mỗi khi thay đổi quan trọng
     private async Task PersistAsync()
     {
-        var toSave = new HotelDraftSavedState
+        try
         {
-            DraftHotelId = DraftHotelId,
-            BasicInfo = BasicInfo,
-            Images = Images,
-            SelectedAmenityIds = SelectedAmenityIds.ToList(),
-            SelectedPolicyByType = SelectedPolicyByType.Where(x => x.Value.HasValue).ToDictionary(x => x.Key, x => x.Value!.Value),
-            CustomPolicies = CustomPolicies.ToList(),
-            Timestamp = DateTime.UtcNow
-        };
-        await _localStorage.SetItemAsync(STORAGE_KEY, toSave);
+            var toSave = new HotelDraftSavedState
+            {
+                DraftHotelId = DraftHotelId,
+                BasicInfo = BasicInfo,
+                Images = Images,
+                SelectedAmenityIds = SelectedAmenityIds.ToList(),
+                SelectedPolicyByType = SelectedPolicyByType.Where(x => x.Value.HasValue).ToDictionary(x => x.Key, x => x.Value!.Value),
+                CustomPolicies = CustomPolicies.ToList(),
+                HotelServices = HotelServices,
+                Timestamp = DateTime.UtcNow
+            };
+            await _localStorage.SetItemAsync(STORAGE_KEY, toSave);
+        }
+        catch (Exception ex)
+        {
+            _snackbar.Add("Persist Error: " + ex.Message);
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_saveTimer != null)
+        {
+            _saveTimer.Stop();
+            _saveTimer.Dispose();
+            _saveTimer = null;
+        }
     }
 
     public async Task<bool> LoadDraftAsync(int hotelId)
     {
-        await SetAuthHeader();
-        var resp = await _httpClient.GetFromJsonAsync<ApiResponse<HotelDraftVM>>(
-            $"hotel/owner/{hotelId}/draft");
-
-        if (resp?.StatusCode != StatusCodeResponse.Success || resp.Content == null)
+        try
         {
-            _snackbar.Add("Không tải được draft.", Severity.Error);
+            if (PolicyGroups == null || !PolicyGroups.Any())
+            {
+                await LoadPoliciesAsync();
+            }
+            // 1. Gọi API lấy dữ liệu từ Server
+            await SetAuthHeader();
+            //  trả về full thông tin
+            var resp = await _httpClient.GetFromJsonAsync<ApiResponse<HotelDraftVM>>($"hotel/owner/{hotelId}/draft");
+
+            if (resp?.StatusCode != StatusCodeResponse.Success || resp.Content == null)
+            {
+                _snackbar.Add("Không tải được dữ liệu.", Severity.Error);
+                await ClearDraftAsync();
+                return false;
+            }
+
+            var data = resp.Content;
+
+            // 2. Gán dữ liệu từ Server vào State (RAM)
+            DraftHotelId = hotelId;
+
+            // Map Basic Info
+            BasicInfo = new HotelCreateOrUpdateVM
+            {
+                HotelId = hotelId,
+                Name = data.BasicInfo.Name,
+                Address = data.BasicInfo.Address,
+                CityId = data.BasicInfo.CityId,
+                Description = data.BasicInfo.Description,
+                ContactPhone = data.BasicInfo.ContactPhone,
+                ContactName = data.BasicInfo.ContactName,
+                ContactEmail = data.BasicInfo.ContactEmail,
+                AccommodationTypeId = data.BasicInfo.AccommodationTypeId,
+                ChainId = data.BasicInfo.ChainId
+            };
+
+            // Map Images
+            Images = new HotelImagesVM
+            {
+                CoverImageUrl = data.Images.CoverImageUrl,
+                GalleryImageUrls = data.Images.GalleryImageUrls ?? new List<string>()
+            };
+
+            // Map Amenities
+            if (data.SelectedAmenityIds != null && data.SelectedAmenityIds.Any())
+            {
+                SelectedAmenityIds = new HashSet<int>(data.SelectedAmenityIds);
+            }
+            else if (DraftHotelId == hotelId && SelectedAmenityIds.Any())
+            {
+                // Không làm gì cả, giữ nguyên SelectedAmenityIds đang có trong RAM 
+                Console.WriteLine("Keep Local Amenities because Server is empty.");
+            }
+            // 3. Nếu cả Server rỗng và LocalStorage không khớp -> Reset về rỗng
+            else
+            {
+                SelectedAmenityIds.Clear();
+            }
+
+            // Map Policies
+            SelectedPolicyByType.Clear();
+            if (data.SelectedPolicyIds != null)
+            {
+                foreach (var pid in data.SelectedPolicyIds)
+                {
+                    var group = PolicyGroups.FirstOrDefault(g => g.Policies!.Any(p => p.Id == pid));
+                    if (group != null)
+                    {
+                        SelectedPolicyByType[group.Id] = pid;
+                    }
+                }
+            }
+
+            CustomPolicies = data.CustomPolicies?.Select(x => x.Name).ToList() ?? new();
+
+            HotelServices = data.HotelServices?.Select(s => new OwnerHotelServiceVM
+            {
+                Id = s.Id,
+                ServiceId = s.ServiceId,
+                ServiceName = s.ServiceName,
+                Description = s.Description,
+                Price = s.Price,
+                Unit = s.Unit,
+                IsActive = s.IsActive
+            }).ToList() ?? new();
+
+            // === [FIX QUAN TRỌNG] MAP ROOM TYPES ===
+            RoomTypes = data.RoomTypes?.Select(rt => new RoomTypeDetailVM
+            {
+                Id = rt.Id,
+                Name = rt.Name,
+                PricePerNight = rt.PricePerNight,
+                Quantity = rt.Quantity,
+                Area = rt.Area,
+                AdultCapacity = rt.AdultCapacity,
+                ChildCapacity = rt.ChildCapacity,
+                Description = rt.Description,
+                DefaultImageUrl = rt.DefaultImageUrl,
+
+                // Map Amenities của Room (nếu có)
+                Amenities = rt.Amenities?.Select(a => new AmenityVM
+                {
+                    Id = a.Id,
+                    Name = a.Name,
+                    Additional = a.Additional
+                }).ToList() ?? new(),
+                SelectedAmenityIds = new HashSet<int>(rt.Amenities?.Select(a => a.Id) ?? new List<int>()),
+
+                // Map Beds
+                Beds = rt.Beds?.Select(b => new RoomBedTypesVM
+                {
+                    BedTypeId = b.BedTypeId,
+                    Quantity = b.Quantity
+                }).ToList() ?? new(),
+
+                // Map Views
+                Views = rt.Views?.Select(v => new RoomViewTypesVM
+                {
+                    ViewTypeId = v.ViewTypeId,
+                    ViewTypeName = v.ViewTypeName
+                }).ToList() ?? new(),
+                SelectedViewIds = new HashSet<int>(rt.Views?.Select(v => v.ViewTypeId) ?? new List<int>())
+            }).ToList() ?? new();
+
+            // Lưu dữ liệu mới vào LocalStorage
+            await PersistAsync();
+            Notify();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("LoadDraft Error: " + ex.Message);
             return false;
         }
-
-        var d = resp.Content;
-
-        // BASIC
-        BasicInfo = d.BasicInfo;
-        BasicInfo.HotelId = hotelId;
-
-        // IMAGES
-        Images = d.Images;
-
-        // AMENITIES
-        SelectedAmenityIds = new HashSet<int>(d.SelectedAmenityIds);
-
-        // POLICIES
-        SelectedPolicyByType = d.SelectedPolicyIds
-            .ToDictionary(id => id, id => (int?)id);
-
-        CustomPolicies = d.CustomPolicies.Select(c => c.Name).ToList();
-
-        DraftHotelId = hotelId;
-        await PersistAsync();
-        Notify();
-        return true;
     }
 
     // XÓA DRAFT (khi submit hoặc hủy)
@@ -204,6 +415,7 @@ public sealed class HotelFormState
         SelectedAmenityIds.Clear();
         SelectedPolicyByType.Clear();
         CustomPolicies.Clear();
+        HotelServices.Clear();
         await _localStorage.RemoveItemAsync(STORAGE_KEY);
         Notify();
     }
@@ -243,6 +455,9 @@ public sealed class HotelFormState
         {
             DraftHotelId = result.Content.HotelId;
             BasicInfo.HotelId = DraftHotelId;
+            HotelServices = new();
+            RoomTypes = new();
+            SelectedAmenityIds.Clear();
             await PersistAsync();
             Notify();
             _snackbar.Add($"Tạo draft thành công! ID: {DraftHotelId}", Severity.Success);
@@ -250,6 +465,135 @@ public sealed class HotelFormState
         }
 
         _snackbar.Add(result?.Message ?? "Tạo draft thất bại", Severity.Error);
+        return false;
+    }
+
+    public async Task UpdateBasicInfoAsync()
+    {
+        if (!IsDraftCreated) return;
+
+        // Gọi API Update (giống API Create nhưng là PUT)
+        await SetAuthHeader();
+        // Giả sử bạn dùng chung DTO HotelCreateOrUpdateVM
+        var response = await _httpClient.PutAsJsonAsync($"hotel/owner/update-hotel/{DraftHotelId}", BasicInfo);
+
+        // Không cần thông báo thành công mỗi lần auto-save để tránh phiền
+        if (!response.IsSuccessStatusCode)
+        {
+            Console.WriteLine("Auto-save basic info failed");
+        }
+    }
+
+    // cập nhập k cần load lại api
+    public void UpdateLocalServiceList(OwnerHotelServiceVM service, bool isDelete = false)
+    {
+        if (HotelServices == null) HotelServices = new List<OwnerHotelServiceVM>();
+        var index = HotelServices.FindIndex(x => x.ServiceId == service.ServiceId);
+        if (isDelete)
+        {
+            if (index != -1) HotelServices.RemoveAt(index);
+        }
+        else
+        {
+            if (index != -1)
+            {
+                // UPDATE: Ghi đè thông tin mới
+                // Giữ lại Id thực từ DB nếu service truyền vào đang bị 0 (đề phòng)
+                if (service.Id == 0 && HotelServices[index].Id > 0)
+                {
+                    service.Id = HotelServices[index].Id;
+                }
+                HotelServices[index] = service;
+            }
+            else
+            {
+                // ADD
+                HotelServices.Add(service);
+            }
+        }
+        _ = PersistAsync();
+        Notify();
+    }
+
+    public async Task RefreshRoomTypesAsync()
+    {
+        await LoadRoomTypesAsync();
+        Notify();
+    }
+
+    public async Task<int?> CloneRoomTypeAsync(int sourceRoomTypeId)
+    {
+        if (DraftHotelId == 0) return null;
+
+        try
+        {
+            await SetAuthHeader();
+            // Gọi API Clone ở Backend
+            var response = await _httpClient.PostAsync($"hotel/owner/roomtype/clone/{sourceRoomTypeId}", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Ta deserialize để lấy ID của phòng mới
+                var result = await response.Content.ReadFromJsonAsync<ApiResponse<RoomTypeDetailVM>>();
+
+                if (result?.StatusCode == StatusCodeResponse.Success && result.Content != null)
+                {
+                    // Refresh lại danh sách phòng trong RAM
+                    await LoadRoomTypesAsync();
+                    Notify();
+
+                    // Trả về ID mới để UI mở popup edit
+                    return result.Content.Id;
+                }
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                _snackbar.Add($"Lỗi nhân bản: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            _snackbar.Add($"Lỗi: {ex.Message}", Severity.Error);
+        }
+
+        return null;
+    }
+
+    public async Task<bool> DeleteRoomTypeAsync(int roomTypeId)
+    {
+        if (DraftHotelId == 0) return false;
+
+        await SetAuthHeader();
+        var response = await _httpClient.DeleteAsync($"hotel/owner/roomtype/{roomTypeId}"); // Đảm bảo API route đúng
+
+        if (response.IsSuccessStatusCode)
+        {
+            // Xóa thành công thì load lại danh sách luôn
+            await LoadRoomTypesAsync();
+            Notify();
+            return true;
+        }
+        return false;
+    }
+
+    public async Task<bool> DeleteServiceAsync(int serviceId)
+    {
+        if (DraftHotelId == 0) return false;
+
+        await SetAuthHeader();
+        var response = await _httpClient.DeleteAsync($"hotel/owner/remove-service/{serviceId}");
+
+        if (response.IsSuccessStatusCode)
+        {
+            // Xóa khỏi list trong RAM để cập nhật UI ngay
+            var item = HotelServices.FirstOrDefault(x => x.Id == serviceId);
+            if (item != null)
+            {
+                UpdateLocalServiceList(item, isDelete: true);
+            }
+            return true;
+        }
         return false;
     }
 
@@ -380,13 +724,6 @@ public sealed class HotelFormState
         }
     }
 
-    // Gọi sau khi tạo draft thành công
-    public void SetDraftHotelId(int hotelId)
-    {
-        DraftHotelId = hotelId;
-        Notify();
-    }
-
     // Gọi sau mỗi bước quan trọng (amenities, policies)
     private async Task SaveStepAsync(string endpoint, object data)
     {
@@ -414,10 +751,15 @@ public sealed class HotelFormState
         if (!IsDraftCreated) return;
         var dto = new
         {
-            SelectedPolicies = SelectedPolicyByType
-            .Where(x => x.Value.HasValue)
-            .Select(x => new { PolicyTypeId = x.Key, PolicyId = x.Value!.Value })
-            .ToList(),
+            PolicyIds = SelectedPolicyByType
+                .Where(x => x.Value.HasValue)
+                .Select(x => x.Value!.Value) // Chỉ lấy ID chính sách
+                .ToList(),
+
+            // SelectedPolicies = SelectedPolicyByType
+            // .Where(x => x.Value.HasValue)
+            // .Select(x => new { PolicyTypeId = x.Key, PolicyId = x.Value!.Value })
+            // .ToList(),
             OwnerCustomPolicies = CustomPolicies
             .Select(p => new { Name = p, PolicyTypeId = 0 })
             .ToList()
@@ -427,16 +769,13 @@ public sealed class HotelFormState
 
     private async Task SetAuthHeader()
     {
-        var token = await _localStorage.GetItemAsync<string>("accessToken");
-        if (!string.IsNullOrEmpty(token))
-            _httpClient.DefaultRequestHeaders.Authorization = new("Bearer", token);
+        try
+        {
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            if (!string.IsNullOrEmpty(token))
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        catch (JSDisconnectedException) { /* Bỏ qua nếu mất kết nối */ }
     }
 
-    // 
-    public bool BasicInfoIsValid =>
-    !string.IsNullOrWhiteSpace(BasicInfo.Name) &&
-    !string.IsNullOrWhiteSpace(BasicInfo.Address) &&
-    BasicInfo.CityId > 0 &&
-    !string.IsNullOrWhiteSpace(BasicInfo.ContactPhone);
-    public bool ImagesIsValid => Images.IsComplete;
 }

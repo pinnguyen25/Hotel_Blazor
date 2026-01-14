@@ -1,0 +1,267 @@
+@page "/admin/manages/manage-promotions"
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.Components.Manage
+@using HotelBooking.webapp.ViewModels.Hotel
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@inject IHttpClientFactory HttpClientFactory
+@inject ISnackbar Snackbar
+@inject ILocalStorageService localStorage
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <MudText Typo="Typo.h5" Class="fw-bold text-primary">Quản lý Khuyến mãi</MudText>
+        <MudButton Variant="MudBlazor.Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreatePopup">
+            Tạo mới
+        </MudButton>
+    </div>
+
+    <MudTable Items="@promotions" Hover="true" Striped="true" Loading="@isLoading" Elevation="3" Class="rounded-3">
+        <HeaderContent>
+            <MudTh>Mã Code</MudTh>
+            <MudTh>Tên chương trình</MudTh>
+            <MudTh>Loại hình</MudTh>
+            <MudTh>Mức giảm</MudTh>
+            <MudTh>Hiệu lực</MudTh>
+            <MudTh>Lượt dùng</MudTh>
+            <MudTh>Trạng thái</MudTh>
+            <MudTh>Thao tác</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Mã">
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="MudBlazor.Variant.Text"><b>@context.Code</b></MudChip>
+            </MudTd>
+            <MudTd DataLabel="Tên">
+                <div class="d-flex flex-column">
+                    <span class="fw-bold">@context.Name</span>
+                    @if(context.MinBookingValue > 0)
+                    {
+                        <small class="text-muted">Đơn tối thiểu: @context.MinBookingValue?.ToString("N0")</small>
+                    }
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Loại">
+                <MudChip T="string" Color="@GetCategoryColor(context.PromotionCategory)" Size="Size.Small">
+                    @GetCategoryLabel(context.PromotionCategory)
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Mức giảm">
+                @if (context.DiscountType == 1)
+                {
+                    <span class="text-success fw-bold">@context.DiscountValue.ToString("0")%</span>
+                    @if (context.MaxDiscountAmount > 0)
+                    {
+                        <div class="text-muted extra-small">(Tối đa @context.MaxDiscountAmount?.ToString("N0"))</div>
+                    }
+                }
+                else
+                {
+                    <span class="text-success fw-bold">@context.DiscountValue.ToString("N0") ₫</span>
+                }
+            </MudTd>
+            <MudTd DataLabel="Hiệu lực">
+                <div class="d-flex flex-column small">
+                    <span>@context.StartDate.ToString("dd/MM/yy")</span>
+                    <span>↓</span>
+                    <span>@context.EndDate.ToString("dd/MM/yy")</span>
+                </div>
+            </MudTd>
+             <MudTd DataLabel="Lượt dùng">
+                 @if(context.PromotionCategory == 0)
+                 {
+                     <MudText Typo="Typo.body2">@context.UsedCount / @(context.UsageLimit == 0 ? "∞" : context.UsageLimit)</MudText>
+                 }
+                 else
+                 {
+                     <MudText Typo="Typo.body2" Class="text-muted">Tự động</MudText>
+                 }
+             </MudTd>
+            <MudTd DataLabel="Trạng thái">
+                <MudSwitch T="bool" Value="@context.IsActive" Color="Color.Success" 
+                           ValueChanged="@((e) => ToggleStatus(context))" />
+            </MudTd>
+            <MudTd DataLabel="Thao tác">
+                <MudTooltip Text="Chỉnh sửa">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" 
+                                   OnClick="@(() => OpenEditPopup(context))" />
+                </MudTooltip>
+                <MudTooltip Text="Xóa">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" 
+                                   OnClick="@(() => DeletePromotion(context))" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager />
+        </PagerContent>
+    </MudTable>
+</MudContainer>
+<PromotionForm Visible="isPopupVisible" 
+                Model="currentPromotion" 
+                OnCancel="ClosePopup" 
+                OnSubmit="SavePromotion" />
+<style>
+    .extra-small { font-size: 0.75rem; }
+</style>
+
+@code {
+    private List<PromotionVM> promotions = new();
+    private bool isLoading = true;
+    private HttpClient? _httpClient;
+
+    // popup
+    private bool isPopupVisible = false;
+    private PromotionVM currentPromotion = new();
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = HttpClientFactory.CreateClient("HotelBookingAPI");
+        var token = await localStorage.GetItemAsync<string>("accessToken");
+        _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            var res = await _httpClient!.GetFromJsonAsync<ApiResponse<List<PromotionVM>>>("admin/promotions"); // Gọi API lấy list
+            if (res != null && res.Content != null)
+            {
+                promotions = res.Content;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Lỗi tải dữ liệu: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OpenCreatePopup()
+    {
+        currentPromotion = new PromotionVM 
+        { 
+            DiscountType = 1,
+            StartDate = DateTime.Today,
+            EndDate = DateTime.Today.AddDays(30),
+            IsActive = true
+        };
+        isPopupVisible = true;
+    }
+
+
+    private void ClosePopup()
+    {
+        isPopupVisible = false;
+    }
+
+    private void OpenEditPopup(PromotionVM item)
+    {
+        // Clone dữ liệu để không ảnh hưởng trực tiếp lên bảng khi chưa lưu
+        currentPromotion = new PromotionVM
+        {
+            Id = item.Id,
+            Code = item.Code,
+            Name = item.Name,
+            DiscountType = item.DiscountType,
+            DiscountValue = item.DiscountValue,
+            MaxDiscountAmount = item.MaxDiscountAmount,
+            MinBookingValue = item.MinBookingValue,
+            PromotionCategory = item.PromotionCategory,
+            StartDate = item.StartDate,
+            EndDate = item.EndDate,
+            UsageLimit = item.UsageLimit,
+            UsedCount = item.UsedCount,
+            IsActive = item.IsActive
+        };
+        isPopupVisible = true;
+    }
+
+    private async Task DeletePromotion(PromotionVM item)
+    {
+        // Hiển thị hộp thoại xác nhận (Dùng MudBlazor Dialog mặc định cho nhanh)
+        bool? result = await DialogService.ShowMessageBox(
+            "Xác nhận xóa", 
+            $"Bạn có chắc chắn muốn xóa khuyến mãi '{item.Name}'?", 
+            yesText: "Xóa", cancelText: "Hủy");
+
+        if (result == true)
+        {
+            var res = await _httpClient!.DeleteAsync($"admin/promotion/delete/{item.Id}");
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Đã xóa thành công.", Severity.Success);
+                await LoadData();
+            }
+            else
+            {
+                Snackbar.Add("Xóa thất bại.", Severity.Error);
+            }
+        }
+    }
+    private async Task SavePromotion(PromotionVM promo)
+    {
+        HttpResponseMessage res;
+        if (promo.Id > 0) 
+        {
+            // --- UPDATE ---
+            res = await _httpClient!.PutAsJsonAsync($"admin/promotion/update/{promo.Id}", promo);
+        }
+        else 
+        {
+            // --- CREATE ---
+            res = await _httpClient!.PostAsJsonAsync("admin/promotion/create", promo);
+        }
+        
+        if (res.IsSuccessStatusCode)
+        {
+            Snackbar.Add(promo.Id > 0 ? "Cập nhật thành công!" : "Tạo mới thành công!", Severity.Success);
+            isPopupVisible = false;
+            await LoadData();
+        }
+        else
+        {
+            var errorMsg = await res.Content.ReadAsStringAsync();
+            Snackbar.Add("Tạo thất bại.", Severity.Error);
+        }
+    }
+
+    private async Task ToggleStatus(PromotionVM promo)
+    {
+        // Gọi API Toggle
+        var res = await _httpClient!.PatchAsync($"admin/promotion/{promo.Id}/toggle", null);
+        if (res.IsSuccessStatusCode)
+        {
+            promo.IsActive = !promo.IsActive; // Update UI ngay lập tức
+            Snackbar.Add(promo.IsActive ? "Đã kích hoạt" : "Đã tắt", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add("Lỗi cập nhật trạng thái.", Severity.Error);
+        }
+    }
+
+    // Helper hiển thị UI
+    private string GetCategoryLabel(int type) => type switch
+    {
+        0 => "Voucher",
+        1 => "Owner",
+        2 => "Staff",
+        3 => "New User",
+        _ => "Khác"
+    };
+
+    private Color GetCategoryColor(int type) => type switch
+    {
+        0 => Color.Info,      // Voucher: Xanh dương
+        1 => Color.Warning,   // Owner: Vàng
+        2 => Color.Secondary, // Staff: Hồng
+        3 => Color.Success,   // New User: Xanh lá
+        _ => Color.Default
+    };
+}

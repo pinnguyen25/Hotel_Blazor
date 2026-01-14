@@ -4,176 +4,114 @@
 @using MudBlazor
 @using Microsoft.AspNetCore.Components.Forms
 
-<MudForm Class="pa-6" Elevation="6" Style="border-radius:16px; border: 2px dashed #1976d2; background: rgba(25,118,210,0.04);">
+<MudText Typo="Typo.h6" Class="mb-4">Hình ảnh khách sạn</MudText>
 
-    @if (IsUploading)
-    {
-        <MudProgressLinear Indeterminate="true" Class="mt-6 rounded-xl" Color="Color.Primary" />
-        <MudText Class="text-center mt-2">Đang xử lý...</MudText>
-    }
-
-    <MudGrid Spacing="4" Class="mt-4">
-        @if (FormState.Images.TotalImages == 0)
-        {
-            <!-- Trường hợp chưa có ảnh nào → vẫn giữ ô lớn + 4 ô nhỏ -->
-            <MudItem xs="12" md="7">
-                <label class="h-96 rounded-xl border-4 border-dashed border-primary/40 bg-primary/5 cursor-pointer flex items-center justify-center hover:bg-primary/10 transition-all block">
-                    <InputFile OnChange="e => AddNewFile(e, true)" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" />
-                    <div class="text-center">
-                        <MudIcon Icon="@Icons.Material.Filled.AddPhotoAlternate" Size="Size.Large" Color="Color.Primary" />
-                        <MudText Typo="Typo.h6" Class="mt-3">Thêm ảnh bìa</MudText>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">Ảnh đầu tiên sẽ tự động làm bìa</MudText>
+<MudGrid>
+    <MudItem xs="12" md="5">
+        <MudPaper Class="pa-4" Elevation="3">
+            <MudText Typo="Typo.subtitle1" Class="mb-2 fw-bold">Ảnh bìa (Cover)</MudText>
+            
+            <div class="d-flex flex-column align-center justify-center border-2 border-dashed pa-4 rounded" 
+                 style="height: 300px; background-color: #f5f5f5; position: relative;">
+                
+                @if (!string.IsNullOrEmpty(FormState.Images.CoverImageUrl))
+                {
+                    <MudImage Src="@FormState.Images.CoverImageUrl" ObjectFit="ObjectFit.Cover" 
+                              Style="width: 100%; height: 100%; border-radius: 8px;" />
+                              
+                    <div class="position-absolute top-0 right-0 ma-2">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Variant="MudBlazor.Variant.Filled" 
+                                       OnClick="@(() => DeleteImage(FormState.Images.CoverImageUrl, true))" />
                     </div>
-                </label>
-            </MudItem>
-
-            <MudItem xs="12" md="5">
-                <MudGrid Spacing="4">
-                    @for (int i = 0; i < 4; i++)
-                    {
-                        <MudItem xs="6">
-                            <div class="h-48 rounded-xl border-4 border-dashed border-gray bg-gray/5 flex items-center justify-center">
-                                <MudIcon Icon="@Icons.Material.Filled.AddAPhoto" Size="Size.Large" Color="Color.Default" />
-                            </div>
-                        </MudItem>
-                    }
-                </MudGrid>
-            </MudItem>
-        }
-        else
-        {
-            <!-- Có ít nhất 1 ảnh → layout chuẩn: bìa lớn trái + 4 ô phải (2x2) -->
-            <MudItem xs="12" lg="6">
-                <!-- Ảnh bìa lớn -->
-                @if (FormState.Images.CoverImageUrl != null)
-                {
-                    <label class="relative rounded-xl overflow-hidden shadow-2xl group cursor-pointer block h-96">
-                        <InputFile OnChange="e => ReplaceFile(e, true)" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                        <img src="@FormState.Images.CoverImageUrl" class="w-100 h-full object-cover" />
-                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center pointer-events-none">
-                            <MudIcon Icon="@Icons.Material.Filled.CameraAlt" Size="Size.Large" Color="Color.Surface" />
-                        </div>
-                        <MudChip T="string" Color="Color.Primary" Class="absolute top-3 left-3 z-20">Bìa</MudChip>
-                        <MudFab Color="Color.Error" Size="Size.Small"
-                                Class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all z-20"
-                                Icon="@Icons.Material.Filled.Delete"
-                                OnClick="() => ConfirmDelete(FormState.Images.CoverImageUrl!, true)"
-                                OnClick:stopPropagation />
-                    </label>
                 }
-                else if (FormState.Images.TotalImages < 5)
+                else
                 {
-                    <label class="h-96 rounded-xl border-4 border-dashed border-primary/40 bg-primary/5 cursor-pointer flex items-center justify-center hover:bg-primary/10 transition-all block">
-                        <InputFile OnChange="e => AddNewFile(e, true)" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" />
-                        <div class="text-center">
-                            <MudIcon Icon="@Icons.Material.Filled.AddPhotoAlternate" Size="Size.Large" Color="Color.Primary" />
-                            <MudText Typo="Typo.h6" Class="mt-3">Thêm ảnh bìa</MudText>
-                        </div>
-                    </label>
+                    <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Large" Color="Color.Default" />
+                    <MudText Typo="Typo.caption" Class="mt-2">Chưa có ảnh bìa</MudText>
                 }
-            </MudItem>
+            </div>
 
-            <!-- 4 ảnh phụ bên phải – luôn 2x2, không bị tràn -->
-            <MudItem xs="12" lg="6">
-                <MudGrid Spacing="4">
-                    @for (int i = 0; i < 4; i++)
-                    {
-                        var url = i < FormState.Images.GalleryImageUrls.Count ? FormState.Images.GalleryImageUrls[i] : null;
+            <MudFileUpload T="IBrowserFile" FilesChanged="UploadCover" Accept=".jpg, .jpeg, .png" Class="mt-3">
+                <ActivatorContent>
+                    <MudButton Variant="MudBlazor.Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CloudUpload" FullWidth="true">
+                        @(string.IsNullOrEmpty(FormState.Images.CoverImageUrl) ? "Tải ảnh bìa" : "Thay ảnh bìa")
+                    </MudButton>
+                </ActivatorContent>
+            </MudFileUpload>
+        </MudPaper>
+    </MudItem>
 
-                        <MudItem xs="6">
-                            @if (url != null)
-                            {
-                                <label class="relative rounded-xl overflow-hidden shadow-lg group cursor-pointer block h-56">
-                                    <InputFile OnChange="e => ReplaceFile(e, false, url)" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                                    <img src="@url" class="w-100 h-full object-cover" />
-                                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center pointer-events-none">
-                                        <MudIcon Icon="@Icons.Material.Filled.CameraAlt" Size="Size.Large" Color="Color.Surface" />
-                                    </div>
-                                    <MudFab Color="Color.Error" Size="Size.Small"
-                                            Class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all z-20"
-                                            Icon="@Icons.Material.Filled.Delete"
-                                            OnClick="() => ConfirmDelete(url, false)"
-                                            OnClick:stopPropagation />
-                                </label>
-                            }
-                            else if (FormState.Images.TotalImages < 5)
-                            {
-                                <label class="h-56 rounded-xl border-4 border-dashed border-gray bg-gray/5 cursor-pointer flex items-center justify-center hover:bg-gray/10 transition-all block">
-                                    <InputFile OnChange="e => AddNewFile(e, false)" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" />
-                                    <MudIcon Icon="@Icons.Material.Filled.AddAPhoto" Size="Size.Large" Color="Color.Default" />
-                                </label>
-                            }
-                        </MudItem>
-                    }
-                </MudGrid>
-            </MudItem>
-        }
-    </MudGrid>
+    <MudItem xs="12" md="7">
+        <MudPaper Class="pa-4" Elevation="3" Style="height: 100%;">
+            <div class="d-flex justify-space-between align-center mb-2">
+                <MudText Typo="Typo.subtitle1" Class="fw-bold">Ảnh phụ (Gallery)</MudText>
+                <MudText Typo="Typo.caption">@FormState.Images.GalleryImageUrls.Count / 4 ảnh</MudText>
+            </div>
 
-    @if (FormState.Images.IsComplete)
-    {
-        <MudAlert Severity="Severity.Success" Dense="true" Class="mt-6 rounded-lg">
-            Đã đủ 5 ảnh – Sẵn sàng tiếp tục
-        </MudAlert>
-    }
-    else
-    {
-        <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-6 rounded-lg">
-            Cần thêm @(5 - FormState.Images.TotalImages) ảnh
-        </MudAlert>
-    }
-</MudForm>
+            <div class="d-flex flex-wrap gap-3 mb-3">
+                @foreach (var url in FormState.Images.GalleryImageUrls)
+                {
+                    <div class="position-relative" style="width: 120px; height: 90px;">
+                        <MudImage Src="@url" ObjectFit="ObjectFit.Cover" Width="120" Height="90" Class="rounded border" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" 
+                                       Class="position-absolute top-0 right-0 ma-1 bg-white"
+                                       OnClick="@(() => DeleteImage(url, false))" />
+                    </div>
+                }
+                
+                @if (FormState.Images.GalleryImageUrls.Count < 4)
+                {
+                    <div class="d-flex align-center justify-center border-2 border-dashed rounded" 
+                         style="width: 120px; height: 90px; background-color: #fafafa;">
+                        <MudIcon Icon="@Icons.Material.Filled.AddPhotoAlternate" Color="Color.Default" />
+                    </div>
+                }
+            </div>
+
+            <MudFileUpload T="IReadOnlyList<IBrowserFile>" FilesChanged="UploadGallery" Accept=".jpg, .jpeg, .png" MaximumFileCount="4">
+                <ActivatorContent>
+                    <MudButton Variant="MudBlazor.Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.AddAPhoto" 
+                               Disabled="@(FormState.Images.GalleryImageUrls.Count >= 4)">
+                        Thêm ảnh phụ
+                    </MudButton>
+                </ActivatorContent>
+            </MudFileUpload>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@if (IsUploading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-4" />
+}
 
 @code {
     private bool IsUploading = false;
 
-    private async Task ReplaceFile(InputFileChangeEventArgs e, bool isCover, string? oldUrl = null)
+    private async Task UploadCover(IBrowserFile file)
     {
-        var file = e.File;
-        if (file == null || file.Size > 10 * 1024 * 1024) {
-            Snackbar.Add("Ảnh quá lớn (tối đa 10MB)", Severity.Error); return;
-        }
-
-        IsUploading = true; StateHasChanged();
-
-        bool success = isCover 
-            ? await FormState.UploadCoverAsync(file)
-            : await FormState.UploadGalleryAsync(file);
-
-        if (success && oldUrl != null)
-            _ = FormState.DeleteImageAsync(oldUrl);
-
-        if (success) await FormState.SyncImagesFromServerAsync();
+        if (file == null) return;
+        IsUploading = true;
+        await FormState.UploadCoverAsync(file);
         IsUploading = false;
     }
 
-    private async Task AddNewFile(InputFileChangeEventArgs e, bool isCover)
+    private async Task UploadGallery(IReadOnlyList<IBrowserFile> files)
     {
-        var file = e.File;
-        if (file == null || file.Size > 10 * 1024 * 1024) {
-            Snackbar.Add("Ảnh quá lớn (tối đa 10MB)", Severity.Error); return;
-        }
-
-        if (FormState.Images.TotalImages >= 5) return;
-
-        IsUploading = true; StateHasChanged();
-
-        bool success = string.IsNullOrEmpty(FormState.Images.CoverImageUrl) || isCover
-            ? await FormState.UploadCoverAsync(file)
-            : await FormState.UploadGalleryAsync(file);
-
-        if (success) await FormState.SyncImagesFromServerAsync();
-        IsUploading = false;
-    }
-
-    private async Task ConfirmDelete(string url, bool isCover)
-    {
-        var ok = await DialogService.ShowMessageBox("Xóa ảnh?", "Không thể khôi phục", yesText: "Xóa", cancelText: "Hủy");
-        if (ok == true)
+        if (files == null || !files.Any()) return;
+        IsUploading = true;
+        foreach (var file in files)
         {
-            await FormState.DeleteImageAsync(url);
-            await FormState.SyncImagesFromServerAsync();
-            Snackbar.Add("Đã xóa ảnh", Severity.Info);
+            if (FormState.Images.GalleryImageUrls.Count >= 4) break;
+            await FormState.UploadGalleryAsync(file);
         }
+        IsUploading = false;
     }
+
+    private async Task DeleteImage(string url, bool isCover)
+    {
+        await FormState.DeleteImageAsync(url);
+        // State sẽ tự cập nhật UI thông qua Notify() trong FormState
+    }
+
 }

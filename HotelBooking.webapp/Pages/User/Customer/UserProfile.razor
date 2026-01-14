@@ -1,0 +1,694 @@
+@page "/user/profile"
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.ViewModels
+@using System.Net.Http.Headers
+@using HotelBooking.webapp.ViewModels.Hotel
+@layout MainLayout
+@inject ICurrentUserService CurrentUserService
+@inject NavigationManager _nav
+@inject IHttpClientFactory _httpClientFactory
+@inject ILocalStorageService _localStorage
+@inject ISnackbar Snackbar
+@attribute [Authorize]
+<Header IsFixed="false" />
+<div class="container">
+    <div class="row min-vh-75">
+        <div class="col-lg-3 mb-4 py-5 profile-sidebar">
+            <div class="my-4">
+                <a href="/" class="text-decoration-none text-dark fw-bold">
+                    <i class="bi bi-arrow-left me-2 fs-4"></i>
+                </a>
+            </div>
+            <div class="list-group overflow-hidden">
+                <button
+                    class="list-group-item list-group-item-action py-3 @(ActiveTab == "details" ? "active-tab" : "")"
+                    @onclick='() => ActiveTab = "details"'>
+                    <i class="bi bi-person-fill me-3"></i> Thông tin cá nhân
+                </button>
+
+                <button
+                    class="list-group-item list-group-item-action py-3 @(ActiveTab == "history" ? "active-tab" : "")"
+                    @onclick='() => ActiveTab = "history"'>
+                    <i class="bi bi-calendar-check-fill me-3"></i> Lịch sử đặt phòng
+                </button>
+
+                <button
+                    class="list-group-item list-group-item-action py-3 @(ActiveTab == "wishlist" ? "active-tab" : "")"
+                    @onclick='() => ActiveTab = "wishlist"'>
+                    <i class="bi bi-heart-fill me-3"></i> Khách sạn đã lưu
+                </button>
+
+                @* <button class="list-group-item list-group-item-action py-3 text-muted">
+                    <i class="bi bi-credit-card-2-front-fill me-3"></i> Payment information
+                </button>
+                <button class="list-group-item list-group-item-action py-3 text-muted">
+                    <i class="bi bi-shield-lock-fill me-3"></i> Safety
+                </button>
+                <button class="list-group-item list-group-item-action py-3 text-muted">
+                    <i class="bi bi-gear-fill me-3"></i> Preferences
+                </button>
+
+                <button class="list-group-item list-group-item-action py-3 text-danger mt-2 border-top"
+                    @onclick="Logout">
+                    <i class="bi bi-box-arrow-right me-3"></i> Log out
+                </button> *@
+            </div>
+        </div>
+
+        <div class="col-lg-9 ps-lg-20 py-10">
+            @if (ActiveTab == "details")
+            {
+                <div class="row">
+                    <div class="col-md-8">
+                        <h3 class="handwriting mb-6" style="color: #54a9ffff;">Thông tin cá nhân</h3>
+                        @if (!isEditing)
+                        {
+                            <div class="mb-5">
+                                <img src="@(string.IsNullOrEmpty(UserProfiles.AvatarUrl) ? "/images/default-avatar.png" : UserProfiles.AvatarUrl)"
+                                    class="rounded-circle object-fit-cover border" width="80" height="80">
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+                                <div class="w-25 text-dark fw-bold">Họ và tên</div>
+                                <div class="flex-grow-1 text-dark">@UserProfiles.FullName</div>
+                                <button class="btn btn-link text-decoration-none text-muted small"
+                                    @onclick="StartEdit">Edit</button>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+                                <div class="w-25 text-dark fw-bold">Email</div>
+                                <div class="flex-grow-1 text-dark">@UserProfiles.Email</div>
+                                <button class="btn btn-link text-decoration-none text-muted small disabled mr-1"
+                                    style="opacity: 1; cursor: default; text-align: center; min-width: 40px;"><i
+                                        class="bi bi-lock-fill"></i></button>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+                                <div class="w-25 text-dark fw-bold">Số điện thoại</div>
+                                <div class="flex-grow-1 text-dark">@UserProfiles.PhoneNumber</div>
+                                <button class="btn btn-link text-decoration-none text-muted small"
+                                    @onclick="StartEdit">Edit</button>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+                                <div class="w-25 text-dark fw-bold">Ngày sinh</div>
+                                <div class="flex-grow-1 text-dark">
+                                    @(UserProfiles.DateOfBirth?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")
+                                </div>
+                                <button class="btn btn-link text-decoration-none text-muted small"
+                                    @onclick="StartEdit">Edit</button>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+                                <div class="w-25 text-dark fw-bold">Địa chỉ</div>
+                                <div class="flex-grow-1 text-dark">@(UserProfiles.Address ?? "Chưa cập nhật")</div>
+                                <button class="btn btn-link text-decoration-none text-muted small"
+                                    @onclick="StartEdit">Edit</button>
+                            </div>
+                        }
+                        else
+                        {
+                            <EditForm Model="EditModel" OnValidSubmit="SaveChangesAsync">
+                                <DataAnnotationsValidator />
+
+                                <div class="mb-4 d-flex align-items-center gap-3 p-3 bg-light rounded-3">
+                                    <div class="position-relative">
+                                        <img src="@(string.IsNullOrEmpty(EditModel.AvatarUrl) ? "/images/default-avatar.png" : EditModel.AvatarUrl)"
+                                            class="rounded-circle object-fit-cover border" width="80" height="80"
+                                            style="opacity: @(isUploading ? "0.5" : "1")">
+
+                                        @if (isUploading)
+                                        {
+                                            <div class="position-absolute top-50 start-50 translate-middle">
+                                                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                            </div>
+                                        }
+                                    </div>
+                                    <div>
+                                        <label class="btn btn-sm btn-outline-primary rounded-pill mb-1">
+                                            <i class="bi bi-upload me-2"></i> Tải ảnh mới
+                                            <InputFile OnChange="HandleAvatarSelected" hidden accept=".jpg, .jpeg, .png" />
+                                        </label>
+                                        <div class="small text-muted" style="font-size: 0.8rem;">JPG, PNG tối đa 2MB.</div>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3">
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-bold text-muted small text-uppercase">Họ và tên</label>
+                                        <InputText @bind-Value="EditModel.FullName" class="form-control" />
+                                        <ValidationMessage For="@(() => EditModel.FullName)" />
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold text-muted small text-uppercase">Số điện thoại</label>
+                                        <InputText @bind-Value="EditModel.PhoneNumber" class="form-control" />
+                                        <ValidationMessage For="@(() => EditModel.PhoneNumber)" />
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold text-muted small text-uppercase">Ngày sinh</label>
+                                        <InputDate @bind-Value="EditModel.DateOfBirth" class="form-control" />
+                                    </div>
+
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-bold text-muted small text-uppercase">Địa chỉ</label>
+                                        <InputText @bind-Value="EditModel.Address" class="form-control"
+                                            placeholder="Nhập địa chỉ của bạn" />
+                                    </div>
+
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-bold text-muted small text-uppercase">Email (Không thể
+                                            sửa)</label>
+                                        <input value="@EditModel.Email" class="form-control bg-light text-muted" disabled />
+                                    </div>
+
+                                    <div class="col-12 mt-4 d-flex gap-2">
+                                        <button type="submit" class="btn btn-primary px-4 rounded-pill fw-bold">Lưu thay
+                                            đổi</button>
+                                        <button type="button" class="btn btn-outline-secondary px-4 rounded-pill"
+                                            @onclick="CancelEdit">Hủy bỏ</button>
+                                    </div>
+                                </div>
+                            </EditForm>
+                        }
+                    </div>
+                </div>
+            }
+            else if (ActiveTab == "history")
+            {
+                <h3 class="handwriting  mb-4" style="color: #54a9ffff;">Lịch sử đặt phòng</h3>
+
+                @if (Bookings.Any())
+                {
+                    <div class="d-flex flex-column gap-3">
+                        @foreach (var item in Bookings)
+                        {
+                            <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+                                <div class="row g-0">
+                                    <div class="col-md-3">
+                                        <img src="@(item.HotelImage ?? "/images/default-hotel.jpg")"
+                                            class="img-fluid h-100 object-fit-cover" style="min-height: 150px;">
+                                    </div>
+                                    <div class="col-md-9">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between">
+                                                <h5 class="card-title ">@item.HotelName</h5>
+                                                <span
+                                                    class="badge @GetStatusColor(item.Status)">@GetStatusTextVietnamese(item.Status)</span>
+                                            </div>
+                                            <p class="card-text text-muted small mb-2"><i class="bi bi-calendar"></i>
+                                                @item.CheckInDate.ToString("dd/MM/yyyy") - @item.CheckOutDate.ToString("dd/MM/yyyy")
+                                            </p>
+                                            <p class="card-text fw-bold text-primary">@item.TotalPrice.ToString("N0") ₫</p>
+                                            <div class="text-end">
+                                                <a class="btn btn-sm btn-outline-secondary rounded-pill"
+                                                    @onclick="() => OpenDetail(item.Id)">Chi tiết</a>
+
+                                                @if (item.Status == "Completed")
+                                                {
+                                                    @if (item.HasReviewed)
+                                                    {
+                                                        <span
+                                                            class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill ms-2 px-3 py-2">
+                                                            <i class="bi bi-check-circle-fill me-1"></i> Đã đánh giá
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <button class="btn btn-sm btn-warning text-dark fw-bold rounded-pill ms-2"
+                                                            @onclick="() => OpenReviewModal(item.Id)">
+                                                            <i class="bi bi-star-fill me-1"></i> Viết đánh giá
+                                                        </button>
+                                                    }
+                                                }
+                                            </div>
+                                            <ReviewModal Show="showReviewModal" BookingId="selectedReviewBookingId"
+                                                OnClose="() => showReviewModal=false" OnSuccess="ReloadAfterReview" />
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox fs-1 text-muted"></i>
+                        <p class="mt-3 text-muted">Bạn chưa có đơn đặt phòng nào.</p>
+                        <a href="/" class="btn btn-primary rounded-pill">Khám phá ngay</a>
+                    </div>
+                }
+            }
+            else if (ActiveTab == "wishlist")
+            {
+                <h3 class="handwriting mb-4" style="color: #54a9ffff;">Khách sạn đã lưu</h3>
+                @if (isLoadingWishlist)
+                {
+                    <div class="text-center py-5">
+                        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                    </div>
+                }
+                else if (SavedHotels.Any())
+                {
+                    <div class="row">
+                        @foreach (var hotel in SavedHotels)
+                        {
+                            <div class="mb-4">
+                                <HotelListCard Hotel="@hotel" OnWishlistToggle="HandleRemoveFromWishlist" />
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <img src="/images/empty-wishlist.svg" style="width: 150px; opacity: 0.5;" />
+                        <p class="mt-3 text-muted">Bạn chưa lưu khách sạn nào.</p>
+                        <a href="/Hotels" class="btn btn-primary rounded-pill">Khám phá ngay</a>
+                    </div>
+                }
+
+            }
+
+        </div>
+    </div>
+</div>
+<BookingDetail @ref="_popupRef" />
+
+<style>
+    .list-group-item {
+        border: none;
+        color: #6c757d;
+        /* Text muted color */
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .list-group-item:hover {
+        background-color: #f8f9fa;
+        color: #000;
+    }
+
+    .active-tab {
+        @* background-color: #eef2ff !important; *@
+        /* Màu nền xanh nhạt giống ảnh */
+        color: #0d6efd !important;
+        /* Màu chữ xanh đậm */
+        font-weight: bold;
+    }
+
+    .active-tab i {
+        color: #0d6efd;
+    }
+
+    .profile-sidebar {
+        border-right: 1px;
+    }
+
+    .min-vh-75 {
+        min-height: 75vh;
+    }
+
+    @@media (min-width: 992px) {
+        .profile-sidebar {
+            /* Tạo đường kẻ bên phải */
+            border-right: 1px solid #dee2e6;
+
+            /* (Tùy chọn) Nếu muốn đường kẻ cách lề phải một chút */
+            padding-right: 20px;
+        }
+
+        /* (Tùy chọn) Đẩy nội dung bên phải ra xa đường kẻ hơn chút nữa */
+        .ps-lg-20 {
+            padding-left: 3rem !important;
+        }
+    }
+</style>
+
+@code {
+    [SupplyParameterFromQuery(Name = "tab")]
+    public string? QueryTab { get; set; }
+
+    [SupplyParameterFromQuery(Name = "focus")]
+    public int? FocusBookingId { get; set; }
+    private string ActiveTab = "details"; // details, history, wishlist
+    private BookingDetail? _popupRef;
+    // Data Models
+    private UserProfileVM UserProfiles = new();
+    private List<BookingListItemVM> Bookings = new();
+    private List<HotelListItemVM> SavedHotels = new();
+    private bool isLoadingWishlist = false;
+    private HttpClient? _httpClient;
+
+    // edit
+    private bool isEditing = false;
+    private bool isUploading = false;
+    private UserProfileVM EditModel = new();
+
+    // review
+    private bool showReviewModal = false;
+    private int selectedReviewBookingId = 0;
+    private async Task SetAuthHeader()
+    {
+        var token = await _localStorage.GetItemAsync<string>("accessToken");
+        if (!string.IsNullOrEmpty(token))
+            _httpClient!.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    }
+
+    // add service
+    private bool showAddServiceModal = false;
+    private int selectedBookingIdForService = 0;
+    private int selectedHotelIdForService = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+        await SetAuthHeader();
+        // Chạy song song cho nhanh
+        var taskProfile = LoadUserProfileAsync();
+        var taskHistory = LoadBookingHistoryAsync();
+        var taskWishlist = LoadRealWishlistAsync();
+
+        await Task.WhenAll(taskProfile, taskHistory, taskWishlist);
+
+    }
+    protected override async Task OnParametersSetAsync()
+    {
+        // Nếu URL có ?tab=history -> Chuyển tab ngay
+        if (!string.IsNullOrEmpty(QueryTab) && QueryTab.ToLower() == "history")
+        {
+            ActiveTab = "history";
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Chỉ chạy logic mở popup 1 lần sau khi render xong lần đầu
+        if (firstRender && FocusBookingId.HasValue && FocusBookingId.Value > 0)
+        {
+            // Cần delay nhẹ để đảm bảo Component con đã render xong
+            await Task.Delay(500);
+            if (_popupRef != null)
+            {
+                await _popupRef.ShowAsync(FocusBookingId.Value);
+
+                // (Tùy chọn) Xóa query param để F5 không bị mở lại
+                // _nav.NavigateTo("/user/profile?tab=history", replace: true);
+            }
+        }
+    }
+
+
+    private async Task LoadUserProfileAsync()
+    {
+        try
+        {
+            // _httpClient đã được setup ở trên, chỉ việc dùng
+            var profile = await _httpClient!.GetFromJsonAsync<UserProfileVM>("account/profile");
+            if (profile != null)
+            {
+                UserProfiles = profile;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Check lỗi 401 nếu token hết hạn giữa chừng
+            if (ex.Message.Contains("401"))
+            {
+                await Logout();
+                return;
+            }
+            Snackbar.Add("Không tải được thông tin cá nhân.", Severity.Warning);
+        }
+    }
+
+    private async Task LoadBookingHistoryAsync()
+    {
+        try
+        {
+            var history = await _httpClient!.GetFromJsonAsync<ApiResponse<List<BookingListItemVM>>>("hotel/booking/my-bookings");
+
+            if (history != null && history.Content != null)
+            {
+                Bookings = history.Content;
+            }
+            else
+            {
+                Bookings = new List<BookingListItemVM>(); // Đảm bảo list rỗng nếu không có data
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading history: {ex.Message}");
+            // Lỗi lịch sử không nghiêm trọng bằng Profile, có thể chỉ log console
+        }
+    }
+    private async Task LoadRealWishlistAsync()
+    {
+        isLoadingWishlist = true;
+        try
+        {
+            // API: api/Wishlist/GetUserWishlist
+            var res = await _httpClient!.GetFromJsonAsync<List<HotelListItemVM>>("Wishlist/GetUserWishlist");
+            if (res != null)
+            {
+                SavedHotels = res;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Wishlist error: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingWishlist = false;
+        }
+    }
+
+    private async Task HandleRemoveFromWishlist(int hotelId)
+    {
+        // 1. Gọi API Toggle
+        try
+        {
+            var res = await _httpClient!.PostAsync($"Wishlist/toggle/{hotelId}", null);
+            if (res.IsSuccessStatusCode)
+            {
+                // 2. Xóa khỏi list trên giao diện ngay lập tức (UX mượt mà)
+                var item = SavedHotels.FirstOrDefault(x => x.HotelId == hotelId);
+                if (item != null)
+                {
+                    SavedHotels.Remove(item);
+                    Snackbar.Add("Đã bỏ lưu khách sạn.", Severity.Success);
+                    StateHasChanged();
+                }
+            }
+            else
+            {
+                Snackbar.Add("Lỗi cập nhật.", Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Lỗi kết nối.", Severity.Error);
+        }
+    }
+
+
+    private void OpenReviewModal(int bookingId)
+    {
+        selectedReviewBookingId = bookingId;
+        showReviewModal = true;
+    }
+
+    private void StartEdit()
+    {
+        // Copy dữ liệu sang EditModel để sửa
+        EditModel = new UserProfileVM
+        {
+            Id = UserProfiles.Id,
+            Username = UserProfiles.Username,
+            Email = UserProfiles.Email,
+            FullName = UserProfiles.FullName,
+            PhoneNumber = UserProfiles.PhoneNumber,
+            AvatarUrl = UserProfiles.AvatarUrl,
+            DateOfBirth = UserProfiles.DateOfBirth,
+        };
+        isEditing = true; // Chuyển giao diện
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false; // Quay lại chế độ xem, hủy bỏ thay đổi
+    }
+
+    private async Task SaveChangesAsync()
+    {
+        try
+        {
+            // 1. Gọi API PUT để cập nhật
+            // Endpoint khớp với AccountController: [HttpPut("profile")]
+            var response = await _httpClient!.PutAsJsonAsync("account/profile", EditModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // 2. Nếu thành công:
+                // Cập nhật lại dữ liệu hiển thị (UserProfiles) bằng dữ liệu vừa sửa (EditModel)
+                // Làm vậy để UI cập nhật ngay mà không cần gọi lại API GetProfile
+                UserProfiles = new UserProfileVM
+                {
+                    Id = EditModel.Id,
+                    Username = EditModel.Username,
+                    Email = EditModel.Email,
+                    FullName = EditModel.FullName,
+                    PhoneNumber = EditModel.PhoneNumber,
+                    AvatarUrl = EditModel.AvatarUrl, // Ảnh đã update lúc upload rồi
+                    DateOfBirth = EditModel.DateOfBirth,
+                    Address = EditModel.Address,
+                    Nationality = EditModel.Nationality
+                };
+
+                // Tắt chế độ sửa
+                isEditing = false;
+                CurrentUserService.SetUserLocally(EditModel.FullName, null);
+                Snackbar.Add("Cập nhật hồ sơ thành công!", Severity.Success);
+            }
+            else
+            {
+                // Đọc lỗi từ Server trả về (nếu có)
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Cập nhật thất bại: {errorMsg}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi hệ thống: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task HandleAvatarSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        // 1. Validate phía Client
+        // Giới hạn 2MB (2 * 1024 * 1024 bytes)
+        long maxFileSize = 2 * 1024 * 1024;
+        if (file.Size > maxFileSize)
+        {
+            Snackbar.Add("Ảnh quá lớn! Vui lòng chọn ảnh dưới 2MB.", Severity.Warning);
+            return;
+        }
+
+        // Chỉ cho phép ảnh
+        if (!file.ContentType.StartsWith("image/"))
+        {
+            Snackbar.Add("Vui lòng chỉ chọn file hình ảnh.", Severity.Warning);
+            return;
+        }
+
+        isUploading = true; // Bật spinner loading
+        StateHasChanged(); // Báo UI render lại để hiện spinner
+
+        try
+        {
+            // 2. Tạo Form Data để gửi file
+            using var content = new MultipartFormDataContent();
+
+            // Đọc file stream (cần set maxAllowedSize để tránh lỗi mặc định 512KB của Blazor)
+            using var stream = file.OpenReadStream(maxFileSize);
+            using var fileContent = new StreamContent(stream);
+
+            // Set Content-Type (quan trọng để Backend nhận diện)
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+
+            // "file" là tên tham số trong Controller: UploadAvatar(IFormFile file)
+            content.Add(fileContent, "file", file.Name);
+
+            // 3. Gọi API POST
+            var response = await _httpClient!.PostAsync("account/avatar", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // 4. Nhận URL ảnh mới từ Server trả về
+                var newAvatarUrl = await response.Content.ReadAsStringAsync();
+
+                // Clean chuỗi URL (đôi khi API trả về có dấu ngoặc kép bao quanh)
+                newAvatarUrl = newAvatarUrl.Trim('"');
+
+                // 5. Cập nhật UI ngay lập tức
+                EditModel.AvatarUrl = newAvatarUrl; // Cập nhật trong form edit
+                UserProfiles.AvatarUrl = newAvatarUrl; // Cập nhật cả ở view bên ngoài (để nếu user bấm Hủy thì ảnh vẫn mới)
+                CurrentUserService.SetUserLocally(null, newAvatarUrl);
+                Snackbar.Add("Đổi ảnh đại diện thành công!", Severity.Success);
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Upload thất bại: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi upload: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isUploading = false; // Tắt spinner
+            StateHasChanged();
+        }
+    }
+
+    // --- HÀM RELOAD SAU KHI ĐÁNH GIÁ THÀNH CÔNG ---
+    private async Task ReloadAfterReview()
+    {
+        showReviewModal = false;
+        // Load lại lịch sử để cập nhật trạng thái "HasReviewed"
+        await LoadBookingHistoryAsync();
+    }
+
+    private string GetStatusColor(string status)
+    {
+        return status switch
+        {
+            "Confirmed" => "bg-success",
+            "PendingPayment" => "bg-warning text-dark",
+            "Cancelled" => "bg-danger",
+            "Completed" => "bg-primary",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetStatusTextVietnamese(string status) => status switch
+    {
+        "Confirmed" => "Đã xác nhận",
+        "PendingPayment" => "Chờ thanh toán",
+        "Paid" => "Đã thanh toán",
+        "Completed" => "Hoàn tất",
+        "Cancelled" => "Đã hủy",
+        "PendingRefund" => "Chờ hoàn tiền",
+        "Refunded" => "Đã hoàn tiền",
+        "CheckedIn" => "Đã nhận phòng",
+        _ => "Không xác định" // Default
+    };
+    private void EditProfile()
+    {
+        // Mở Modal hoặc chuyển sang chế độ Edit
+        Snackbar.Add("Tính năng Edit đang phát triển", Severity.Info);
+    }
+    private async Task OpenDetail(int bookingId)
+    {
+        if (_popupRef != null)
+        {
+            await _popupRef.ShowAsync(bookingId);
+        }
+    }
+
+    private async Task Logout()
+    {
+        await _localStorage.RemoveItemAsync("accessToken");
+        _nav.NavigateTo("/customer-login", true);
+    }
+}

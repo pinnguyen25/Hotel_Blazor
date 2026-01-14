@@ -1,0 +1,154 @@
+@using MudBlazor
+
+@if (IsVisible)
+{
+    <div class="modal fade show" tabindex="-1" style="display: block; background-color: rgba(0, 0, 0, 0.5); z-index: 9999;">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content rounded-4 shadow-lg border-0">
+                
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold d-flex align-items-center">
+                        <MudIcon Icon="@Icons.Material.Filled.Policy" Class="me-2" />
+                        Điều khoản & Chính sách ChillZone
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseModal"></button>
+                </div>
+
+                <div class="modal-body p-0">
+                    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4" Color="Color.Primary" Centered="true">
+                        
+                        <MudTabPanel Text="Quy định chung" Icon="@Icons.Material.Filled.Info">
+                            <div class="animate-fade-in mt-2">
+                                <p class="text-secondary">Chào mừng đến với <strong>ChillZone</strong>. ChillZone là nền tảng trung gian kết nối giữa:</p>
+                                <ul class="mb-3 text-muted small">
+                                    <li><strong>Người dùng (Khách hàng):</strong> Cá nhân đặt phòng.</li>
+                                    <li><strong>Đối tác (Chủ nhà/Khách sạn):</strong> Đơn vị cung cấp dịch vụ.</li>
+                                </ul>
+
+                                <MudAlert Severity="Severity.Warning" Variant="MudBlazor.Variant.Filled" Dense="true" Class="mb-3">
+                                    <strong>Quyền từ chối phục vụ:</strong> Khóa tài khoản vĩnh viễn nếu phát hiện gian lận hoặc phá hoại hệ thống.
+                                </MudAlert>
+                            </div>
+                        </MudTabPanel>
+
+                        <MudTabPanel Text="Khách hàng" Icon="@Icons.Material.Filled.Backpack">
+                            <div class="animate-fade-in mt-2">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="p-3 border rounded bg-light h-100">
+                                            <h6 class="fw-bold text-success"><i class="bi bi-calendar-check-fill me-2"></i>Quy trình Đặt phòng</h6>
+                                            @PolicyItem("1", "Thanh toán", @<span>Cọc hoặc thanh toán 100% để giữ phòng.</span>)
+                                            @PolicyItem("2", "Mã đặt phòng", @<span>Gửi qua Email & lưu trong Lịch sử.</span>)
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 border rounded bg-light h-100">
+                                            <h6 class="fw-bold text-danger"><i class="bi bi-arrow-counterclockwise me-2"></i>Hủy & Hoàn tiền</h6>
+                                            <ul class="small text-muted ps-3 mb-0">
+                                                <li class="mb-2"><strong>Miễn phí hủy:</strong> Trước 7 ngày check-in.</li>
+                                                <li class="mb-2"><strong>Tính phí:</strong> Trong vòng 7 ngày.</li>
+                                                <li><strong>Hoàn tiền:</strong> 5-7 ngày làm việc.</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-3 small text-muted fst-italic">
+                                    * Khách hàng chịu trách nhiệm bảo quản tài sản tại nơi lưu trú.
+                                </div>
+                            </div>
+                        </MudTabPanel>
+
+                        <MudTabPanel Text="Đối tác (Owner)" Icon="@Icons.Material.Filled.Store">
+                            <div class="animate-fade-in mt-2">
+                                <div class="bg-warning bg-opacity-10 p-3 rounded mb-3 border border-warning border-opacity-25">
+                                    <div class="d-flex align-items-center">
+                                        <MudIcon Icon="@Icons.Material.Filled.MonetizationOn" Color="Color.Warning" Size="Size.Large" Class="me-3" />
+                                        <div>
+                                            <h6 class="fw-bold text-dark mb-1">Phí Hoa hồng: 10%</h6>
+                                            <div class="small text-dark opacity-75">Áp dụng trên mỗi đơn đặt phòng thành công (đã bao gồm phí vận hành & marketing).</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @PolicyItem("1", "Chu kỳ thanh toán", 
+                                    @<span>Đối soát ngày <strong>01 & 15</strong> hàng tháng. Chuyển khoản trong 1-3 ngày làm việc.</span>)
+                                
+                                @PolicyItem("2", "Cam kết chất lượng", 
+                                    @<span>Hình ảnh/Thông tin phải chính xác 100%. Phạt nặng nếu lừa đảo.</span>)
+
+                                @PolicyItem("3", "Chính sách hủy", 
+                                    @<span>Khách không đến (No-show): Đối tác nhận đủ doanh thu theo quy định hủy.</span>)
+                            </div>
+                        </MudTabPanel>
+
+                        <MudTabPanel Text="Bảo mật" Icon="@Icons.Material.Filled.Security">
+                            <div class="animate-fade-in mt-2">
+                                <p class="small text-muted mb-3">Dữ liệu cá nhân được mã hóa chuẩn quốc tế.</p>
+                                <div class="row g-2">
+                                    <div class="col-4">
+                                        <div class="text-center p-2 border rounded bg-white">
+                                            <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Error" />
+                                            <div class="small fw-bold mt-1">Lưu trữ an toàn</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-center p-2 border rounded bg-white">
+                                            <MudIcon Icon="@Icons.Material.Filled.Share" Color="Color.Error" />
+                                            <div class="small fw-bold mt-1">Không chia sẻ bên thứ 3</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-center p-2 border rounded bg-white">
+                                            <MudIcon Icon="@Icons.Material.Filled.VisibilityOff" Color="Color.Error" />
+                                            <div class="small fw-bold mt-1">Quyền ẩn danh</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </MudTabPanel>
+
+                    </MudTabs>
+                </div>
+
+                <div class="modal-footer bg-light">
+                    <MudButton OnClick="CloseModal" Variant="MudBlazor.Variant.Text" Color="Color.Default">Xem sau</MudButton>
+                    <MudButton OnClick="AgreePolicy" Variant="MudBlazor.Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CheckCircle">Tôi Đồng ý</MudButton>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public EventCallback OnAgreed { get; set; }
+
+    // Helper render item giữ nguyên logic của bạn
+    private RenderFragment PolicyItem(string num, string title, RenderFragment content) => __builder =>
+    {
+        <div class="d-flex align-items-start mb-3 border-bottom border-light pb-2">
+            <div class="me-3 mt-1">
+                <span class="badge bg-primary rounded-circle shadow-sm" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">@num</span>
+            </div>
+            <div>
+                <div class="fw-bold text-dark" style="font-size: 0.95rem;">@title</div>
+                <div class="text-muted" style="font-size: 0.85rem; line-height: 1.4;">@content</div>
+            </div>
+        </div>
+    };
+
+    private async Task CloseModal()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(false);
+    }
+
+    private async Task AgreePolicy()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(false);
+        await OnAgreed.InvokeAsync();
+    }
+}

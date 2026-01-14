@@ -1,81 +1,167 @@
 @inject HotelFormState FormState
 @inject NavigationManager _nav
-@inject IDialogService Dialog
+@inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
-<MudText Typo="Typo.h6" Class="mb-4">Quản lý loại phòng</MudText>
-
+<MudText Typo="Typo.h6" Class="mb-4">Danh sách loại phòng</MudText>
 @if (IsLoadingRoomTypes)
 {
-    <MudProgressCircular Indeterminate="true" Class="my-8" />
+    <MudProgressCircular Indeterminate="true" Class="my-4" />
 }
-else if (RoomTypes.Count == 0)
+else if (FormState.RoomTypes.Any())
 {
-    <MudAlert Severity="Severity.Warning" Class="mb-4">
-        Bạn chưa có loại phòng nào. Vui lòng thêm ít nhất 1 loại phòng để gửi duyệt.
-    </MudAlert>
-}
-else
-{
-    <MudAlert Severity="Severity.Success" Class="mb-4">
-        Đã có @RoomTypes.Count loại phòng – Sẵn sàng gửi duyệt!
-    </MudAlert>
-}
-
-<!-- Danh sách ngắn gọn -->
-@if (RoomTypes.Any())
-{
-    <MudTable Items="RoomTypes" Dense="true" Hover="true" Bordered="false" Class="mb-6">
+    <MudTable Items="FormState.RoomTypes" Hover="true" Elevation="0" Outlined="true" Class="mb-4">
         <HeaderContent>
             <MudTh>Ảnh</MudTh>
-            <MudTh>Tên</MudTh>
-            <MudTh>Giá/đêm</MudTh>
+            <MudTh>Tên loại phòng</MudTh>
+            <MudTh>Giá/Đêm</MudTh>
             <MudTh>Sức chứa</MudTh>
-            <MudTh></MudTh>
+            <MudTh>Số lượng</MudTh>
+            <MudTh Style="text-align:right">Thao tác</MudTh>
         </HeaderContent>
         <RowTemplate>
-            <MudTd DataLabel="Ảnh">
-                <MudAvatar Size="Size.Small" Square="true">
+            <MudTd>
+                <MudAvatar Square="true" Rounded="true" Size="Size.Medium">
                     <MudImage Src="@(context.DefaultImageUrl ?? "/images/no-image.png")" />
                 </MudAvatar>
             </MudTd>
-            <MudTd DataLabel="Tên">@context.Name</MudTd>
-            <MudTd DataLabel="Giá">@context.PricePerNight ₫</MudTd>
-            <MudTd DataLabel="Sức chứa">@context.AdultCapacity + @context.ChildCapacity</MudTd>
-            <MudTd DataLabel="Thao tác">
-                <MudButton Size="Size.Small" OnClick="() => OpenDetail(context.Id)">Xem</MudButton>
+            <MudTd>
+                <MudText Typo="Typo.subtitle2" Class="fw-bold">@context.Name</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Success">
+                    Bao gồm: @(context.RoomTypeServices?.Count ?? 0) dịch vụ
+                </MudText>
+            </MudTd>
+            <MudTd>@context.PricePerNight.ToString("N0") ₫</MudTd>
+            <MudTd>
+                @context.AdultCapacity
+                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Title="Người lớn" />
+                @if (context.ChildCapacity > 0)
+                {
+                    <span> + @context.ChildCapacity</span>
+                    <MudIcon Icon="@Icons.Material.Filled.ChildCare" Size="Size.Small" Title="Trẻ em" />
+                }
+            </MudTd>
+            <MudTd>
+                <MudChip T="int" Size="Size.Small" Color="Color.Info" Variant="MudBlazor.Variant.Text">@context.Quantity phòng
+                </MudChip>
+            </MudTd>
+            <MudTd Style="text-align:right">
+                <MudTooltip Text="Nhân bản để tạo gói giá mới">
+                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Color="Color.Info"
+                        OnClick="@(async () => await CloneRoomType(context.Id, context.Name))" Class="mr-2" />
+                </MudTooltip>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Warning"
+                    OnClick="() => OpenEditor(context.Id)" />
+
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                    OnClick="@(async () => await DeleteRoomType(context.Id, context.Name))" />
             </MudTd>
         </RowTemplate>
     </MudTable>
 }
-<div class="d-flex gap-3 mt-6">
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-               OnClick="OpenAddModal">
-        Thêm loại phòng
-    </MudButton>
+else
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4" Variant="MudBlazor.Variant.Outlined">
+        Bạn chưa tạo loại phòng nào. Vui lòng thêm ít nhất 1 loại phòng để gửi duyệt.
+    </MudAlert>
+}
 
-    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
-               OnClick="OpenManagement">
-        Quản lý tất cả loại phòng
+<div class="mt-4">
+    <MudButton Variant="MudBlazor.Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+        OnClick="() => OpenEditor(null)">
+        Thêm loại phòng
     </MudButton>
 </div>
 
+@if (_showEditor)
+{
+    <RoomTypeEditor HotelId="@FormState.DraftHotelId" RoomTypeId="@_selectedRoomId"
+        AvailableServices="@FormState.HotelServices" OnClose="CloseEditor" OnSuccess="ReloadList" />
+}
 @code {
-    [Parameter] public List<RoomTypeForOwnerVM> RoomTypes { get; set; } = new();
-    [Parameter] public bool IsLoadingRoomTypes { get; set; } = true;
+    [Parameter] public bool IsLoadingRoomTypes { get; set; }
     [Parameter] public EventCallback OnRoomTypeChanged { get; set; }
+    private bool _showEditor = false;
+    private int? _selectedRoomId = null;
 
-    private async Task OpenAddModal()
+    protected override async Task OnInitializedAsync()
     {
-        _nav.NavigateTo($"/owner/hotels/{FormState.DraftHotelId}/room-types/add");
+        // danh sách Service đã được load
+        // Để khi mở Editor lên là có dữ liệu để chọn ngay
+        if (!FormState.HotelServices.Any())
+        {
+            await FormState.LoadHotelServicesAsync();
+        }
+
+    }
+    private void OpenEditor(int? id)
+    {
+        _selectedRoomId = id;
+        _showEditor = true;
     }
 
-    private void OpenDetail(int roomTypeId)
+    private void CloseEditor()
     {
-        _nav.NavigateTo($"/owner/hotels/{FormState.DraftHotelId}/room-types/edit/{roomTypeId}");
+        _showEditor = false;
+        _selectedRoomId = null;
     }
-    private void OpenManagement()
+    private async Task ReloadList()
     {
-        _nav.NavigateTo($"/owner/hotels/{FormState.DraftHotelId}/room-types");
+        await FormState.RefreshRoomTypesAsync();
+        if (OnRoomTypeChanged.HasDelegate)
+        {
+            await OnRoomTypeChanged.InvokeAsync();
+        }
+    }
+
+    private async Task CloneRoomType(int sourceId, string name)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+        "Xác nhận nhân bản",
+        (MarkupString)$"Bạn muốn tạo thêm <b>{name}</b> gói giá mới?<br/>",
+        yesText: "Thêm gói phòng", cancelText: "Hủy");
+
+        if (confirm == true)
+        {
+            IsLoadingRoomTypes = true; // Hiện loading quay quay cho chuyên nghiệp
+
+            // 1. Gọi hàm trong FormState
+            var newRoomId = await FormState.CloneRoomTypeAsync(sourceId);
+
+            IsLoadingRoomTypes = false;
+
+            if (newRoomId.HasValue)
+            {
+                Snackbar.Add("Tạo thành công! Hãy cập nhật giá và số lượng.", Severity.Success);
+
+                // 2. MỞ NGAY FORM EDIT CHO PHÒNG VỪA TẠO
+                // Để Owner sửa giá tiền và số lượng phòng ngay lập tức
+                OpenEditor(newRoomId.Value);
+            }
+        }
+    }
+    private async Task DeleteRoomType(int id, string name)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+        "Xác nhận xóa",
+        (MarkupString)$"Bạn có chắc chắn muốn xóa loại phòng <b>{name}</b> không?<br/>Thao tác này không thể hoàn tác.",
+        yesText: "Xóa", cancelText: "Hủy");
+
+        if (confirm == true)
+        {
+            var success = await FormState.DeleteRoomTypeAsync(id);
+            if (success)
+            {
+                Snackbar.Add("Xóa thành công", Severity.Success);
+                if (OnRoomTypeChanged.HasDelegate)
+                {
+                    await OnRoomTypeChanged.InvokeAsync();
+                }
+            }
+            else
+            {
+                Snackbar.Add("Xóa thất bại", Severity.Error);
+            }
+        }
     }
 }

@@ -11,8 +11,6 @@ public partial class Booking
 
     public int HotelId { get; set; }
 
-    public int RoomTypeId { get; set; }
-
     public DateOnly CheckInDate { get; set; }
 
     public DateOnly CheckOutDate { get; set; }
@@ -33,6 +31,20 @@ public partial class Booking
 
     public string? Additional { get; set; }
 
+    public string ContactName { get; set; } = null!;
+
+    public string ContactPhone { get; set; } = null!;
+
+    public string ContactEmail { get; set; } = null!;
+
+    public string? Note { get; set; }
+
+    public decimal? DiscountAmount { get; set; }
+
+    public int? PromotionId { get; set; }
+
+    public decimal? OriginalPrice { get; set; }
+
     public virtual ICollection<BookingRoom> BookingRooms { get; set; } = new List<BookingRoom>();
 
     public virtual ICollection<BookingService> BookingServices { get; set; } = new List<BookingService>();
@@ -47,7 +59,9 @@ public partial class Booking
 
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
-    public virtual RoomType RoomType { get; set; } = null!;
+    public virtual Promotion? Promotion { get; set; }
+
+    public virtual Review? Review { get; set; }
 
     public virtual User? UpdatedByNavigation { get; set; }
 }

@@ -1,32 +1,114 @@
-<footer class="footer py-5">
+<footer class="text-white pt-5 pb-3" style="background-color: #0f2b4d !important; color: #eef2f6;">
     <div class="container">
+        
+        <div class="row border-bottom pb-4 mb-4 align-items-center" style="border-color: rgba(255,255,255,0.1) !important;">
+            <div class="col-md-6">
+                <h5 class="fw-bold mb-1 text-white">Đừng bỏ lỡ các ưu đãi đặc biệt!</h5>
+                <p class="mb-0 small" style="color: #b0c4de;">Đăng ký nhận bản tin để nhận tin tức giảm giá mới nhất.</p>
+            </div>
+            <div class="col-md-6 mt-3 mt-md-0">
+                <form class="d-flex" onsubmit="event.preventDefault();">
+                    <input class="form-control me-2 border-0" style="background: rgba(255,255,255,0.1); color: #fff;" type="email" placeholder="Địa chỉ email của bạn..." aria-label="Email">
+                    <button class="btn btn-primary px-4 shadow-sm fw-bold" type="button">Đăng ký</button>
+                </form>
+            </div>
+        </div>
+
         <div class="row">
-            <!-- Cột 1 -->
-            <div class="col-md-4 mb-4 mb-md-0">
-                <h5 class="fw-bold text-white">Hotel Booking</h5>
-                <p class="text-light">Đặt phòng khách sạn dễ dàng, nhanh chóng với trải nghiệm tuyệt vời.</p>
-            </div>
-            <!-- Cột 2 -->
-            <div class="col-md-4 mb-4 mb-md-0">
-                <h5 class="fw-bold text-white">Liên hệ</h5>
-                <p class="mb-1"><i class="fas fa-envelope me-2"></i> 
-                   <a href="mailto:support@hotelbooking.com">support@hotelbooking.com</a>
+            <div class="col-lg-3 col-md-6 mb-4">
+                <h4 class="fw-bold text-white mb-3" style="font-family: 'Pacifico', cursive;">ChillZone</h4>
+                <p class="small" style="color: #b0c4de; line-height: 1.6;">
+                    Nền tảng đặt phòng khách sạn trực tuyến hàng đầu, mang đến cho bạn những trải nghiệm nghỉ dưỡng tuyệt vời với chi phí tối ưu nhất.
                 </p>
-                <p class="mb-0"><i class="fas fa-phone-alt me-2"></i> 
-                   <a href="tel:19001234">1900 1234</a>
-                </p>
+                <div class="d-flex gap-3 mt-3">
+                     <a href="#" class="rounded-circle d-flex justify-content-center align-items-center social-icon">
+                        <i class="bi bi-facebook"></i>
+                     </a>
+                     <a href="#" class="rounded-circle d-flex justify-content-center align-items-center social-icon">
+                        <i class="bi bi-instagram"></i>
+                     </a>
+                     <a href="#" class="rounded-circle d-flex justify-content-center align-items-center social-icon">
+                        <i class="bi bi-linkedin"></i>
+                     </a>
+                </div>
             </div>
-            <!-- Cột 3 -->
-            <div class="col-md-4">
-                <h5 class="fw-bold text-white">Theo dõi chúng tôi</h5>
-                <div class="social-icons mt-2">
-                    <a href="#"><i class="fab fa-facebook-f"></i></a>
-                    <a href="#"><i class="fab fa-instagram"></i></a>
-                    <a href="#"><i class="fab fa-twitter"></i></a>
+
+            <div class="col-lg-3 col-md-6 mb-4">
+                <h6 class="fw-bold text-uppercase text-white mb-3 ls-1">Thông tin</h6>
+                <ul class="list-unstyled small footer-links">
+                    <li class="mb-2"><a href="/gioi-thieu">Về chúng tôi</a></li>
+                    <li class="mb-2"><a href="/Hotels">Đặt phòng ngay</a></li>
+                    <li class="mb-2"><a href="/travel-guide/1">Cẩm nang du lịch</a></li>
+                </ul>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-4">
+                <h6 class="fw-bold text-uppercase text-white mb-3 ls-1">Hỗ trợ & Chính sách</h6>
+                <ul class="list-unstyled small footer-links">
+                    <li class="mb-2"><a href="/contact">Trung tâm trợ giúp</a></li>
+                    
+                    <li class="mb-2">
+                        <a @onclick="OpenPolicy" class="text-decoration-none" style="cursor: pointer; color: #b0c4de;">
+                            Điều khoản & chính sách
+                        </a>
+                    </li>
+                    <li class="mb-2"><a href="/customer-register">Đăng ký thành viên</a></li>
+                </ul>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-4">
+                <h6 class="fw-bold text-uppercase text-white mb-3 ls-1">Liên hệ</h6>
+                <ul class="list-unstyled small footer-links">
+                    <li class="mb-2"><i class="bi bi-geo-alt me-2 text-primary"></i> TP. Hồ Chí Minh, Việt Nam</li>
+                    <li class="mb-2"><a href="mailto:support@chillzone.com"><i class="bi bi-envelope me-2 text-primary"></i> support@chillzone.com</a></li>
+                    <li class="mb-2"><a href="tel:0324123456"><i class="bi bi-telephone me-2 text-primary"></i> 0324 123 456</a></li>
+                </ul>
+                
+                <h6 class="fw-bold text-uppercase mt-4 mb-3 ls-1">Thanh toán</h6>
+                <div class="d-flex gap-2 payment-icons">
+                    <i class="bi bi-credit-card-2-front fs-3" title="Visa/MasterCard"></i>
+                    <i class="bi bi-paypal fs-3" title="Paypal"></i>
+                    <i class="bi bi-cash-coin fs-3" title="Tiền mặt"></i>
                 </div>
             </div>
         </div>
-        <hr class="border-light my-4">
-        <p class="text-center mb-0 text-light">&copy; 2025 Hotel Booking. All rights reserved.</p>
     </div>
 </footer>
+
+<style>
+    .footer-links a {
+        color: #b0c4de !important;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: inline-block;
+    }
+    .footer-links a:hover {
+        color: white !important; /* Thêm hiệu ứng hover sáng lên */
+    }
+
+    .social-icon {
+        width: 38px; height: 38px;
+        background-color: rgba(255,255,255,0.08);
+        color: white;
+        text-decoration: none;
+        transition: all 0.3s;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    .ls-1 { letter-spacing: 1px; font-size: 0.85rem; }
+    .payment-icons i { color: #b0c4de; transition: 0.3s; cursor: pointer; }
+    .payment-icons i:hover { color: white; }
+    ::placeholder { color: #ced4da !important; opacity: 0.7; }
+</style>
+
+<PartnerPolicy @bind-IsVisible="_isOpenPolicy" />
+
+@code {
+    // Biến trạng thái để bật tắt modal
+    private bool _isOpenPolicy = false;
+
+    // Hàm được gọi khi nhấn vào link "Điều khoản & chính sách"
+    private void OpenPolicy()
+    {
+        _isOpenPolicy = true;
+    }
+}

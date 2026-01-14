@@ -1,0 +1,203 @@
+@using System.ComponentModel.DataAnnotations
+@using HotelBooking.webapp.ViewModels.Hotel
+
+<MudOverlay Visible="Visible" DarkBackground="true" AutoClose="false" ZIndex="9999">
+    <MudPaper Class="pa-4 custom-popup-width" Elevation="4">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <MudText Typo="Typo.h6" Color="Color.Primary">
+                @(Model.Id > 0 ? "Cập nhật Khuyến Mãi" : "Tạo Khuyến Mãi Mới")
+            </MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="Cancel" Color="Color.Default" />
+        </div>
+
+        <EditForm Model="Model" OnValidSubmit="Submit">
+            <DataAnnotationsValidator />
+            
+            <div class="popup-scrollable-content">
+                <MudGrid>
+                    <MudItem xs="12">
+                        <MudSelect T="int" @bind-Value="Model.PromotionCategory" Label="Loại hình khuyến mãi" 
+                                   Variant="MudBlazor.Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                   SelectedValuesChanged="OnCategoryChanged">
+                            <MudSelectItem Value="0">Voucher thường (Khách nhập tay)</MudSelectItem>
+                            <MudSelectItem Value="3">Voucher Khách mới (Tự động)</MudSelectItem>
+                            <MudSelectItem Value="1">Chính sách CHỦ SỞ HỮU (Owner)</MudSelectItem>
+                            <MudSelectItem Value="2">Chính sách NHÂN VIÊN (Staff)</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="8">
+                        <MudTextField @bind-Value="Model.Name" Label="Tên chương trình" Variant="MudBlazor.Variant.Outlined" Required="true" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="4">
+                        @if (Model.PromotionCategory == 0 || Model.PromotionCategory == 3)
+                        {
+                            <MudTextField @bind-Value="Model.Code" Label="Mã Code" Variant="MudBlazor.Variant.Outlined" Required="true" 
+                                          Style="text-transform: uppercase;" HelperText="VD: TET2025" />
+                        }
+                        else
+                        {
+                            <MudTextField Value="@Model.Code" Label="Mã Hệ Thống" Class="mt-2" Variant="MudBlazor.Variant.Filled" Disabled="true" />
+                        }
+                    </MudItem>
+
+                    <MudItem xs="6">
+                        <MudSelect @bind-Value="Model.DiscountType" Label="Hình thức giảm" Variant="MudBlazor.Variant.Outlined">
+                            <MudSelectItem Value="1">Theo phần trăm (%)</MudSelectItem>
+                            <MudSelectItem Value="2">Theo tiền mặt (VNĐ)</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    
+                    <MudItem xs="6">
+                        <MudNumericField @bind-Value="Model.DiscountValue" 
+                                         Label="Giá trị giảm" 
+                                         Variant="MudBlazor.Variant.Outlined" 
+                                         Min="0" 
+                                         Max="@(Model.DiscountType == 1 ? 100m : decimal.MaxValue)"
+                                         Format="@(Model.DiscountType == 1 ? null : "N0")"
+                                         Adornment="Adornment.End"
+                                         AdornmentText="@(Model.DiscountType == 1 ? "%" : "VNĐ")"
+                                         HideSpinButtons="true" />
+                    </MudItem>
+
+                    @if (Model.PromotionCategory == 0 || Model.PromotionCategory == 3)
+                    {
+                        @if (Model.DiscountType == 1) // Nếu là %
+                        {
+                            <MudItem xs="6">
+                                <MudNumericField @bind-Value="Model.MaxDiscountAmount" 
+                                                 Label="Giảm tối đa" 
+                                                 Variant="MudBlazor.Variant.Outlined" 
+                                                 HelperText="Để trống nếu không giới hạn" 
+                                                 Min="0"
+                                                 Format="N0"
+                                                 Adornment="Adornment.End"
+                                                 AdornmentText="VNĐ"
+                                                 HideSpinButtons="true"/>
+                            </MudItem>
+                        }
+                        
+                        <MudItem xs="6">
+                            <MudNumericField @bind-Value="Model.MinBookingValue" 
+                                             Label="Đơn tối thiểu" 
+                                             Variant="MudBlazor.Variant.Outlined" 
+                                             Min="0"
+                                             Format="N0"
+                                             Adornment="Adornment.End"
+                                             AdornmentText="VNĐ"
+                                             HideSpinButtons="true"/>
+                        </MudItem>
+
+                        <MudItem xs="6">
+                            <MudDatePicker Label="Ngày bắt đầu" @bind-Date="dateStart" DateFormat="dd/MM/yyyy" Variant="MudBlazor.Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudDatePicker Label="Ngày kết thúc" @bind-Date="dateEnd" DateFormat="dd/MM/yyyy" Variant="MudBlazor.Variant.Outlined" />
+                        </MudItem>
+                        
+                        <MudItem xs="6">
+                            <MudNumericField @bind-Value="Model.UsageLimit" Label="Giới hạn số lượt dùng" Variant="MudBlazor.Variant.Outlined" 
+                                             HelperText="Nhập 0 nếu không giới hạn" Min="0" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudNumericField @bind-Value="Model.UserUsageLimit" 
+                                            Label="Giới hạn mỗi khách" 
+                                            Variant="MudBlazor.Variant.Outlined" 
+                                            Min="1" 
+                                            HelperText="Ví dụ: 1 lần/người" />
+                        </MudItem>
+                    }
+                    else 
+                    {
+                        <MudItem xs="12">
+                            <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+                                Chính sách này sẽ được áp dụng <b>tự động</b> và <b>vô thời hạn</b> (đến năm 2099) cho đối tượng được chọn.
+                            </MudAlert>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </div>
+
+            <div class="d-flex justify-content-end mt-4 pt-3 border-top">
+                <MudButton OnClick="Cancel" Variant="MudBlazor.Variant.Outlined" Color="Color.Secondary" Class="me-2">Hủy</MudButton>
+                <MudButton ButtonType="MudBlazor.ButtonType.Submit" Variant="MudBlazor.Variant.Filled" Color="Color.Primary">
+                    @(Model.Id > 0 ? "Lưu thay đổi" : "Tạo mới")
+                </MudButton>
+            </div>
+        </EditForm>
+    </MudPaper>
+</MudOverlay>
+
+<style>
+    .custom-popup-width {
+        width: 90%;
+        max-width: 800px;
+        max-height: 90vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    .popup-scrollable-content {
+        overflow-y: auto;
+        max-height: 65vh;
+        padding-right: 5px;
+    }
+</style>
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public PromotionVM Model { get; set; } = new();
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<PromotionVM> OnSubmit { get; set; }
+
+    private DateTime? dateStart;
+    private DateTime? dateEnd;
+
+    protected override void OnParametersSet()
+    {
+        if (Model != null)
+        {
+            if(dateStart != Model.StartDate) dateStart = Model.StartDate;
+            if(dateEnd != Model.EndDate) dateEnd = Model.EndDate;
+        }
+    }
+
+    private void OnCategoryChanged()
+    {
+        if (Model.PromotionCategory == 1) // Owner
+        {
+            Model.Code = "SYS_OWNER_AUTO";
+            Model.UsageLimit = 0;
+            Model.MinBookingValue = 0;
+            dateStart = DateTime.Today;
+            dateEnd = new DateTime(2099, 12, 31);
+        }
+        else if (Model.PromotionCategory == 2) // Staff
+        {
+            Model.Code = "SYS_STAFF_AUTO";
+            Model.UsageLimit = 0;
+            Model.MinBookingValue = 0;
+            dateStart = DateTime.Today;
+            dateEnd = new DateTime(2099, 12, 31);
+        }
+        else // Voucher
+        {
+            if (Model.Code?.StartsWith("SYS_") == true) Model.Code = "";
+            if (dateEnd?.Year == 2099) dateEnd = DateTime.Today.AddDays(30);
+        }
+    }
+
+    private async Task Submit()
+    {
+        Model.StartDate = dateStart ?? DateTime.Today;
+        Model.EndDate = dateEnd ?? DateTime.Today;
+        await OnSubmit.InvokeAsync(Model);
+    }
+
+    private async Task Cancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+}
