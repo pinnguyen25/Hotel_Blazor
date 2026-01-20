@@ -16,9 +16,11 @@ namespace HotelBooking.api.Controllers
     public class HotelController : ControllerBase
     {
         IHotelService _hotelService;
-        public HotelController(IHotelService hotelService)
+        ISystemSettingService _settingService;
+        public HotelController(IHotelService hotelService, ISystemSettingService settingService)
         {
             _hotelService = hotelService;
+            _settingService = settingService;
         }
 
 
@@ -831,6 +833,17 @@ namespace HotelBooking.api.Controllers
         #endregion
 
         #region Booking Owner
+        // 
+        [Authorize(Roles = "Owner, Staff")]
+        [HttpGet("owner/booking/{bookingId}")]
+        public async Task<IActionResult> GetBookingDetailForOwner(int bookingId)
+        {
+            int requesterId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.GetBookingDetailForOwnerAsync(bookingId, requesterId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        // Lấy danh sách booking của khách sạn (Owner/Staff)
         [Authorize(Roles = "Owner, Staff")]
         [HttpGet("owner/booking/{bookingId}/rooms")]
         public async Task<IActionResult> GetBookingRoomsDetails(int bookingId)
@@ -878,6 +891,15 @@ namespace HotelBooking.api.Controllers
         {
             int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var response = await _hotelService.CreateWalkInBookingAsync(request, userId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
+
+        [HttpPost("owner/booking/{bookingId}/mark-noshow")]
+        [Authorize(Roles = "Owner, Staff")]
+        public async Task<IActionResult> MarkNoShow(int bookingId)
+        {
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.MarkBookingAsNoShowAsync(bookingId, userId);
             return ApiResponseHandlerHelper.HandleResponse(response);
         }
         #endregion
@@ -1014,7 +1036,14 @@ namespace HotelBooking.api.Controllers
             return ApiResponseHandlerHelper.HandleResponse(response);
         }
 
-
+        [Authorize(Roles = "Owner, Staff")]
+        [HttpPost("owner/booking/{bookingId}/refund-confirm")]
+        public async Task<IActionResult> ConfirmRefund([FromRoute] int bookingId)
+        {
+            int requesterId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var response = await _hotelService.ConfirmRefundAsync(bookingId, requesterId);
+            return ApiResponseHandlerHelper.HandleResponse(response);
+        }
         #endregion
 
         #region Reviews
@@ -1072,6 +1101,18 @@ namespace HotelBooking.api.Controllers
             return ApiResponseHandlerHelper.HandleResponse(response);
         }
         #endregion
-
+        
+        [HttpGet("booking-timeout")]
+        [AllowAnonymous] 
+        public async Task<IActionResult> GetPublicBookingTimeout()
+        {
+            int minutes = await _settingService.GetBookingTimeoutAsync();
+            return Ok(new ApiResponse<int>
+            {
+                StatusCode = StatusCodeResponse.Success,
+                Content = minutes,
+                Message = "Success"
+            });
+        }
     }
 }

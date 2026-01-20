@@ -29,6 +29,8 @@ public partial class Payment
 
     public string? Additional { get; set; }
 
+    public string? Type { get; set; }
+
     public virtual Booking Booking { get; set; } = null!;
 
     public virtual User? CreatedByNavigation { get; set; }

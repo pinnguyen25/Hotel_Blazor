@@ -13,13 +13,15 @@
     <RowTemplate>
         <MudTd DataLabel="Đơn hàng">
             <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center me-3 fw-bold small text-muted" style="width:40px; height:40px">
+                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center me-3 fw-bold small text-muted"
+                    style="width:40px; height:40px">
                     #@context.Id
                 </div>
                 <div class="d-flex flex-column">
                     <span class="fw-bold text-dark">@context.GuestName</span>
                     <small class="text-muted" style="font-size: 0.75rem;">
-                        <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" Style="font-size: 12px; vertical-align: middle;" />
+                        <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small"
+                            Style="font-size: 12px; vertical-align: middle;" />
                         @GetRelativeTime(context.CreatedAt)
                     </small>
                 </div>
@@ -30,22 +32,26 @@
             <div class="d-flex flex-column">
                 <span class="text-dark fw-medium" style="font-size: 0.9rem;">@context.RoomTypeNames</span>
                 <small class="text-muted d-flex align-items-center mt-1">
-                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Style="font-size: 14px;" Class="me-1"/>
+                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Style="font-size: 14px;"
+                        Class="me-1" />
                     @context.CheckInDate.ToString("dd/MM") - @context.CheckOutDate.ToString("dd/MM")
                 </small>
             </div>
         </MudTd>
 
         <MudTd DataLabel="Tổng tiền">
-            <span class="text-success fw-bold">@string.Format(new CultureInfo("en-EN"), "{0:N0}", context.TotalPrice) ₫</span>
+            <span class="text-success fw-bold">@string.Format(new CultureInfo("en-EN"), "{0:N0}", context.TotalPrice)
+                ₫</span>
         </MudTd>
 
         <MudTd DataLabel="Trạng thái">
-            <MudChip T="string" Color="@GetStatusColor(context.Status)" Size="Size.Small" Class="fw-bold">@GetStatusText(context.Status)</MudChip>
+            <MudChip T="string" Color="@GetStatusColor(context.Status)" Size="Size.Small" Class="fw-bold">
+                @GetStatusText(context.Status)</MudChip>
         </MudTd>
-        
+
         <MudTd>
-             <MudIconButton Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Href="@($"/owner/hotels/bookings/{context.Id}")" Color="Color.Default" />
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small"
+                OnClick="@(() => ViewDetail(context.Id))" Color="Color.Default" />
         </MudTd>
     </RowTemplate>
     <NoRecordsContent>
@@ -59,7 +65,14 @@
 @code {
     [Parameter] public List<BookingShortVM> Items { get; set; } = new();
     [Parameter] public string EmptyText { get; set; } = "Không có dữ liệu.";
-
+    [Parameter] public EventCallback<int> OnViewClick { get; set; }
+    private async Task ViewDetail(int id)
+    {
+        if (OnViewClick.HasDelegate)
+        {
+            await OnViewClick.InvokeAsync(id);
+        }
+    }
     private string GetRelativeTime(DateTime date)
     {
         var span = DateTime.Now - date;
@@ -71,21 +84,24 @@
 
     private Color GetStatusColor(string status) => status switch
     {
-        "Completed" => Color.Success,
-        "Confirmed" => Color.Info,
-        "CheckedIn" => Color.Primary,
-        "PendingPayment" => Color.Warning,
-        "Cancelled" => Color.Error,
+        "Completed" => Color.Success,       // Xanh lá (Đã xong)
+        "Confirmed" => Color.Info,          // Xanh dương (Đã đặt)
+        "CheckedIn" => Color.Primary,       // Tím (Đang ở)
+        "PendingPayment" => Color.Warning,  // Vàng (Chờ thanh toán)
+        "Cancelled" => Color.Error,         // Đỏ (Hủy)
+        "Refunded" => Color.Dark,           // Đen (Đã hoàn tiền)
         _ => Color.Default
     };
 
     private string GetStatusText(string status) => status switch
     {
         "Completed" => "Hoàn tất",
-        "Confirmed" => "Đã xác nhận",
-        "CheckedIn" => "Đã nhận phòng",
+        "Confirmed" => "Sắp đến",           // Đổi text cho hợp ngữ cảnh "Confirmed" = Đã xác nhận (Sắp đến)
+        "CheckedIn" => "Đang ở",            // CheckedIn = Đang ở
         "PendingPayment" => "Chờ thanh toán",
         "Cancelled" => "Đã hủy",
+        "Refunded" => "Đã hoàn tiền",
+        "PendingRefund" => "Chờ hoàn tiền",
         _ => status
     };
 }

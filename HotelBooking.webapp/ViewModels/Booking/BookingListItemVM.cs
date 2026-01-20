@@ -18,6 +18,11 @@ public class BookingDetailVM
     public DateTime CheckOut { get; set; }
     public int TotalNights { get; set; }
     public decimal TotalPrice { get; set; }
+    
+    public decimal DepositRequired { get; set; }
+    public decimal PaidAmount { get; set; }
+    public decimal RemainingAmount { get; set; }
+    
     public string Status { get; set; } // PendingPayment, Confirmed...
     public DateTime CreatedAt { get; set; }
 

@@ -4,6 +4,7 @@ public class BookingRoomDetailDTO
     public int Id { get; set; } // BookingRoomId (Primary Key)
 
     // Thông tin loại phòng (Khách mua cái này)
+    public int BookingId { get; set; }
     public int RoomTypeId { get; set; }
     public string? RoomTypeName { get; set; }
     public decimal PricePerNight { get; set; }
@@ -19,4 +20,5 @@ public class BookingRoomDetailDTO
     public decimal Price { get; set; }
     public string? BedTypeName { get; set; }
     public List<string> IncludedServices { get; set; } = new();
+    public int Quantity { get; set; }
 }

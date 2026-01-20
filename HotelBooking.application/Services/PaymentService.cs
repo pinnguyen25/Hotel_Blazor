@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 public interface IPaymentService
 {
-    string CreateVnpayUrl(HttpContext context, Booking booking);
+    Task<string> CreateVnpayUrlAsync(HttpContext context, int bookingId, int userId);
     Task<PaymentResponseDTO> PaymentExecuteAsync(IQueryCollection collections);
 }
 
@@ -12,18 +12,39 @@ public class PaymentService : IPaymentService
 {
     private readonly IConfiguration _configuration;
     private readonly HotelBookingContext _context;
+    private readonly IEmailService _emailService;
 
-    public PaymentService(IConfiguration configuration, HotelBookingContext context)
+    public PaymentService(IConfiguration configuration, HotelBookingContext context, IEmailService emailService)
     {
         _configuration = configuration;
         _context = context;
+        _emailService = emailService;
     }
 
     // 1. TẠO URL THANH TOÁN
-    public string CreateVnpayUrl(HttpContext context, Booking booking)
+    public async Task<string> CreateVnpayUrlAsync(HttpContext context, int bookingId, int userId)
     {
+        var booking = await _context.Bookings
+        .AsNoTracking()
+        .FirstOrDefaultAsync(b => b.Id == bookingId);
+
+        if (booking == null) throw new Exception("Đơn hàng không tồn tại");
+        if (booking.CustomerId != userId) throw new Exception("Không có quyền truy cập");
+
+        if (booking.Status != "PendingPayment")
+        {
+            throw new Exception("Đơn hàng này đã được xác nhận. Vui lòng thanh toán phần còn lại tại quầy lễ tân.");
+        }
+        // 2. Tính toán số tiền cần thanh toán
+        decimal depositAmount = booking.DepositRequired ?? 0;
+        if (depositAmount == 0 && booking.Status == "PendingPayment")
+        {
+            depositAmount = Math.Round(booking.TotalPrice * 0.5m, 0);
+        }
+        decimal amountToPay = depositAmount > 0 ? depositAmount : booking.TotalPrice;
+        // 3. Gọi VNPay Library
         var pay = new VnPayLibrary();
-        var urlCallBack = _configuration["Vnpay:ReturnUrl"]; // Cấu hình link FE nhận kết quả
+        var urlCallBack = _configuration["Vnpay:ReturnUrl"];
 
         pay.AddRequestData("vnp_Version", _configuration["Vnpay:Version"]);
         pay.AddRequestData("vnp_Command", _configuration["Vnpay:Command"]);
@@ -31,7 +52,7 @@ public class PaymentService : IPaymentService
 
         // Số tiền phải nhân 100 (VNPAY quy định)
         // Ví dụ: 100,000 VND => 10000000
-        pay.AddRequestData("vnp_Amount", ((long)(booking.TotalPrice * 100)).ToString());
+        pay.AddRequestData("vnp_Amount", ((long)(amountToPay * 100)).ToString());
 
         pay.AddRequestData("vnp_CreateDate", DateTime.Now.ToString("yyyyMMddHHmmss"));
         pay.AddRequestData("vnp_CurrCode", _configuration["Vnpay:CurrCode"]);
@@ -48,7 +69,8 @@ public class PaymentService : IPaymentService
         pay.AddRequestData("vnp_Locale", _configuration["Vnpay:Locale"]);
 
         // Thông tin đơn hàng
-        pay.AddRequestData("vnp_OrderInfo", $"Thanh toan don hang {booking.Id}");
+        var orderType = amountToPay < booking.TotalPrice ? "dat coc" : "thanh toan";
+        pay.AddRequestData("vnp_OrderInfo", $"{orderType} don hang {booking.Id}");
         pay.AddRequestData("vnp_OrderType", "other");
 
         // URL trả về khi thanh toán xong
@@ -79,10 +101,10 @@ public class PaymentService : IPaymentService
 
         // Lấy BookingId từ vnp_TxnRef
         var vnp_TxnRef = pay.GetResponseData("vnp_TxnRef");
-
+        var bookingIdString = vnp_TxnRef.Contains("_") ? vnp_TxnRef.Split('_')[0] : vnp_TxnRef;
         // Lấy mã phản hồi (00 là thành công)
         var vnp_ResponseCode = pay.GetResponseData("vnp_ResponseCode");
-
+        var vnp_Amount = Convert.ToDecimal(pay.GetResponseData("vnp_Amount")) / 100;
         // Lấy chữ ký bảo mật từ VNPAY gửi về
         var vnp_SecureHash = collections.FirstOrDefault(p => p.Key == "vnp_SecureHash").Value;
         var vnp_TransactionNo = pay.GetResponseData("vnp_TransactionNo");
@@ -121,6 +143,7 @@ public class PaymentService : IPaymentService
             // Load Booking (Include Hotel để lấy thông tin gửi mail)
             var booking = await _context.Bookings
                 .Include(b => b.Hotel)
+                .Include(b => b.Payments)
                 .FirstOrDefaultAsync(b => b.Id == bookingId);
 
             // Nếu đơn không tồn tại hoặc đã xử lý rồi (tránh call 2 lần)
@@ -132,10 +155,10 @@ public class PaymentService : IPaymentService
             }
 
             // Nếu đơn đã Confirmed hoặc Cancelled rồi thì không làm gì nữa (Idempotency)
-            if (booking.Status != "PendingPayment")
+            if (_context.Payments.Any(p => p.TransactionId == vnp_TransactionNo && p.Status == "Completed"))
             {
-                response.Success = booking.Status == "Confirmed";
-                response.OrderDescription = "Đơn hàng đã được xử lý trước đó";
+                response.Success = true;
+                response.OrderDescription = "Giao dịch đã được ghi nhận trước đó";
                 return response;
             }
 
@@ -143,23 +166,39 @@ public class PaymentService : IPaymentService
             if (vnp_ResponseCode == "00")
             {
                 response.Success = true;
-                
-                // A. Update trạng thái Booking
-                booking.Status = "Confirmed";
+
+                if (booking.Status == "PendingPayment")
+                {
+                    booking.Status = "Confirmed";
+                }
                 booking.UpdatedAt = DateTime.Now;
+                // A. Update trạng thái Booking
+                string paymentType = booking.Status == "PendingPayment" ? "Deposit" : "Settlement";
 
                 // B. Lưu lịch sử thanh toán
                 var payment = new Payment
                 {
                     BookingId = booking.Id,
                     PaymentMethod = "VNPAY",
-                    Amount = booking.TotalPrice,
+                    Amount = vnp_Amount,
                     Status = "Completed",
                     TransactionId = vnp_TransactionNo,
                     PaidAt = DateTime.Now,
+                    Type = paymentType,
                     Additional = JsonConvert.SerializeObject(new { vnp_ResponseCode, vnp_OrderInfo })
                 };
                 _context.Payments.Add(payment);
+
+                // Cập nhật trạng thái Booking nếu đã đủ tiền
+                var totalPaid = booking.Payments.Where(p => p.Status == "Completed").Sum(p => p.Amount) + vnp_Amount;
+
+                decimal requiredAmount = (booking.DepositRequired ?? 0) > 0 ? booking.DepositRequired!.Value : booking.TotalPrice;
+
+                if (booking.Status == "PendingPayment" && totalPaid >= requiredAmount)
+                {
+                    booking.Status = "Confirmed";
+                    booking.UpdatedAt = DateTime.Now;
+                }
 
                 // C. [NEW] Cập nhật số lượng Voucher đã dùng (Nếu có)
                 if (booking.PromotionId.HasValue)
@@ -171,14 +210,20 @@ public class PaymentService : IPaymentService
                         // Tự động tắt nếu hết lượt
                         if (promo.UsageLimit > 0 && promo.UsedCount >= promo.UsageLimit)
                         {
-                            promo.IsActive = false; 
+                            promo.IsActive = false;
                         }
                     }
                 }
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
-
+                // D. Gửi email xác nhận đến khách hàng
+                try
+                {
+                    // Truyền booking và số tiền vừa trả vào email
+                    await _emailService.SendBookingSuccessEmailAsync(booking, vnp_Amount);
+                }
+                catch (Exception ex) { Console.WriteLine($"Lỗi gửi mail VNPay: {ex.Message}"); }
             }
             // --- TRƯỜNG HỢP 2: KHÁCH HỦY HOẶC LỖI (Mã != 00) ---
             else
@@ -186,7 +231,7 @@ public class PaymentService : IPaymentService
                 response.Success = false;
 
                 // A. Hủy đơn ngay để nhả phòng (Vì khách đã hủy ở cổng thanh toán rồi)
-                booking.Status = "Cancelled"; 
+                booking.Status = "Cancelled";
                 booking.Note += $" [Thanh toán thất bại/Hủy - Code: {vnp_ResponseCode}]";
                 booking.UpdatedAt = DateTime.Now;
 

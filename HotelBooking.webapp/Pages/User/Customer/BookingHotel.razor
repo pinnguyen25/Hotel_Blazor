@@ -20,6 +20,8 @@
                     <i class="bi bi-arrow-left fs-5"></i>
                 </a>
             </div>
+            <BookingTimer StartTime="@PageLoadTime" TimeoutMinutes="@SystemTimeoutMinutes"
+                OnTimeout="HandlePageTimeout" />
 
             <EditForm Model="BookingModel" OnValidSubmit="HandleSubmit">
                 <DataAnnotationsValidator />
@@ -383,12 +385,27 @@
                             </div>
                         }
 
-                        <div class="d-flex justify-content-between align-items-center pt-1">
-                            <span class="fw-bold fs-5">THÀNH TIỀN</span>
-                            <span class="fw-bold fs-4" style="color: aqua;">
+                        <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+                            <span class="fw-bold fs-6">TỔNG CỘNG</span>
+                            <span class="fw-bold fs-5 text-dark">
                                 @((priceResult.FinalTotal > 0 ? priceResult.FinalTotal : (CalculateRoomTotal() +
-                                                                CalculateServiceTotal())).ToString("N0")) ₫</span>
+                                                                CalculateServiceTotal())).ToString("N0")) ₫
+                            </span>
                         </div>
+
+                        <div class="alert alert-info mt-3 mb-3 border-0 bg-info bg-opacity-10 rounded-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="fw-bold text-info-emphasis" style="font-size: 0.9rem;">ĐẶT CỌC</span>
+                                    <small class="d-block text-muted" style="font-size: 0.75rem;">Phần còn lại thanh
+                                        toán tại khách sạn</small>
+                                </div>
+                                <span class="fw-bold fs-4 text-primary">
+                                    @DepositRequired.ToString("N0") ₫
+                                </span>
+                            </div>
+                        </div>
+
                         <div class="text-end extra-small text-muted mb-3">Đã bao gồm thuế & phí dịch vụ</div>
 
                         <div class="text-center mt-3">
@@ -399,9 +416,9 @@
                     </div>
                 </div>
                 <div class="mb-4">
-                    <button class="btn btn-booking w-100 py-3 rounded-pill fw-bold shadow desktop-submit-btn"
-                    style="font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px;"
-                        @onclick="SubmitForm" disabled="@isSubmitting">
+                    <button class="btn btn-booking w-100 mb-5 py-3 rounded-pill fw-bold shadow desktop-submit-btn"
+                        style="font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px;" @onclick="SubmitForm"
+                        disabled="@isSubmitting">
                         @if (isSubmitting)
                         {
                             <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -417,6 +434,32 @@
         </div>
     </div>
 </div>
+@if (IsErrorModalVisible)
+{
+    <div class="modal-backdrop fade show" style="background-color: rgba(0,0,0,0.7); z-index: 1050;"></div>
+    <div class="modal fade show d-block" tabindex="-1" style="z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow rounded-4">
+                <div class="modal-body text-center p-4">
+                    <div class="mb-3 text-danger">
+                        <i class="bi bi-exclamation-triangle-fill display-1"></i>
+                    </div>
+                    <h4 class="fw-bold text-danger mb-2">Rất tiếc, không thể đặt phòng!</h4>
+                    <p class="text-muted mb-4">@ErrorMessage</p>
+
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-secondary rounded-pill py-2" @onclick="GoBack">
+                            <i class="bi bi-arrow-left me-2"></i> Quay lại chọn phòng khác
+                        </button>
+                        <button class="btn btn-primary rounded-pill py-2" @onclick="() => IsErrorModalVisible = false">
+                            Đóng và thử lại
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 <style>
     .text-warning-dark {
@@ -451,6 +494,69 @@
     private PriceResultVM priceResult = new();
     private bool showVoucherList = false;
     private List<PromotionVM> AvailableVouchers { get; set; } = new(); // Dùng lại PromotionVM hoặc DTO
+
+    private bool IsErrorModalVisible = false;
+    private string ErrorMessage = "";
+    private int SystemTimeoutMinutes = 15;
+    private bool isConfigLoaded = false;
+    private DateTime PageLoadTime { get; set; } = DateTime.Now;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+        await LoadSystemConfig();
+        await SetAuthHeader();
+        await _bookingState.InitAsync();
+        if (_bookingState.SessionStartTime == null)
+        {
+            // Trường hợp: Vào từ nút "Đặt ngay" ở RoomList
+            // -> Bắt đầu phiên mới
+            await _bookingState.StartSessionAsync();
+            PageLoadTime = DateTime.Now;
+        }
+        else
+        {
+            PageLoadTime = _bookingState.SessionStartTime.Value;
+        }
+
+        // 4. Kiểm tra ngay lập tức xem đã lố giờ chưa (Trường hợp F5 sau 20 phút)
+        if (DateTime.Now > PageLoadTime.AddMinutes(SystemTimeoutMinutes))
+        {
+            // Xóa session cũ và đá ra ngoài
+            await _bookingState.ResetSessionAsync();
+            HandlePageTimeout();
+            return;
+        }
+
+        int targetHotelId = HotelId > 0 ? HotelId : _bookingState.HotelId;
+        if (targetHotelId <= 0 || !_bookingState.HasItems)
+        {
+            Snackbar.Add("Không tìm thấy thông tin đặt phòng.", Severity.Error);
+            _nav.NavigateTo("/");
+            return;
+        }
+        HotelId = targetHotelId;
+        await LoadAddOnServices();
+        await LoadHotelDataAndCart();
+
+        MapStateToModel();
+        await CalculatePriceAsync();
+    }
+
+    private void HandlePageTimeout()
+    {
+        // 1. Khóa nút submit
+        isSubmitting = true;
+
+        // 2. Hiện thông báo lỗi to
+        ShowError("Phiên đặt phòng đã hết hạn. Vui lòng chọn lại phòng.");
+
+        // 3. (Optional) Tự động quay về trang khách sạn sau 3 giây
+        Task.Delay(3000).ContinueWith(_ =>
+        {
+            _nav.NavigateTo($"/Hotel/{HotelId}", forceLoad: true);
+        });
+    }
 
     private int TotalNights => Math.Max(1, (BookingModel.CheckOut.DayNumber - BookingModel.CheckIn.DayNumber));
     private async Task SetAuthHeader()
@@ -527,25 +633,34 @@
             HotelImage = _bookingState.HotelImage;
         }
     }
-    protected override async Task OnInitializedAsync()
+
+
+    private async Task LoadSystemConfig()
     {
-        _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
-        await SetAuthHeader();
-        await _bookingState.InitAsync();
-
-        int targetHotelId = HotelId > 0 ? HotelId : _bookingState.HotelId;
-        if (targetHotelId <= 0 || !_bookingState.HasItems)
+        try
         {
-            Snackbar.Add("Không tìm thấy thông tin đặt phòng.", Severity.Error);
-            _nav.NavigateTo("/");
-            return;
-        }
-        HotelId = targetHotelId;
-        await LoadAddOnServices();
-        await LoadHotelDataAndCart();
+            // Tạo client mới để đảm bảo sạch sẽ (hoặc dùng _httpClient đã inject)
+            // Gọi đúng đường dẫn API bạn đã khai báo ở BE: [HttpGet("/booking-timeout")]
+            // -> URL thực tế: {BaseUrl}/booking-timeout
 
-        MapStateToModel();
-        await CalculatePriceAsync();
+            var res = await _httpClient!.GetFromJsonAsync<ApiResponse<int>>("hotel/booking-timeout");
+
+            if (res != null && res.StatusCode == StatusCodeResponse.Success && res.Content > 0)
+            {
+                SystemTimeoutMinutes = res.Content;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Nếu lỗi mạng hoặc server die, vẫn giữ mặc định 15p để app không crash
+            Console.WriteLine($"Lỗi hệ thống: {ex.Message}. Using default 15m.");
+        }
+        finally
+        {
+            // QUAN TRỌNG: Đánh dấu là đã load xong để UI render lại
+            isConfigLoaded = true;
+            StateHasChanged();
+        }
     }
 
     private void MapStateToModel()
@@ -719,6 +834,20 @@
         await HandleSubmit();
     }
 
+    private decimal TotalAmount => priceResult.FinalTotal > 0 ? priceResult.FinalTotal : (CalculateRoomTotal() +
+    CalculateServiceTotal());
+
+    private decimal DepositRequired
+    {
+        get
+        {
+            if (BookingModel.PaymentMethod == "VNPAY")
+                return Math.Round(TotalAmount * 0.5m, 0); // Cọc 50%
+
+            return 0; // Trả sau thì hiện 0 hoặc Total tùy chính sách
+        }
+    }
+
     private async Task HandleSubmit()
     {
         isSubmitting = true;
@@ -759,6 +888,7 @@
 
             if (response.IsSuccessStatusCode)
             {
+                await _bookingState.ClearAsync();
                 var result = await response.Content.ReadFromJsonAsync<ApiResponse<BookingResponseVM>>();
                 if (result != null && result.StatusCode == StatusCodeResponse.Success)
                 {
@@ -773,10 +903,11 @@
                     else if (BookingModel.PaymentMethod == "VNPAY")
                     {
                         // Logic VNPAY: Gọi API lấy link
+                        decimal amountToPay = result.Content?.DepositAmount > 0 ? result.Content.DepositAmount : DepositRequired;
                         var payRes = await _httpClient!.PostAsJsonAsync("payment/create-url", new
                         {
-                            BookingId = result.Content.BookingId,
-                            Amount = result.Content.TotalPrice, // Lấy giá chốt từ BE cho chắc
+                            BookingId = result.Content?.BookingId,
+                            Amount = amountToPay,
                             Method = "VNPAY"
                         });
 
@@ -784,6 +915,10 @@
                         {
                             var url = await payRes.Content.ReadAsStringAsync();
                             _nav.NavigateTo(url, forceLoad: true); // Chuyển trang sang VNPAY
+                        }
+                        else
+                        {
+                            Snackbar.Add("Lỗi tạo link thanh toán VNPAY", Severity.Error);
                         }
                     }
                 }
@@ -795,13 +930,34 @@
             else
             {
                 // Đọc lỗi từ BE trả về (ví dụ hết phòng)
-                var errContent = await response.Content.ReadAsStringAsync();
-                Snackbar.Add($"Lỗi: {errContent}", Severity.Error);
+                var errorBody = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    var apiError = JsonSerializer.Deserialize<ApiResponse<object>>(errorBody, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+                    if (apiError != null && !string.IsNullOrEmpty(apiError.Message))
+                    {
+                        ShowError(apiError.Message);
+                    }
+                    else
+                    {
+                        ShowError(errorBody); // Fallback text thô
+                    }
+                }
+                catch
+                {
+                    // Nếu không phải JSON, hiển thị text thô (thường là lỗi 500 hoặc 400 string)
+                    // Backend của bạn throw Exception: "Rất tiếc, loại phòng... không đủ..."
+                    // Nó sẽ rơi vào đây.
+                    ShowError(errorBody);
+                }
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Exception: {ex.Message}", Severity.Error);
+            ShowError($"Lỗi hệ thống: {ex.Message}");
         }
         finally
         {
@@ -809,13 +965,26 @@
         }
     }
 
+    private void ShowError(string message)
+    {
+        // Làm sạch thông báo lỗi nếu cần (ví dụ bỏ bớt ký tự lạ)
+        ErrorMessage = message.Replace("\"", "").Trim();
+
+        // Hiện Snackbar cho lỗi nhẹ
+        Snackbar.Add(ErrorMessage, Severity.Error);
+
+        // Hiện Modal cho lỗi nghiêm trọng để chặn user spam nút click
+        IsErrorModalVisible = true;
+        StateHasChanged();
+    }
+
     private int GetIncludedCount(string serviceName)
     {
         int count = 0;
         foreach (var room in BookingModel.SelectedRooms)
         {
-            if (room.IncludedServiceNames != null && 
-                room.IncludedServiceNames.Any(inc => inc.Equals(serviceName, StringComparison.OrdinalIgnoreCase)))
+            if (room.IncludedServiceNames != null &&
+            room.IncludedServiceNames.Any(inc => inc.Equals(serviceName, StringComparison.OrdinalIgnoreCase)))
             {
                 count += room.Quantity;
             }

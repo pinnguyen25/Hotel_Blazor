@@ -24,20 +24,20 @@ namespace HotelBooking.api.Controllers
         public async Task<IActionResult> CreatePaymentUrl([FromBody] CreatePaymentReq req)
         {
             // Lấy thông tin booking từ DB để đảm bảo số tiền chính xác (không lấy từ FE gửi lên)
-            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var bookingResponse = await _hotelService.GetBookingDetailForUserAsync(req.BookingId, userId);
-
-            if (bookingResponse.Content == null) return NotFound("Đơn hàng không tồn tại");
-
-            // Map DTO sang Entity Booking (tạm thời để dùng hàm CreateVnpayUrl)
-            var bookingEntity = new Booking
+            try
             {
-                Id = bookingResponse.Content.Id,
-                TotalPrice = bookingResponse.Content.TotalPrice
-            };
+                // Lấy UserId từ Token
+                int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-            var url = _paymentService.CreateVnpayUrl(HttpContext, bookingEntity);
-            return Ok(url);
+                // Gọi hàm Async mới, chỉ truyền bookingId và userId
+                var url = await _paymentService.CreateVnpayUrlAsync(HttpContext, req.BookingId, userId);
+
+                return Ok(url);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [AllowAnonymous]

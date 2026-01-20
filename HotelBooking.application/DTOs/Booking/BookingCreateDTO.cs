@@ -37,4 +37,5 @@ public class BookingResponseDTO
     public string? Message { get; set; }
     public string? Status { get; set; }
     public string? PaymentUrl { get; set; } 
+    public decimal? DepositAmount { get; set; }
 }

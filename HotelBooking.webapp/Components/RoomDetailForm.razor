@@ -213,7 +213,7 @@
                                                     <option value="0">-- Chọn nhân viên --</option>
                                                     @foreach (var s in AvailableStaffs)
                                                     {
-                                                        <option value="@s.Id">@s.FullName (@s.Position)</option>
+                                                        <option value="@s.Id">@s.FullName (@GetPositionNameVN(s.Position))</option>
                                                     }
                                                 </select>
                                                 <div class="d-flex gap-2">
@@ -383,6 +383,7 @@
                                     <span class="text-muted">Tổng cộng</span>
                                     <span class="fw-bold">@currentInvoice.GrandTotal.ToString("N0")</span>
                                 </div>
+                               
                                 <div class="d-flex justify-content-between mb-3 text-success">
                                     <span>Đã trả trước</span>
                                     <span>-@currentInvoice.PaidAmount.ToString("N0")</span>
@@ -851,8 +852,16 @@
             try
             {
                 var res = await _httpClient!.GetFromJsonAsync<ApiResponse<List<StaffVM>>>($"hotel/owner/{HotelId}/staffs");
-                if (res.StatusCode == StatusCodeResponse.Success)
-                    AvailableStaffs = res.Content.Where(s => s.IsActive).ToList();
+                if (res.StatusCode == StatusCodeResponse.Success && res.Content != null)
+                {
+                    var allowedPositions = new[] { "Lễ tân", "Receptionist", "Buồng phòng", "Housekeeper" };
+                    AvailableStaffs = res.Content.Where(s => 
+                        s.IsActive && 
+                        !string.IsNullOrEmpty(s.Position) && // Kiểm tra không null
+                        // Kiểm tra xem chức vụ có chứa từ khóa nào trong danh sách cho phép không (không phân biệt hoa thường)
+                        allowedPositions.Any(p => s.Position.Contains(p, StringComparison.OrdinalIgnoreCase))
+                    ).ToList();
+                }
             }
             catch { }
         }
@@ -936,4 +945,18 @@
         "Maintenance" => "Bảo trì",
         _ => status
     };
+
+    private string GetPositionNameVN(string position)
+    {
+        if (string.IsNullOrEmpty(position)) return "Nhân viên";
+        
+        return position.ToLower() switch
+        {
+            "receptionist" => "Lễ tân",
+            "housekeeper" => "Buồng phòng",
+            "manager" => "Quản lý",
+            "security" => "Bảo vệ",
+            _ => position 
+        };
+    }
 }

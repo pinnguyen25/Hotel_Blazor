@@ -15,7 +15,18 @@ public class InvoiceDTO
     public decimal ServiceTotal { get; set; }
 
     // Tổng cộng
+
     public decimal GrandTotal { get; set; }      // Tổng tất cả
     public decimal PaidAmount { get; set; }      // Đã trả trước (cọc)
     public decimal RemainingAmount { get; set; } // Cần thanh toán nốt
+    public List<PaymentHistoryDTO> PaymentHistory { get; set; } = new();
+}
+
+public class PaymentHistoryDTO
+{
+    public DateTime PaymentDate { get; set; }
+    public decimal Amount { get; set; }
+    public string PaymentMethod { get; set; } // VNPay, Cash...
+    public string Type { get; set; }          // Deposit, Settlement
+    public string Status { get; set; }
 }

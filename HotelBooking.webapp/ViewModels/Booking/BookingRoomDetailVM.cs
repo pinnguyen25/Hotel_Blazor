@@ -4,6 +4,7 @@ public class BookingRoomDetailVM
     public int Id { get; set; } // BookingRoomId (Primary Key)
 
     // Thông tin loại phòng (Khách mua cái này)
+    public int BookingId { get; set; }
     public int RoomTypeId { get; set; }
     public string? RoomTypeName { get; set; }
     public decimal PricePerNight { get; set; }
@@ -19,4 +20,5 @@ public class BookingRoomDetailVM
     public decimal Price { get; set; }
     // Trạng thái phụ (Optional)
     // public bool IsCheckedIn { get; set; } // Logic: RoomId != null && BookingStatus == CheckedIn
+    public int Quantity { get; set; }
 }

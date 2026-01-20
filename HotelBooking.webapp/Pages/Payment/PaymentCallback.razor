@@ -22,9 +22,13 @@
             <p class="text-muted">Mã đơn hàng: <b>#@orderId</b></p>
             <p class="text-muted">Mã giao dịch: @transactionId</p>
 
-            <div class="mt-4">
-                <button class="btn btn-primary rounded-pill px-4" @onclick="GoHome">
-                    Về trang chủ
+            <div class="d-grid gap-2 mt-4" style="max-width: 300px; margin: 0 auto;">
+                <button class="btn btn-primary py-2 rounded-pill fw-bold" @onclick="GoToDetail">
+                    <i class="bi bi-file-earmark-text me-2"></i> Xem chi tiết đơn hàng
+                </button>
+
+                <button class="btn btn-outline-secondary py-2 rounded-pill fw-bold" @onclick="GoHome">
+                    <i class="bi bi-house me-2"></i> Quay về trang chủ
                 </button>
             </div>
         }
@@ -108,6 +112,10 @@
         }
     }
 
+    private void GoToDetail()
+    {
+        _nav.NavigateTo($"/user/profile"); 
+    }
     private void GoHome()
     {
         _nav.NavigateTo("/");

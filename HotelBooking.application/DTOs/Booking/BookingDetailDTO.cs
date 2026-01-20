@@ -20,6 +20,9 @@ public class BookingDetailDTO
     public decimal TotalPrice { get; set; }
     public string Status { get; set; } // PendingPayment, Confirmed...
     public DateTime CreatedAt { get; set; }
+    public decimal DepositRequired { get; set; }
+    public decimal PaidAmount { get; set; }
+    public decimal RemainingAmount { get; set; }
 
     // List phòng & Dịch vụ
     public List<BookingRoomDetailDTO> Rooms { get; set; } = new();

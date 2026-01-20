@@ -41,6 +41,7 @@ public class BookingResponseVM
     public decimal TotalPrice { get; set; }
     public string? Message { get; set; }
     // Có thể thêm PaymentUrl nếu tích hợp VNPAY/Momo
+    public decimal DepositAmount { get; set; }
     public string? Status { get; set; }
     public string? PaymentUrl { get; set; } 
 }

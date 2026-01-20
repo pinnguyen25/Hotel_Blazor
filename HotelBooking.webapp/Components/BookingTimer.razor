@@ -1,0 +1,80 @@
+@using System.Timers
+@implements IDisposable
+@inject NavigationManager NavManager
+@inject ISnackbar Snackbar
+
+@if (_timeLeft.TotalSeconds > 0)
+{
+    <div class="alert alert-warning d-flex align-items-center justify-content-between py-2 px-3 mb-4 shadow-sm border-warning border-opacity-25 rounded-3">
+        <div class="d-flex align-items-center gap-2">
+            <div class="spinner-grow text-warning spinner-grow-sm" role="status"></div>
+            <span class="small text-dark fw-medium">Vui lòng hoàn tất đặt phòng trong:</span>
+        </div>
+        <div class="fw-bold text-danger fs-5 font-monospace">
+            @_timeLeft.ToString(@"mm\:ss")
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 mb-4 shadow-sm rounded-3">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span class="small fw-bold">Đã hết thời gian giữ phòng! Vui lòng đặt lại.</span>
+    </div>
+}
+
+@code {
+    // Thời điểm bắt đầu giữ phòng (Lúc khách vào trang hoặc lúc tạo đơn nháp)
+    // Nếu trang Create chưa tạo đơn, ta lấy thời điểm hiện tại lúc Init làm mốc.
+    [Parameter] public DateTime StartTime { get; set; } = DateTime.Now; 
+    [Parameter] public int TimeoutMinutes { get; set; } = 15;
+    [Parameter] public EventCallback OnTimeout { get; set; }
+    
+    private Timer? _timer;
+    private TimeSpan _timeLeft;
+    private DateTime _endTime;
+    private bool _isTimerStarted = false;
+
+    protected override void OnParametersSet()
+    {
+        _endTime = StartTime.AddMinutes(TimeoutMinutes);
+        CalculateTimeLeft();
+
+        if (!_isTimerStarted && _timeLeft.TotalSeconds > 0)
+        {
+            _timer = new Timer(1000);
+            _timer.Elapsed += async (sender, e) => await Tick();
+            _timer.AutoReset = true;
+            _timer.Start();
+            _isTimerStarted = true;
+        }
+    }
+
+    private void CalculateTimeLeft()
+    {
+        _timeLeft = _endTime - DateTime.Now;
+        if (_timeLeft.TotalSeconds <= 0)
+        {
+            _timeLeft = TimeSpan.Zero;
+            HandleTimeout();
+        }
+    }
+
+    private async Task Tick()
+    {
+        CalculateTimeLeft();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleTimeout()
+    {
+        _timer?.Stop();
+        if (OnTimeout.HasDelegate) InvokeAsync(OnTimeout.InvokeAsync);
+    }
+
+    public void Dispose()
+    {
+        _timer?.Stop();
+        _timer?.Dispose();
+    }
+}

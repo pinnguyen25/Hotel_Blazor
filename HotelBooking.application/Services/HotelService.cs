@@ -136,6 +136,7 @@ public interface IHotelService
 
     // hotel customer
     // booking
+    public Task<ApiResponse<BookingDetailDTO>> GetBookingDetailForOwnerAsync(int bookingId, int requesterId);
     public Task<ApiResponse<List<ServiceAddOnDTO>>> GetAddOnServicesForBookingAsync(int hotelId);
     public Task<ApiResponse<List<BookingRoomDetailDTO>>> GetBookingRoomsDetailsAsync(int bookingId, int requesterId);
     public Task<ApiResponse<InvoiceDTO>> GetInvoicePreviewAsync(int bookingId, int requesterId);
@@ -155,8 +156,12 @@ public interface IHotelService
     public Task<ApiResponse<bool>> AssignRoomToBookingAsync(AssignRoomRequestDTO request, int requesterId);
     public Task<ApiResponse<List<BookingRoomDetailDTO>>> GetPendingBookingsAsync(int hotelId, int requesterId);
     public Task<ApiResponse<bool>> MoveBookingAsync(MoveBookingRequestDTO request, int ownerId);
+    public Task<ApiResponse<bool>> MarkBookingAsNoShowAsync(int bookingId, int requesterId);
     // Tạo booking nhanh (Walk-in)
     public Task<ApiResponse<bool>> CreateWalkInBookingAsync(WalkInBookingRequestDTO request, int ownerId);
+
+    // payment refund
+    public Task<ApiResponse<bool>> ConfirmRefundAsync(int bookingId, int requesterId);
     #endregion
 
     #region Staff Manage
@@ -961,67 +966,68 @@ public class HotelService : IHotelService
     {
         try
         {
-            // 1. Lấy tất cả giao dịch là Commission
-            var query = _context.WalletTransactions
-                .AsNoTracking()
-                .Where(t => t.TransactionType == "CommissionFee");
 
-            // 2. Tổng trọn đời 
-            var netTotal = await query.SumAsync(t => t.Amount);
-            var totalLifetime = await query.SumAsync(t => t.Amount);
+            var completedBookings = _context.Bookings
+            .AsNoTracking()
+            .Where(b => b.Status == "Completed" || b.Status == "CheckedIn" || b.Status == "Confirmed");// Chỉ lấy đơn thành công
 
-            // 3. Tháng này
-            var now = DateTime.Now;
-            var startOfMonth = new DateTime(now.Year, now.Month, 1);
-            var thisMonth = await query
-                .Where(t => t.CreatedAt >= startOfMonth)
-                .SumAsync(t => t.Amount);
+            // 2. TỔNG DOANH THU TRỌN ĐỜI (Lifetime)
+            // Logic: Tổng giá trị các đơn thành công * 10%
+            var totalLifetime = await completedBookings
+                .SumAsync(b => b.TotalPrice * 0.10m);
 
-            // 4. Biểu đồ theo tháng (Của năm được chọn)
-            var monthlyStats = await query
-                .Where(t => t.CreatedAt.HasValue && t.CreatedAt.Value.Year == year)
-                .GroupBy(t => t.CreatedAt.Value.Month)
+            // 3. DOANH THU THÁNG NÀY
+            var startOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            var thisMonth = await completedBookings
+                .Where(b => b.CreatedAt >= startOfMonth)
+                .SumAsync(b => b.TotalPrice * 0.10m);
+
+            // 4. TỔNG TIỀN "MẤT ĐI" DO HOÀN ĐƠN (Refund Loss)
+       
+            var totalRefundedAmount = await _context.Payments
+            .Where(p => p.Status == "Refunded" && p.Amount < 0) // Lấy các giao dịch hoàn tiền (-7,245,000)
+            .SumAsync(p => p.Amount);
+            var refundLoss = Math.Abs(totalRefundedAmount) * 0.10m;
+            
+            // 5. BIỂU ĐỒ (Chart) - Doanh thu thực nhận theo tháng
+            // Group theo tháng của năm được chọn
+            var monthlyStats = await completedBookings
+                .Where(b => b.CreatedAt.HasValue && b.CreatedAt.Value.Year == year)
+                .GroupBy(b => b.CreatedAt.Value.Month)
                 .Select(g => new
                 {
                     Month = g.Key,
-                    Amount = g.Sum(t => t.Amount)
+                    Amount = g.Sum(b => b.TotalPrice * 0.10m)
                 })
                 .ToListAsync();
 
-            // Fill đủ 12 tháng (kể cả tháng 0đ)
             var chartData = Enumerable.Range(1, 12).Select(month => new RevenueChartDTO
             {
-                Label = $"Tháng {month}",
-                Value = Math.Abs(monthlyStats.FirstOrDefault(m => m.Month == month)?.Amount ?? 0)
+                Label = $"T{month}",
+                Value = monthlyStats.FirstOrDefault(m => m.Month == month)?.Amount ?? 0
             }).ToList();
 
-            // 5. Giao dịch gần đây (Join bảng Booking/Hotel để biết tiền từ đâu)
-            // Phần này bạn có thể làm thêm nếu muốn hiện bảng chi tiết bên dưới
-            var recentTransactions = await _context.WalletTransactions
-            .AsNoTracking()
-            .Where(t => t.TransactionType == "CommissionFee")
-            .OrderByDescending(t => t.CreatedAt)
-            .Take(10) // Lấy 10 giao dịch mới nhất
-            .Select(t => new WalletTransactionDTO
-            {
-                // Vì WalletTransaction không trực tiếp link Hotel, ta dùng subquery hoặc join thủ công
-                // Cách an toàn nhất trong EF Core với cấu trúc của bạn:
-                Description = _context.Bookings
-                    .Where(b => b.Id == t.ReferenceId)
-                    .Select(b => $"{b.Hotel.Name} - Đơn #{b.Id} ({t.TransactionType})")
-                    .FirstOrDefault() ?? t.Description, // Fallback nếu ko tìm thấy
-
-                Amount = Math.Abs(t.Amount), // Hiển thị số dương cho Admin vui mắt
-                Type = t.TransactionType == "CommissionReversal" ? "Hoàn phí" : "Thu phí",
-                Date = t.CreatedAt ?? DateTime.MinValue
-            })
-            .ToListAsync();
+            // 6. GIAO DỊCH GẦN ĐÂY (Lấy từ Booking để hiện tên khách sạn)
+            // Lấy 10 đơn hoàn tất gần nhất -> Quy ra phí sàn
+            var recentTransactions = await completedBookings
+                .OrderByDescending(b => b.CreatedAt)
+                .Take(10)
+                .Include(b => b.Hotel) // Để lấy tên khách sạn
+                .Select(b => new WalletTransactionDTO
+                {
+                    Description = $"{b.Hotel.Name} - Đơn #{b.Id}",
+                    Amount = b.TotalPrice * 0.10m, // Phí sàn
+                    Type = "CommissionFee",
+                    Date = b.CreatedAt ?? DateTime.MinValue
+                })
+                .ToListAsync();
 
             return ApiResponseHelper.Ok(new AdminRevenueDTO
             {
-                TotalLifetimeRevenue = Math.Abs(totalLifetime),
-                ThisMonthRevenue = Math.Abs(thisMonth),
+                TotalLifetimeRevenue = totalLifetime,
+                ThisMonthRevenue = thisMonth,
                 MonthlyData = chartData,
+                TotalRefundLoss = refundLoss,
                 RecentTransactions = recentTransactions
             });
         }
@@ -1030,6 +1036,7 @@ public class HotelService : IHotelService
             return ApiResponseHelper.ServerError<AdminRevenueDTO>(ex.Message);
         }
     }
+
     #endregion
 
     #region Admin manage user/owner
@@ -1361,7 +1368,9 @@ public class HotelService : IHotelService
             .ToListAsync();
 
             var todayCheckInsList = await bookingsQuery
-            .Where(b => b.CheckInDate == today && (b.Status == "Confirmed" || b.Status == "PendingPayment"))
+            .Where(b => b.CheckInDate == today && b.Status != "Cancelled"
+                && b.Status != "PendingRefund"
+                && b.Status != "Refunded")
             .Include(b => b.Customer)
             .Include(b => b.BookingRooms).ThenInclude(br => br.RoomType)
             .Select(b => new BookingShortDTO
@@ -1379,7 +1388,7 @@ public class HotelService : IHotelService
 
             // C. Khách ĐI hôm nay (CheckOut == today)
             var todayCheckOutsList = await bookingsQuery
-                .Where(b => b.CheckOutDate == today && b.Status == "CheckedIn")
+                .Where(b => b.CheckOutDate == today && (b.Status == "CheckedIn" || b.Status == "Completed"))
                 .Include(b => b.Customer)
                 .Include(b => b.BookingRooms).ThenInclude(br => br.RoomType)
                 .Select(b => new BookingShortDTO
@@ -5491,33 +5500,46 @@ public class HotelService : IHotelService
             var checkIn = bookingRoom.Booking.CheckInDate;
             var checkOut = bookingRoom.Booking.CheckOutDate;
 
-            var isRoomBusy = await _context.BookingRooms.AnyAsync(br =>
-                br.RoomId == request.PhysicalRoomId && // Phòng này
-                br.Id != request.BookingRoomId &&      // Không phải chính đơn này
-                _context.Bookings.Any(b => b.Id == br.BookingId
-                                        && b.Status != "Cancelled"
-                                        && b.Status != "Completed"
-                                        // Logic trùng ngày
-                                        && b.CheckInDate < checkOut
-                                        && b.CheckOutDate > checkIn));
+            var conflictingBooking = await _context.BookingRooms
+                .Include(br => br.Booking)
+                .Where(br =>
+                    br.RoomId == request.PhysicalRoomId && // Phòng này
+                    br.Id != request.BookingRoomId &&      // Không phải chính đơn này
+                    br.Booking.Status != "Cancelled" &&    // Đơn chưa hủy
+                    br.Booking.Status != "Completed" &&    // Đơn chưa xong (tuỳ logic, thường completed vẫn tính là đã ở, nhưng check ngày quan trọng hơn)
+                                                           // Logic trùng ngày: (StartA < EndB) and (EndA > StartB)
+                    br.Booking.CheckInDate < checkOut &&
+                    br.Booking.CheckOutDate > checkIn
+                )
+                .Select(br => new
+                {
+                    br.Booking.ContactName,
+                    Start = br.Booking.CheckInDate,
+                    End = br.Booking.CheckOutDate
+                })
+                .FirstOrDefaultAsync();
 
-            if (isRoomBusy)
-                return ApiResponseHelper.Conflict<bool>("Phòng này đã có người đặt trong khoảng thời gian này.");
-
-            // 6. Validate Status phòng vật lý (Nếu đang bảo trì thì không gán được)
-            if (targetRoom.Status == "Maintenance" || targetRoom.Status == "OutOfOrder")
-                return ApiResponseHelper.BadRequest<bool>("Phòng đang bảo trì/hỏng, không thể gán.");
-
-            var today = DateOnly.FromDateTime(DateTime.Now);
-            if (checkIn <= today && targetRoom.Status != "Available")
+            if (conflictingBooking != null)
             {
-                // Nếu phòng đang bẩn (Cleaning) -> Cảnh báo hoặc Chặn
-                if (targetRoom.Status == "Cleaning")
-                    return ApiResponseHelper.BadRequest<bool>("Phòng đang dọn dẹp.");
+                // Trả về thông báo chi tiết: Trùng với ai, ngày nào
+                return ApiResponseHelper.Conflict<bool>(
+                    $"Phòng {targetRoom.RoomNumber} đã được đặt bởi {conflictingBooking.ContactName} " +
+                    $"từ {conflictingBooking.Start:dd/MM} đến {conflictingBooking.End:dd/MM}.");
+            }
 
-                // Nếu phòng đang có khách khác (Occupied) -> Chặn (dù query trên đã check Booking, nhưng check thêm Status cho chắc)
+            // 6. Validate Status phòng vật lý (Check trạng thái hiện tại)
+            // Nếu khách muốn vào NGAY HÔM NAY (hoặc quá khứ), phòng phải Available
+            var today = DateOnly.FromDateTime(DateTime.Now);
+            if (checkIn <= today)
+            {
+                if (targetRoom.Status == "Maintenance" || targetRoom.Status == "OutOfOrder")
+                    return ApiResponseHelper.BadRequest<bool>($"Phòng {targetRoom.RoomNumber} đang bảo trì.");
+
+                if (targetRoom.Status == "Cleaning")
+                    return ApiResponseHelper.BadRequest<bool>($"Phòng {targetRoom.RoomNumber} chưa dọn xong.");
+
                 if (targetRoom.Status == "Occupied")
-                    return ApiResponseHelper.Conflict<bool>("Phòng đang có khách ở.");
+                    return ApiResponseHelper.Conflict<bool>($"Phòng {targetRoom.RoomNumber} hiện đang có khách ở.");
             }
 
             // 7. THỰC HIỆN GÁN
@@ -5530,7 +5552,17 @@ public class HotelService : IHotelService
             if (checkIn <= today)
             {
                 targetRoom.Status = "Occupied"; // Phòng vật lý: Có khách
-                bookingRoom.Booking.Status = "CheckedIn"; // Đơn hàng: Đã nhận phòng
+            }
+
+            await _context.SaveChangesAsync();
+            // Kiểm tra nếu đã gán hết phòng thì cập nhật trạng thái đơn hàng
+            var unassignedCount = await _context.BookingRooms
+            .CountAsync(br => br.BookingId == bookingRoom.BookingId && br.RoomId == null);
+
+            if (unassignedCount == 0 && checkIn <= today)
+            {
+                // Nếu đã gán hết sạch -> Chuyển trạng thái đơn hàng
+                bookingRoom.Booking.Status = "CheckedIn";
                 bookingRoom.Booking.UpdatedAt = DateTime.Now;
             }
 
@@ -5766,6 +5798,120 @@ public class HotelService : IHotelService
     #endregion
 
     #region Booking Owner
+
+    public async Task<ApiResponse<BookingDetailDTO>> GetBookingDetailForOwnerAsync(int bookingId, int requesterId)
+    {
+        try
+        {
+            // 1. Query Data: Include sâu để lấy đủ thông tin hiển thị
+            var booking = await _context.Bookings
+                .AsNoTracking()
+                .Include(b => b.Hotel)
+                .Include(b => b.Payments) // Để tính PaidAmount
+                                          // Include thông tin Phòng
+                .Include(b => b.BookingRooms).ThenInclude(br => br.Room)      // Lấy số phòng vật lý (RoomNumber)
+                .Include(b => b.BookingRooms).ThenInclude(br => br.RoomType)  // Lấy tên loại phòng
+                    .ThenInclude(rt => rt.RoomTypeServices).ThenInclude(rts => rts.Service) // Lấy dịch vụ đi kèm (IncludedServices)
+                .Include(b => b.BookingRooms).ThenInclude(br => br.SelectedBedType) // Lấy tên loại giường
+                                                                                    // Include thông tin Dịch vụ mua thêm
+                .Include(b => b.BookingServices).ThenInclude(bs => bs.Service)
+                .FirstOrDefaultAsync(b => b.Id == bookingId);
+
+            if (booking == null)
+                return ApiResponseHelper.NotFound<BookingDetailDTO>("Đơn đặt phòng không tồn tại.");
+
+            // 2. Check Quyền: Chỉ Owner hoặc Staff của khách sạn đó mới được xem
+            bool isAuthorized = await _authService.CanOperateHotelAsync(requesterId, booking.HotelId);
+            if (!isAuthorized)
+                return ApiResponseHelper.Forbidden<BookingDetailDTO>("Bạn không có quyền truy cập đơn hàng này.");
+
+            // 3. Tính toán tiền nong
+            decimal paidAmount = booking.Payments
+                .Where(p => p.Status == "Completed" || p.Status == "Success")
+                .Sum(p => p.Amount);
+
+            decimal remaining = booking.TotalPrice - paidAmount;
+            if (remaining < 0) remaining = 0; // Tránh số âm
+
+            int nights = (booking.CheckOutDate.DayNumber - booking.CheckInDate.DayNumber);
+            if (nights < 1) nights = 1;
+
+            // 4. Map sang BookingDetailDTO
+            var result = new BookingDetailDTO
+            {
+                Id = booking.Id,
+                HotelId = booking.HotelId,
+                HotelName = booking.Hotel.Name,
+                HotelAddress = booking.Hotel.Address,
+                HotelImage = booking.Hotel.CoverImageUrl,
+
+                // Info Khách
+                ContactName = booking.ContactName,
+                ContactPhone = booking.ContactPhone,
+                ContactEmail = booking.ContactEmail,
+                Note = booking.Note,
+
+                // Info Thời gian & Tiền
+                CheckIn = booking.CheckInDate.ToDateTime(new TimeOnly(14, 0)),  // Convert DateOnly -> DateTime
+                CheckOut = booking.CheckOutDate.ToDateTime(new TimeOnly(12, 0)),
+                TotalNights = nights,
+                TotalPrice = booking.TotalPrice,
+                Status = booking.Status,
+                CreatedAt = booking.CreatedAt ?? DateTime.MinValue,
+                DepositRequired = booking.DepositRequired ?? 0,
+                PaidAmount = paidAmount,
+                RemainingAmount = remaining,
+
+                // Map List Phòng (BookingRoomDetailDTO)
+                Rooms = booking.BookingRooms.Select(br => new BookingRoomDetailDTO
+                {
+                    Id = br.Id,
+                    BookingId = br.BookingId,
+                    RoomTypeId = br.RoomTypeId,
+                    RoomTypeName = br.RoomType?.Name ?? "Unknown",
+                    PricePerNight = br.PricePerNight,
+
+                    // Thông tin phòng vật lý (Quan trọng để hiển thị nút Gán)
+                    RoomId = br.RoomId,
+                    RoomNumber = br.Room?.RoomNumber, // Nếu null -> FE sẽ hiện "Chưa xếp phòng"
+
+                    GuestName = br.GuestName ?? booking.ContactName,
+                    CheckIn = booking.CheckInDate.ToDateTime(TimeOnly.MinValue),
+                    CheckOut = booking.CheckOutDate.ToDateTime(TimeOnly.MinValue),
+
+                    // Tổng tiền phòng này = Giá 1 đêm * Số đêm
+                    Price = br.PricePerNight * nights,
+
+                    BedTypeName = br.SelectedBedType?.Name ?? "Tiêu chuẩn",
+
+                    // Lấy tên các dịch vụ đi kèm trong loại phòng (Ăn sáng, Wifi...)
+                    IncludedServices = br.RoomType?.RoomTypeServices?
+                        .Select(s => s.Service.Name)
+                        .ToList() ?? new List<string>(),
+                    Quantity = 1
+                }).ToList(),
+
+                // Map List Dịch vụ mua thêm (BookingServiceDTO)
+                Services = booking.BookingServices.Select(bs => new BookingServiceDTO
+                {
+                    Id = bs.Id,
+                    ServiceId = bs.ServiceId,
+                    ServiceName = bs.Service?.Name ?? "Dịch vụ",
+                    Description = bs.Service?.Description,
+                    Price = bs.Price,
+                    Quantity = bs.Quantity ?? 0,
+                    IsPaid = bs.IsPaid ?? false
+                }).ToList()
+            };
+
+            return ApiResponseHelper.Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return ApiResponseHelper.ServerError<BookingDetailDTO>($"Lỗi máy chủ: {ex.Message}");
+        }
+    }
+
     public async Task<ApiResponse<bool>> UpdateGuestNameAsync(UpdateGuestNameDTO request, int requesterId)
     {
         try
@@ -5859,11 +6005,12 @@ public class HotelService : IHotelService
                 .Where(br => br.Booking.HotelId == hotelId
                              && br.RoomId == null
                              && (br.Booking.Status == "Confirmed" || br.Booking.Status == "PendingPayment") // Tùy logic
-                             && br.Booking.CheckInDate <= today.AddDays(1) // Cho phép checkin sớm 1 ngày hoặc hôm nay
+                             && br.Booking.CheckInDate <= today.AddDays(14) // Cho phép checkin sớm 1 ngày hoặc hôm nay
                              && br.Booking.CheckOutDate > today)
                 .Select(br => new BookingRoomDetailDTO
                 {
                     Id = br.Id, // BookingRoomId dùng để assign
+                    BookingId = br.BookingId,
                     RoomTypeId = br.RoomTypeId,
                     RoomTypeName = br.RoomType.Name,
                     BedTypeName = br.SelectedBedTypeId != null ? br.SelectedBedType.Name : "Không yêu cầu",
@@ -6127,24 +6274,38 @@ public class HotelService : IHotelService
         try
         {
             // 1. Kiểm tra Booking có tồn tại và chưa hoàn tất không
-            var booking = await _context.Bookings.FindAsync(request.BookingId);
+            var booking = await _context.Bookings
+            .Include(b => b.Hotel) // Lấy tên khách sạn
+            .Include(b => b.BookingServices).ThenInclude(bs => bs.Service)
+            .Include(b => b.Payments)
+            .FirstOrDefaultAsync(b => b.Id == request.BookingId);
+
             if (booking == null) return ApiResponseHelper.NotFound<bool>("Đơn đặt phòng không tồn tại.");
 
             // Chỉ được thêm dịch vụ khi khách ĐANG Ở (CheckedIn) hoặc ĐÃ ĐẶT (Confirmed)
             if (booking.Status == "Cancelled" || booking.Status == "Completed")
                 return ApiResponseHelper.BadRequest<bool>("Đơn đã kết thúc.");
 
-            if (booking.CustomerId != userId)
-                return ApiResponseHelper.Forbidden<bool>("Bạn không có quyền thao tác trên đơn hàng này.");
+            bool isCustomer = booking.CustomerId == userId;
 
+            // 2. Hoặc là Owner/Staff quản lý khách sạn này
+            bool isManager = await _authService.CanOperateHotelAsync(userId, booking.HotelId);
+
+            if (!isCustomer && !isManager)
+            {
+                return ApiResponseHelper.Forbidden<bool>("Bạn không có quyền thao tác trên đơn hàng này.");
+            }
 
             decimal totalAdded = 0;
             bool hasItemAdded = false;
+
+            var newlyAddedServices = new List<BookingService>();
 
             foreach (var item in request.Services.Where(x => x.Quantity > 0))
             {
                 // Lấy giá hiện tại
                 var config = await _context.HotelServiceConfigs
+                    .Include(x => x.Service)
                     .FirstOrDefaultAsync(x => x.HotelId == booking.HotelId && x.ServiceId == item.ServiceId);
 
                 if (config != null && config.IsActive == true)
@@ -6156,9 +6317,11 @@ public class HotelService : IHotelService
                         Quantity = item.Quantity,
                         Price = config.Price,
                         IsPaid = false, // Chưa thanh toán
-                        CreatedAt = DateTime.Now
+                        CreatedAt = DateTime.Now,
+                        Service = config.Service
                     };
                     _context.BookingServices.Add(newService);
+                    newlyAddedServices.Add(newService);
 
                     totalAdded += (newService.Price * (newService.Quantity ?? 0));
                     hasItemAdded = true;
@@ -6174,6 +6337,25 @@ public class HotelService : IHotelService
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
+
+            var bookingForMail = await _context.Bookings
+                .AsNoTracking() // Đọc nhanh, không dính dáng đến tracking cũ
+                .Include(b => b.Hotel)
+                .Include(b => b.Payments) // <--- QUAN TRỌNG: Load lại danh sách thanh toán
+                .FirstOrDefaultAsync(b => b.Id == request.BookingId);
+
+            if (bookingForMail != null)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+
+                        await _emailService.SendBookingUpdateEmailAsync(bookingForMail, newlyAddedServices, totalAdded);
+                    }
+                    catch (Exception ex) { Console.WriteLine($"Lỗi gửi mail update: {ex.Message}"); }
+                });
+            }
 
             return ApiResponseHelper.Ok(true, "Thêm dịch vụ thành công.");
         }
@@ -6307,6 +6489,8 @@ public class HotelService : IHotelService
         }
     }
 
+
+
     public async Task<ApiResponse<BookingShortDTO>> GetUpcomingTripAsync(int userId)
     {
         try
@@ -6370,6 +6554,7 @@ public class HotelService : IHotelService
                     .ThenInclude(rts => rts.Service)
                 .Include(b => b.BookingRooms).ThenInclude(br => br.SelectedBedType)
                 .Include(b => b.BookingServices).ThenInclude(bs => bs.Service)
+                .Include(b => b.Payments)
                 .FirstOrDefaultAsync(b => b.Id == bookingId && b.IsDeleted == false);
 
             if (booking == null) return ApiResponseHelper.NotFound<BookingDetailDTO>("Đơn đặt phòng không tồn tại.");
@@ -6380,6 +6565,11 @@ public class HotelService : IHotelService
             if (booking.CustomerId != userId && !isOwnerOrStaff)
                 return ApiResponseHelper.Forbidden<BookingDetailDTO>("Bạn không có quyền xem đơn hàng này.");
 
+            decimal paidAmount = booking.Payments
+            .Where(p => p.Status == "Completed")
+            .Sum(p => p.Amount);
+            decimal currentTotal = booking.TotalPrice;
+            decimal remaining = currentTotal - paidAmount;
             // Mapping
             var result = new BookingDetailDTO
             {
@@ -6397,7 +6587,11 @@ public class HotelService : IHotelService
                 CheckIn = booking.CheckInDate.ToDateTime(TimeOnly.MinValue),
                 CheckOut = booking.CheckOutDate.ToDateTime(TimeOnly.MinValue),
                 TotalNights = booking.CheckOutDate.DayNumber - booking.CheckInDate.DayNumber,
-                TotalPrice = booking.TotalPrice,
+                TotalPrice = currentTotal,
+                PaidAmount = paidAmount,
+                RemainingAmount = remaining,
+                DepositRequired = booking.DepositRequired ?? 0,
+
                 Status = booking.Status,
                 CreatedAt = booking.CreatedAt ?? DateTime.MinValue,
 
@@ -6446,6 +6640,49 @@ public class HotelService : IHotelService
         }
     }
 
+    public async Task<ApiResponse<bool>> MarkBookingAsNoShowAsync(int bookingId, int requesterId)
+    {
+        try
+        {
+            var booking = await _context.Bookings
+                .Include(b => b.Payments)
+                .FirstOrDefaultAsync(b => b.Id == bookingId);
+
+            if (booking == null) return ApiResponseHelper.NotFound<bool>("Đơn không tồn tại.");
+
+            // 1. Check quyền
+            if (!await _authService.CanOperateHotelAsync(requesterId, booking.HotelId))
+                return ApiResponseHelper.Forbidden<bool>("Không có quyền truy cập.");
+
+            // 2. Validate trạng thái
+            if (booking.Status != "Confirmed" && booking.Status != "PendingPayment")
+                return ApiResponseHelper.BadRequest<bool>("Chỉ đơn đang chờ mới được báo vắng mặt.");
+
+            // 3. Cập nhật trạng thái
+            booking.Status = "NoShow";
+            booking.UpdatedAt = DateTime.Now;
+            
+            // Note lại ai là người báo
+            var user = await _context.Users.FindAsync(requesterId);
+            booking.Note += $" [Báo vắng mặt bởi {user?.FullName ?? "Staff"} lúc {DateTime.Now:HH:mm}]";
+
+            await _context.SaveChangesAsync();
+
+            // 5. Gửi mail thông báo cho khách (Tùy chọn)
+            _ = Task.Run(async () => {
+                try {
+                    // await _emailService.SendNoShowNotificationAsync(booking);
+                } catch {}
+            });
+
+            return ApiResponseHelper.Ok(true, "Đã cập nhật trạng thái khách vắng mặt.");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponseHelper.ServerError<bool>(ex.Message);
+        }
+    }
+
     // 1. Create Booking
     public async Task<ApiResponse<BookingResponseDTO>> CreateBookingAsync(BookingCreateDTO request, int userId)
     {
@@ -6455,7 +6692,7 @@ public class HotelService : IHotelService
         using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
         try
         {
-            await _context.SaveChangesAsync();
+
             // Check từng loại phòng trong vòng lặp
             foreach (var item in request.SelectedRooms)
             {
@@ -6465,16 +6702,18 @@ public class HotelService : IHotelService
 
                 // 2. Đếm tổng số booking (Confirmed/CheckedIn/Pending) bị trùng lịch với đơn vừa tạo
                 // (Bao gồm cả chính đơn hàng booking.Id vừa insert ở trên)
-                var overlappingBookings = await _context.BookingRooms
+                var occupiedCount = await _context.BookingRooms
                     .Where(br => br.RoomTypeId == item.RoomTypeId)
-                    .Where(br => br.Booking.Status != "Cancelled" && br.Booking.Status != "Refunded" && br.Booking.IsDeleted == false)
-                    .Where(br => br.Booking.CheckInDate < request.CheckOut && br.Booking.CheckOutDate > request.CheckIn)
+                    .Where(br => br.Booking.Status != "Cancelled"
+                                 && br.Booking.Status != "Refunded"
+                                 && br.Booking.IsDeleted == false)
+                    .Where(br => br.Booking.CheckInDate < request.CheckOut
+                                 && br.Booking.CheckOutDate > request.CheckIn)
                     .CountAsync();
 
-                // 3. Nếu số lượng đã đặt > Tổng số phòng -> Rollback
-                if ((overlappingBookings + item.Quantity) > totalPhysicalRooms)
+                if ((occupiedCount + item.Quantity) > totalPhysicalRooms)
                 {
-                    throw new Exception($"Rất tiếc, loại phòng {item.RoomTypeId} không đủ số lượng trống.");
+                    throw new Exception($"Loại phòng {item.RoomTypeId} không đủ số lượng trống cho giai đoạn này.");
                 }
             }
 
@@ -6512,6 +6751,11 @@ public class HotelService : IHotelService
 
             var priceData = priceResultResponse.Content;
 
+            decimal depositPercentage = 0.5m;
+            decimal depositAmount = Math.Round(priceData.FinalTotal * depositPercentage, 0);
+
+            // 1. Xác định phương thức thanh toán và trạng thái ban đầu
+
             string paymentMethod = string.IsNullOrEmpty(request.PaymentMethod) ? "Direct" : request.PaymentMethod;
             string bookingStatus = paymentMethod == "Direct" ? "Confirmed" : "PendingPayment";
 
@@ -6531,7 +6775,8 @@ public class HotelService : IHotelService
                 IsDeleted = false,
                 PromotionId = priceData.AppliedPromotionId,
                 DiscountAmount = priceData.DiscountAmount,
-                TotalPrice = priceData.FinalTotal
+                TotalPrice = priceData.FinalTotal,
+                DepositRequired = depositAmount,
             };
 
             _context.Bookings.Add(booking);
@@ -6620,6 +6865,7 @@ public class HotelService : IHotelService
             {
                 BookingId = booking.Id,
                 TotalPrice = booking.TotalPrice,
+                DepositAmount = booking.DepositRequired > 0 ? booking.DepositRequired : booking.TotalPrice,
                 Message = msg
             });
         }
@@ -6665,6 +6911,7 @@ public class HotelService : IHotelService
         var booking = await _context.Bookings
             .Include(b => b.Payments)
             .Include(b => b.Hotel)
+            .Include(b => b.BookingRooms)
             .FirstOrDefaultAsync(b => b.Id == bookingId);
 
         if (booking == null) return ApiResponseHelper.NotFound<bool>("Đơn không tồn tại.");
@@ -6749,7 +6996,7 @@ public class HotelService : IHotelService
 
             // Tính tổng tiền đã thanh toán thành công
             var totalPaid = booking.Payments
-                .Where(p => p.Status == "Completed" || p.Status == "Success")
+                .Where(p => p.Status == "Completed")
                 .Sum(p => p.Amount);
 
             if (totalPaid > 0)
@@ -6757,7 +7004,7 @@ public class HotelService : IHotelService
                 // CASE A: Khách đã trả tiền -> Không hủy ngay -> Chuyển sang chờ hoàn tiền
                 // Bạn nên thêm trạng thái "PendingRefund" vào hệ thống status
                 booking.Status = "PendingRefund";
-                booking.Note += $" [Đã trừ tiền ví Owner. Cần hoàn {totalPaid:N0} cho khách.]";
+                booking.Note += $" [Yêu cầu hủy. Cần hoàn {totalPaid:N0}.]";
 
             }
             else
@@ -6770,19 +7017,21 @@ public class HotelService : IHotelService
 
             // Logic nhả phòng vật lý (nếu lỡ đã xếp phòng rồi)
             // Tìm các BookingRoom đã gán RoomId
-            var assignedRooms = await _context.BookingRooms
-                .Include(br => br.Room)
-                .Where(br => br.BookingId == bookingId && br.RoomId != null)
-                .ToListAsync();
+            // 
 
-            foreach (var br in assignedRooms)
+            foreach (var br in booking.BookingRooms)
             {
-                // Trả trạng thái phòng vật lý về Available (nếu nó đang không có ai khác ở)
-                if (br.Room != null && br.Room.Status != "Maintenance")
+                if (br.RoomId != null)
                 {
-                    br.Room.Status = "Available";
+
+                    var room = await _context.Rooms.FindAsync(br.RoomId);
+                    if (room != null && room.Status != "Maintenance") // Không đụng vào phòng bảo trì
+                    {
+
+                        room.Status = "Available";
+                    }
+                    br.RoomId = null; // Gỡ link
                 }
-                br.RoomId = null; // Gỡ link
             }
 
             await _context.SaveChangesAsync();
@@ -6806,6 +7055,7 @@ public class HotelService : IHotelService
         {
             // 1. Lấy đơn hàng
             var booking = await _context.Bookings
+            .Include(b => b.Payments)
             .Include(b => b.Hotel) // Include Hotel để lấy tên cho vào Email
             .FirstOrDefaultAsync(b => b.Id == request.BookingId);
             if (booking == null) return ApiResponseHelper.NotFound<bool>("Đơn hàng không tồn tại.");
@@ -6814,6 +7064,7 @@ public class HotelService : IHotelService
 
             if (booking.Status != "PendingPayment")
                 return ApiResponseHelper.BadRequest<bool>("Đơn hàng này không ở trạng thái chờ thanh toán.");
+            string paymentType = booking.Status == "PendingPayment" ? "Deposit" : "Settlement";
 
             // 2. Tạo bản ghi thanh toán
             var payment = new Payment
@@ -6826,6 +7077,7 @@ public class HotelService : IHotelService
                             : request.TransactionId,
 
                 Status = "Completed",
+                Type = paymentType,
                 PaidAt = DateTime.Now,
                 CreatedBy = userId,
                 CreatedAt = DateTime.Now,
@@ -6835,9 +7087,26 @@ public class HotelService : IHotelService
             _context.Payments.Add(payment);
 
             // 3. Cập nhật trạng thái Booking
+            decimal totalPaid = booking.Payments.Where(p => p.Status == "Completed").Sum(p => p.Amount) + request.Amount;
+
+            // Nếu là đơn đang chờ cọc VÀ đã trả đủ mức cọc yêu cầu -> Chuyển sang Confirmed
+            if (booking.Status == "PendingPayment" && totalPaid >= booking.DepositRequired)
+            {
+                booking.Status = "Confirmed";
+                booking.UpdatedAt = DateTime.Now;
+
+                // Chỉ gửi mail xác nhận đặt phòng khi đã đủ cọc
+                _ = Task.Run(async () =>
+                {
+                    await _emailService.SendBookingSuccessEmailAsync(booking, booking.TotalPrice);
+                });
+            }
+            // Nếu đã trả hết sạch tiền (TotalPaid >= TotalPrice) -> Completed (nếu đang ở trạng thái Checkout)
+            else if (totalPaid >= booking.TotalPrice && booking.Status == "CheckedIn")
+            {
+                // Logic tự động hoàn tất nếu cần, hoặc để lễ tân bấm nút
+            }
             // Nếu trả đủ tiền -> Confirmed. Nếu trả 1 phần -> Có thể vẫn Confirmed nhưng ghi nợ.
-            booking.Status = "Confirmed";
-            booking.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -6903,10 +7172,9 @@ public class HotelService : IHotelService
                 // Total tự tính trong DTO: Price * Quantity
             }).ToList();
 
-            decimal serviceTotalUnpaid = servicesDto.Where(s => !s.IsPaid).Sum(s => s.Total);
-
+            decimal serviceTotal = servicesDto.Sum(s => s.Price * s.Quantity);
             // 4. Tổng cần thanh toán (Grand Total)
-            decimal grandTotal = roomTotal + serviceTotalUnpaid;
+            decimal grandTotal = booking.TotalPrice;
 
             // 5. Đã thanh toán (Cọc) - Lấy từ bảng Payments (Completed)
             decimal paidAmount = booking.Payments
@@ -6934,7 +7202,7 @@ public class HotelService : IHotelService
                 TotalNights = nights,
                 Services = servicesDto,
                 RoomTotal = roomTotal,
-                ServiceTotal = serviceTotalUnpaid,
+                ServiceTotal = serviceTotal,
                 GrandTotal = grandTotal,
                 PaidAmount = paidAmount,
                 RemainingAmount = remaining > 0 ? remaining : 0
@@ -6945,6 +7213,107 @@ public class HotelService : IHotelService
         catch (Exception ex)
         {
             return ApiResponseHelper.ServerError<InvoiceDTO>(ex.Message);
+        }
+    }
+
+    public async Task<ApiResponse<bool>> ConfirmRefundAsync(int bookingId, int requesterId)
+    {
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // 1. Lấy thông tin Booking và các khoản ĐÃ TRẢ
+            var booking = await _context.Bookings
+                .Include(b => b.Hotel)
+                .Include(b => b.Payments)
+                .FirstOrDefaultAsync(b => b.Id == bookingId);
+
+            if (booking == null) return ApiResponseHelper.NotFound<bool>("Đơn không tồn tại.");
+
+            // Check quyền Owner...
+            if (!await _authService.IsAdminOrOwnerAsync(requesterId) && booking.Hotel.OwnerId != requesterId)
+                return ApiResponseHelper.Forbidden<bool>();
+
+            // 2. TÍNH TOÁN SỐ TIỀN CÓ THỂ HOÀN
+            // Chỉ lấy những giao dịch là "Deposit", "Payment", "Settlement" có Status là "Completed"
+            // Và phải là số dương (tiền vào)
+            var totalPaidIn = booking.Payments
+                .Where(p => p.Status == "Completed" && p.Amount > 0)
+                .Sum(p => p.Amount);
+
+            // Tính tổng tiền ĐÃ HOÀN trước đó (nếu có hoàn nhiều lần) - là các số âm
+            var totalRefunded = booking.Payments
+                .Where(p => p.Status == "Refunded" || (p.Amount < 0 && p.Status == "Completed")) // Handle cả 2 trường hợp cho chắc
+                .Sum(p => Math.Abs(p.Amount));
+
+            // Số tiền thực tế còn lại trong túi Owner
+            var refundableAmount = totalPaidIn - totalRefunded;
+
+            if (refundableAmount <= 0)
+                return ApiResponseHelper.BadRequest<bool>("Đơn này đã hoàn tiền hết hoặc chưa thanh toán.");
+
+            // 3. LOGIC VÍ (Trừ tiền Owner)
+            var wallet = await _context.OwnerWallets.FirstOrDefaultAsync(w => w.OwnerId == booking.Hotel.OwnerId);
+            if (wallet == null) return ApiResponseHelper.BadRequest<bool>("Ví không tồn tại.");
+
+            // Tính phí sàn cần hoàn lại (Giả sử 10%)
+            decimal commissionRate = 0.10m;
+            decimal platformFeeRefund = refundableAmount * commissionRate; // Sàn trả lại tiền hoa hồng
+            decimal amountDeductFromOwner = refundableAmount - platformFeeRefund; // Owner phải bỏ ra
+
+            if (wallet.Balance < amountDeductFromOwner)
+                return ApiResponseHelper.BadRequest<bool>("Số dư ví không đủ để hoàn tiền.");
+
+            // Trừ ví
+            wallet.Balance -= amountDeductFromOwner;
+            wallet.TotalEarnings -= amountDeductFromOwner;
+            wallet.UpdatedAt = DateTime.Now;
+
+            // Log ví (WalletTransaction)
+            _context.WalletTransactions.Add(new WalletTransaction
+            {
+                WalletId = wallet.Id,
+                Amount = -amountDeductFromOwner,
+                TransactionType = "RefundDeduction",
+                Description = $"Hoàn tiền đơn #{bookingId}",
+                ReferenceId = bookingId,
+                CreatedAt = DateTime.Now
+            });
+
+            // 4. TẠO RECORD PAYMENT MỚI (QUAN TRỌNG NHẤT)
+            // Tạo JSON cho cột Additional (để đúng constraint ISJSON)
+            var refundNote = new { Reason = "Owner hoàn tiền", By = requesterId, Date = DateTime.Now };
+
+            var refundPayment = new Payment
+            {
+                BookingId = bookingId,
+                Amount = -refundableAmount, // LƯU SỐ ÂM (-7.245.000)
+                PaymentMethod = "VNPAY", // Hoặc "Wallet"
+                TransactionId = $"REF-{DateTime.Now.Ticks}", // Mã giao dịch hoàn tiền
+
+                Status = "Refunded", // Khớp với constraint CK_Payments_Status
+                Type = "Refund",     // Loại giao dịch mới để phân biệt với Deposit/Settlement
+
+                PaidAt = DateTime.Now,
+                CreatedAt = DateTime.Now,
+                CreatedBy = requesterId,
+                Additional = System.Text.Json.JsonSerializer.Serialize(refundNote)
+            };
+
+            _context.Payments.Add(refundPayment);
+
+            // 5. Update trạng thái Booking
+            booking.Status = "Refunded";
+            booking.UpdatedAt = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return ApiResponseHelper.Ok(true, $"Đã hoàn {refundableAmount:N0}đ thành công.");
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            return ApiResponseHelper.ServerError<bool>(ex.Message);
         }
     }
     #endregion
@@ -7097,7 +7466,9 @@ public class HotelService : IHotelService
             // Lấy dữ liệu
             var booking = await _context.Bookings
                 .Include(b => b.BookingServices)
-                .Include(b => b.BookingRooms).ThenInclude(br => br.Room) // Lấy phòng vật lý để đổi trạng thái
+                .Include(b => b.BookingRooms).ThenInclude(br => br.Room)
+                .Include(b => b.Hotel)
+                .Include(b => b.Payments)
                 .FirstOrDefaultAsync(b => b.Id == request.BookingId);
 
             if (booking == null) return ApiResponseHelper.NotFound<bool>("Đơn không tồn tại.");
@@ -7120,7 +7491,7 @@ public class HotelService : IHotelService
                     Amount = request.Amount,
                     PaymentMethod = request.PaymentMethod,
                     Status = "Completed",
-                    TransactionId = finalTransId, // Dùng mã đã xử lý
+                    TransactionId = string.IsNullOrEmpty(request.TransactionId) ? $"POS-{DateTime.Now.Ticks}" : request.TransactionId,
                     PaidAt = DateTime.Now,
                     CreatedBy = requesterId,
                     CreatedAt = DateTime.Now
@@ -7129,12 +7500,14 @@ public class HotelService : IHotelService
             }
 
             // Đánh dấu tất cả dịch vụ là "Đã thanh toán"
-            foreach (var sv in booking.BookingServices)
+            foreach (var sv in booking.BookingServices.Where(s => s.IsPaid == false))
             {
                 sv.IsPaid = true;
             }
 
-            // XỬ LÝ TRẢ PHÒNG
+            // CẬP NHẬT TRẠNG THÁI BOOKING
+            booking.Status = "Completed";
+            booking.UpdatedAt = DateTime.Now;
 
             // Lặp qua từng phòng trong đơn đặt này (vì 1 booking có thể đặt nhiều phòng)
             foreach (var br in booking.BookingRooms)
@@ -7145,11 +7518,9 @@ public class HotelService : IHotelService
                     br.Room.UpdatedAt = DateTime.Now;
 
                     // B. Kiểm tra xem đã có task dọn dẹp nào chưa (Tránh spam task)
-                    var existingTask = await _context.HousekeepingTasks
-                        .AnyAsync(t => t.RoomId == br.Room.Id
-                            && (t.Status == "Pending" || t.Status == "Assigned" || t.Status == "Cleaning"));
+                    bool hasActiveTask = await _context.HousekeepingTasks.AnyAsync(t => t.RoomId == br.Room.Id && t.Status != "Completed");
 
-                    if (!existingTask)
+                    if (!hasActiveTask)
                     {
                         var bestCandidate = await _context.Staffs
                             .Where(s => s.HotelId == booking.HotelId &&
@@ -7173,8 +7544,8 @@ public class HotelService : IHotelService
                             Status = (bestCandidate?.Id != null) ? "Assigned" : "Pending",
                             Priority = "High", // Khách vừa trả phòng -> Ưu tiên dọn để bán tiếp
                             Note = (bestCandidate?.Id != null)
-                                   ? $"Khách {booking.ContactName} trả phòng. Cần dọn dẹp."
-                                   : $"Khách {booking.ContactName} trả phòng. Chưa tìm thấy nhân viên.",
+                                   ? $"Khách {booking.ContactName} trả phòng."
+                                   : "Chưa tìm thấy nhân viên.",
                             AssignedAt = (bestCandidate?.Id != null) ? DateTime.Now : null,
                             CreatedAt = DateTime.Now
                         };
@@ -7182,10 +7553,6 @@ public class HotelService : IHotelService
                     }
                 }
             }
-
-            // CẬP NHẬT TRẠNG THÁI BOOKING
-            booking.Status = "Completed";
-            booking.UpdatedAt = DateTime.Now;
 
             // 1. Cấu hình mức hoa hồng (Ví dụ 10%)
             // (Thực tế nên lưu CommissionRate trong bảng Hotels hoặc SystemConfig)
@@ -7238,7 +7605,7 @@ public class HotelService : IHotelService
                 WalletId = wallet.Id,
                 Amount = -platformFee,
                 TransactionType = "CommissionFee",
-                Description = $"Phí dịch vụ ChillZone (10%) đơn #{booking.Id}",
+                Description = $"Phí sàn 10% đơn #{booking.Id}",
                 ReferenceId = booking.Id,
                 CreatedAt = DateTime.Now.AddSeconds(1) // trick để nó hiện sau dòng doanh thu
             });

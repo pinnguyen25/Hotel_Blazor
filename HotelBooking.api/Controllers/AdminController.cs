@@ -26,7 +26,7 @@ namespace HotelBooking.api.Controllers
             return int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         }
 
-        // service clean up
+        #region Setting
         [HttpGet("settings")]
         public async Task<IActionResult> GetAll()
         {
@@ -41,6 +41,11 @@ namespace HotelBooking.api.Controllers
             if (!success) return NotFound("Không tìm thấy cấu hình.");
             return Ok(new { message = "Cập nhật thành công" });
         }
+
+    
+        #endregion
+
+
 
         //
         [HttpGet("customers")]
@@ -128,7 +133,7 @@ namespace HotelBooking.api.Controllers
         //     return ApiResponseHandlerHelper.HandleResponse(response);
         // }
 
-        [HttpGet("revenue-stats")] 
+        [HttpGet("revenue-stats")]
         public async Task<IActionResult> GetRevenueStats([FromQuery] int year)
         {
             if (year <= 0) year = DateTime.Now.Year;

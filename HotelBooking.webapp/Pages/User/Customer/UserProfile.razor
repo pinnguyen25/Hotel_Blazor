@@ -10,6 +10,7 @@
 @inject ILocalStorageService _localStorage
 @inject ISnackbar Snackbar
 @attribute [Authorize]
+
 <Header IsFixed="false" />
 <div class="container">
     <div class="row min-vh-75">
@@ -205,6 +206,14 @@
                                                 <a class="btn btn-sm btn-outline-secondary rounded-pill"
                                                     @onclick="() => OpenDetail(item.Id)">Chi tiết</a>
 
+                                                @if (CanCancelBooking(item.Status))
+                                                {
+                                                    <button class="btn btn-sm btn-outline-danger rounded-pill ms-2"
+                                                        @onclick="() => OpenCancelPopup(item.Id)">
+                                                        <i class="bi bi-x-circle me-1"></i> Hủy phòng
+                                                    </button>
+                                                }
+
                                                 @if (item.Status == "Completed")
                                                 {
                                                     @if (item.HasReviewed)
@@ -277,6 +286,7 @@
     </div>
 </div>
 <BookingDetail @ref="_popupRef" />
+<CancelBookingModal @ref="_cancelModal" OnConfirm="HandleCancelAPI" />
 
 <style>
     .list-group-item {
@@ -336,6 +346,7 @@
     public int? FocusBookingId { get; set; }
     private string ActiveTab = "details"; // details, history, wishlist
     private BookingDetail? _popupRef;
+    private CancelBookingModal? _cancelModal;
     // Data Models
     private UserProfileVM UserProfiles = new();
     private List<BookingListItemVM> Bookings = new();
@@ -524,6 +535,48 @@
         isEditing = false; // Quay lại chế độ xem, hủy bỏ thay đổi
     }
 
+    private bool CanCancelBooking(string status)
+    {
+        return status == "Confirmed" || status == "PendingPayment" || status == "Paid";
+    }
+    private void OpenCancelPopup(int bookingId)
+    {
+        _cancelModal?.Show(bookingId);
+    }
+    private async Task HandleCancelAPI(int bookingId)
+    {
+        try
+        {
+            // Gọi API
+            var response = await _httpClient!.PostAsync($"hotel/booking/cancel/{bookingId}", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Đã hủy đơn đặt phòng thành công.", Severity.Success);
+                
+                // Đóng modal và tắt loading
+                _cancelModal?.Finish();
+
+                // Load lại danh sách để cập nhật trạng thái
+                await LoadBookingHistoryAsync();
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Snackbar.Add("Không thể hủy đơn. Vui lòng thử lại sau.", Severity.Error);
+                Console.WriteLine($"Cancel Error: {errorContent}");
+                
+                // Vẫn đóng modal dù lỗi, hoặc giữ lại tùy bạn (ở đây mình đóng luôn)
+                _cancelModal?.Finish(); 
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi kết nối: {ex.Message}", Severity.Error);
+            _cancelModal?.Finish();
+        }
+    }
+
     private async Task SaveChangesAsync()
     {
         try
@@ -567,6 +620,8 @@
             Snackbar.Add($"Lỗi hệ thống: {ex.Message}", Severity.Error);
         }
     }
+
+
 
     private async Task HandleAvatarSelected(InputFileChangeEventArgs e)
     {
@@ -640,6 +695,8 @@
             StateHasChanged();
         }
     }
+
+
 
     // --- HÀM RELOAD SAU KHI ĐÁNH GIÁ THÀNH CÔNG ---
     private async Task ReloadAfterReview()

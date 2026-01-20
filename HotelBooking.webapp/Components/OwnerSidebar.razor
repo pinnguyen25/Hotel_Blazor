@@ -1,15 +1,24 @@
 @inject NavigationManager _nav
+@inject AuthenticationStateProvider _authStateProvider
 <div class="d-flex flex-column h-100 sidebar-theme">
 
     <div class="p-3 border-bottom border-secondary border-opacity-25">
         @if (HotelId > 0)
         {
-            <a href="/owner/hotels"
-                class="btn btn-link text-decoration-none text-white-50 p-0 mb-3 d-flex align-items-center hover-bright">
-                <i class="bi bi-chevron-left me-1 small"></i>
-                <span style="font-size: 0.9rem;">Danh sách Hotel</span>
-            </a>
-
+            @if (IsOwner) 
+            {
+                <a href="/owner/hotels"
+                   class="btn btn-link text-decoration-none text-white-50 p-0 mb-3 d-flex align-items-center hover-bright">
+                    <i class="bi bi-chevron-left me-1 small"></i>
+                    <span style="font-size: 0.9rem;">Danh sách Hotel</span>
+                </a>
+            }
+            else
+            {
+                <div class="text-white-50 mb-3 small">
+                    <i class="bi bi-building me-1"></i> Khu vực làm việc
+                </div>
+            }
         }
         else
         {
@@ -29,60 +38,87 @@
             <ul class="nav flex-column gap-1">
 
                 <li class="nav-label mt-2 mb-2">VẬN HÀNH</li>
+                @if(IsHousekeeper)
+                {
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/housekeeping-tasks")">
+                            <i class="bi bi-brush-fill"></i> <span>Buồng phòng</span>
+                        </NavLink>
+                    </li>
+                }
 
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/dashboard")">
-                        <i class="bi bi-speedometer2"></i> <span>Dashboard</span>
-                    </NavLink>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/room-map")">
-                        <i class="bi bi-grid-3x3-gap-fill"></i> <span>Sơ đồ phòng</span>
-                    </NavLink>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/housekeeping-tasks")">
-                        <i class="bi bi-brush-fill"></i> <span>Buồng phòng</span>
-                    </NavLink>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/bookings/calendar")">
-                        <i class="bi bi-calendar-check"></i> <span>Đặt phòng</span>
-                    </NavLink>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/reviews")">
-                        <i class="bi bi-star-half"></i> <span>Đánh giá & Phản hồi</span>
-                    </NavLink>
-                </li>
+                @if (IsOwner)
+                {
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/dashboard")">
+                            <i class="bi bi-speedometer2"></i> <span>Dashboard</span>
+                        </NavLink>
+                    </li>
+                }
 
-                <li class="nav-label mt-4 mb-2">CẤU HÌNH</li>
+                @if (IsOwner || IsReceptionist)
+                {
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/room-map")">
+                            <i class="bi bi-grid-3x3-gap-fill"></i> <span>Sơ đồ phòng</span>
+                        </NavLink>
+                    </li>
+                }
 
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="@($"/owner/hotel-wizard/{HotelId}")">
-                        <i class="bi bi-pencil-square"></i> <span>Thông tin & Ảnh</span>
-                    </NavLink>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/room-types")">
-                        <i class="bi bi-door-open"></i> <span>Loại phòng</span>
-                    </NavLink>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/services")">
-                        <i class="bi bi-cup-hot"></i> <span>Dịch vụ</span>
-                    </NavLink>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/staffs")">
-                        <i class="bi bi-people"></i> <span>Nhân viên</span>
-                    </NavLink>
-                </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/policies")">
-                        <i class="bi bi-file-earmark-text"></i> <span>Chính sách</span>
-                    </NavLink>
-                </li>
+                @if (IsOwner || IsHousekeeper)
+                {
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/housekeeping-tasks")">
+                            <i class="bi bi-brush-fill"></i> <span>Buồng phòng</span>
+                        </NavLink>
+                    </li>
+                }
+
+                @if (IsOwner || IsReceptionist)
+                {
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/bookings/calendar")">
+                            <i class="bi bi-calendar-check"></i> <span>Đặt phòng</span>
+                        </NavLink>
+                    </li>
+                }
+
+                @if (IsOwner)
+                {
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/reviews")">
+                            <i class="bi bi-star-half"></i> <span>Đánh giá & Phản hồi</span>
+                        </NavLink>
+                    </li>
+
+                    <li class="nav-label mt-4 mb-2">CẤU HÌNH</li>
+
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="@($"/owner/hotel-wizard/{HotelId}")">
+                            <i class="bi bi-pencil-square"></i> <span>Thông tin & Ảnh</span>
+                        </NavLink>
+                    </li>
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/room-types")">
+                            <i class="bi bi-door-open"></i> <span>Loại phòng</span>
+                        </NavLink>
+                    </li>
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/services")">
+                            <i class="bi bi-cup-hot"></i> <span>Dịch vụ</span>
+                        </NavLink>
+                    </li>
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/staffs")">
+                            <i class="bi bi-people"></i> <span>Nhân viên</span>
+                        </NavLink>
+                    </li>
+                    <li class="nav-item">
+                        <NavLink class="nav-link" href="@($"/owner/hotels/{HotelId}/policies")">
+                            <i class="bi bi-file-earmark-text"></i> <span>Chính sách</span>
+                        </NavLink>
+                    </li>
+                }
             </ul>
         }
     </div>
@@ -182,4 +218,52 @@
 
 @code {
     [Parameter] public int HotelId { get; set; }
+    private bool IsOwner { get; set; } = false;
+    private bool IsReceptionist { get; set; } = false;
+    private bool IsHousekeeper { get; set; } = false;
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckUserRoles();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CheckUserRoles();
+    }
+    private async Task CheckUserRoles()
+    {
+        var authState = await _authStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity != null && user.Identity.IsAuthenticated)
+        {
+            // 1. Kiểm tra Role Owner
+            IsOwner = user.IsInRole("Owner");
+
+            // 2. Nếu là Staff, kiểm tra Position (Chức vụ)
+            // Lưu ý: Bạn cần đảm bảo Claim "Position" đã được lưu trong Token khi đăng nhập
+            if (user.IsInRole("Staff"))
+            {
+                var positionClaim = user.FindFirst("Position")?.Value;
+                
+                // Chuẩn hóa chuỗi để so sánh (Lễ tân / Receptionist)
+                if (!string.IsNullOrEmpty(positionClaim))
+                {
+                    // Giả sử DB lưu là "Receptionist" hoặc "Lễ tân"
+                    if (positionClaim.Equals("Receptionist", StringComparison.OrdinalIgnoreCase) || 
+                        positionClaim.Equals("Lễ tân", StringComparison.OrdinalIgnoreCase))
+                    {
+                        IsReceptionist = true;
+                    }
+
+                    // Giả sử DB lưu là "Housekeeper" hoặc "Buồng phòng"
+                    if (positionClaim.Equals("Housekeeper", StringComparison.OrdinalIgnoreCase) || 
+                        positionClaim.Equals("Buồng phòng", StringComparison.OrdinalIgnoreCase))
+                    {
+                        IsHousekeeper = true;
+                    }
+                }
+            }
+        }
+    }
 }

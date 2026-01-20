@@ -1,6 +1,7 @@
 @page "/owner/finances"
 @using Blazored.LocalStorage
 @using HotelBooking.webapp.ViewModels.Hotel
+@using System.Net.Http.Headers
 @attribute [Authorize(Roles = "Owner")]
 @inject IHttpClientFactory _httpClientFactory
 @layout OwnerLayout
@@ -11,11 +12,11 @@
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h3 class="fw-bold text-primary mb-1">Tài chính & doanh thu</h3>
-            <p class="text-muted mb-0">Quản lý dòng tiền và rút lợi nhuận về ngân hàng.</p>
+            <h3 class="fw-bold text-primary mb-1">Tài chính & Doanh thu</h3>
+            <p class="text-muted mb-0">Theo dõi dòng tiền, doanh thu và thực hiện rút tiền.</p>
         </div>
-        <button class="btn btn-outline-primary rounded-pill px-4" @onclick="LoadWalletData">
-            <i class="bi bi-arrow-clockwise me-2"></i>Làm mới
+        <button class="btn btn-outline-primary rounded-pill px-4" @onclick="LoadWalletData" disabled="@isLoading">
+            <i class="bi bi-arrow-clockwise me-2 @(isLoading ? "spin-icon" : "")"></i>Làm mới
         </button>
     </div>
 
@@ -23,82 +24,81 @@
     {
         <div class="text-center py-5">
             <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-2 text-muted">Đang tải dữ liệu ví...</p>
+            <p class="mt-2 text-muted">Đang đồng bộ dữ liệu ví...</p>
         </div>
     }
     else
     {
         <div class="row g-4 mb-5">
-            <div class="col-md-6 col-lg-5">
-                <div
-                    class="wallet-card bg-gradient-primary text-white h-100 shadow-lg rounded-4 p-4 position-relative overflow-hidden">
+            <div class="col-md-7 col-lg-7">
+                <div class="wallet-card bg-gradient-primary text-white h-100 shadow-lg rounded-4 p-4 position-relative overflow-hidden">
                     <div class="bg-pattern-circle"></div>
-                    <div class="position-relative z-1">
+                    <div class="position-relative z-1 h-100 d-flex flex-column justify-content-between">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <small class="opacity-75 text-uppercase fw-bold ls-1">Số dư khả dụng</small>
-                                <h1 class="display-5 fw-bold mt-2 mb-0">@wallet.Balance.ToString("N0") <span
-                                        class="fs-4">₫</span></h1>
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <div class="bg-white bg-opacity-25 rounded-circle p-1">
+                                        <i class="bi bi-wallet2 fs-6 text-white"></i>
+                                    </div>
+                                    <small class="opacity-90 text-uppercase fw-bold ls-1">Số dư khả dụng</small>
+                                </div>
+                                <h1 class="display-4 fw-bold mb-0 text-white">
+                                    @wallet.Balance.ToString("N0") <span class="fs-4 opacity-50">₫</span>
+                                </h1>
                             </div>
-                            <div class="icon-box bg-white bg-opacity-25 rounded-circle p-3">
-                                <i class="bi bi-wallet2 fs-3"></i>
-                            </div>
-                        </div>
-
-                        <div class="mt-4 pt-3 border-top border-white border-opacity-25">
-                            <button class="btn btn-light text-primary fw-bold w-100 py-2 rounded-pill shadow-sm hover-scale"
-                                @onclick="() => showWithdrawModal = true">
-                                <i class="bi bi-cash-coin me-2"></i> Rút tiền về ngân hàng
+                            <button class="btn btn-light text-primary fw-bold px-4 py-2 rounded-pill shadow-sm hover-scale"
+                                    @onclick="() => showWithdrawModal = true">
+                                <i class="bi bi-cash-coin me-2"></i> Rút tiền
                             </button>
                         </div>
+
+                        <div class="mt-4 pt-3 border-top border-white border-opacity-25 d-flex align-items-center justify-content-between">
+                            <span class="small opacity-75"><i class="bi bi-shield-check me-1"></i> Bảo mật bởi ChillZone System</span>
+                            <span class="small opacity-75">Cập nhật: @DateTime.Now.ToString("HH:mm")</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-6 col-lg-4">
+            <div class="col-md-5 col-lg-5">
                 <div class="card border-0 h-100 shadow-sm rounded-4 bg-white">
                     <div class="card-body p-4 d-flex flex-column justify-content-center">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="icon-box bg-success bg-opacity-10 text-success rounded-circle p-3 me-3">
-                                <i class="bi bi-graph-up-arrow fs-4"></i>
+                        <div class="d-flex align-items-center justify-content-between mb-4">
+                            <div class="icon-box bg-success bg-opacity-10 text-success rounded-circle p-3">
+                                <i class="bi bi-graph-up-arrow fs-3"></i>
                             </div>
-                            <div>
-                                <small class="text-muted text-uppercase fw-bold">Tổng thu nhập tích lũy</small>
-                                <h3 class="fw-bold mb-0 text-dark">@wallet.TotalEarnings.ToString("N0") ₫</h3>
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3">
+                                Tổng tích lũy
+                            </span>
+                        </div>
+                        
+                        <div>
+                            <small class="text-muted text-uppercase fw-bold mb-1 d-block">Tổng thu nhập ròng</small>
+                            <h2 class="fw-bold text-dark mb-2 display-6">@wallet.TotalEarnings.ToString("N0") ₫</h2>
+                            
+                            <div class="d-flex align-items-start text-muted small mt-3 bg-light rounded p-2">
+                                <i class="bi bi-info-circle-fill me-2 text-primary mt-1"></i>
+                                <span>Đây là số tiền thực nhận (đã trừ phí sàn 10%) từ tất cả các đơn hàng hoàn tất.</span>
                             </div>
                         </div>
-                        <div class="alert alert-light border-0 mb-0 py-2 small text-muted">
-                            <i class="bi bi-info-circle me-1"></i> Đã trừ phí dịch vụ sàn (10%).
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-12 col-lg-3">
-                <div class="card border-0 h-100 shadow-sm rounded-4 bg-primary bg-opacity-10">
-                    <div class="card-body p-4 text-center d-flex flex-column justify-content-center align-items-center">
-                        <img src="/images/chill-wallet.png" style="width: 80px; opacity: 0.8" class="mb-3"
-                            onerror="this.style.display='none'" />
-                        <h6 class="fw-bold text-primary">ChillZone Partner</h6>
-                        <p class="small text-muted mb-0">Thanh toán an toàn, minh bạch và nhanh chóng.</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="card border-0 shadow-sm rounded-4">
-            <div class="card-header bg-white py-3 px-4 border-bottom-0 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0">Lịch sử giao dịch</h5>
-                <span class="badge bg-light text-dark border">@wallet.RecentTransactions.Count giao dịch gần nhất</span>
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0 text-dark">Lịch sử giao dịch</h5>
+                <span class="badge bg-light text-dark border rounded-pill">@wallet.RecentTransactions.Count giao dịch gần nhất</span>
             </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0 custom-table">
                     <thead class="bg-light">
                         <tr>
-                            <th class="ps-4">Thời gian</th>
-                            <th>Loại giao dịch</th>
+                            <th class="ps-4" style="width: 180px;">Thời gian</th>
+                            <th style="width: 200px;">Loại giao dịch</th>
                             <th>Mô tả chi tiết</th>
-                            <th class="text-end pe-4">Số tiền</th>
+                            <th class="text-end pe-4" style="width: 180px;">Biến động</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -107,22 +107,28 @@
                             @foreach (var item in wallet.RecentTransactions)
                             {
                                 <tr>
-                                    <td class="ps-4 text-muted" style="min-width: 150px;">
+                                    <td class="ps-4">
                                         <div class="fw-bold text-dark">@item.Date.ToString("dd/MM/yyyy")</div>
-                                        <small>@item.Date.ToString("HH:mm")</small>
+                                        <small class="text-muted">@item.Date.ToString("HH:mm")</small>
                                     </td>
                                     <td>
                                         @RenderTransactionType(item.Type)
                                     </td>
-                                    <td class="text-secondary">@item.Description</td>
+                                    <td class="text-secondary small">
+                                        @item.Description
+                                    </td>
                                     <td class="text-end pe-4 fw-bold fs-6">
                                         @if (item.Amount > 0)
                                         {
-                                            <span class="text-success">+@item.Amount.ToString("N0") ₫</span>
+                                            <span class="text-success bg-success bg-opacity-10 px-2 py-1 rounded">
+                                                +@item.Amount.ToString("N0") ₫
+                                            </span>
                                         }
                                         else
                                         {
-                                            <span class="text-danger">@item.Amount.ToString("N0") ₫</span>
+                                            <span class="text-danger bg-danger bg-opacity-10 px-2 py-1 rounded">
+                                                @item.Amount.ToString("N0") ₫
+                                            </span>
                                         }
                                     </td>
                                 </tr>
@@ -132,8 +138,12 @@
                         {
                             <tr>
                                 <td colspan="4" class="text-center py-5 text-muted">
-                                    <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
-                                    Chưa có giao dịch nào.
+                                    <div class="d-flex flex-column align-items-center">
+                                        <div class="bg-light rounded-circle p-4 mb-3">
+                                            <i class="bi bi-receipt fs-1 text-secondary opacity-50"></i>
+                                        </div>
+                                        <p class="mb-0">Chưa có giao dịch nào phát sinh.</p>
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -146,60 +156,67 @@
 
 @if (showWithdrawModal)
 {
-    <div class="modal-backdrop fade show"></div>
+    <div class="modal-backdrop fade show" style="background-color: rgba(0,0,0,0.5);"></div>
     <div class="modal fade show d-block" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
                 <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold text-primary">Yêu cầu rút tiền</h5>
+                    <div>
+                        <h5 class="modal-title fw-bold text-primary">Yêu cầu rút tiền</h5>
+                        <p class="mb-0 small text-muted">Tiền sẽ về tài khoản trong 24h làm việc.</p>
+                    </div>
                     <button type="button" class="btn-close" @onclick="() => showWithdrawModal = false"></button>
                 </div>
                 <div class="modal-body p-4">
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
-                        <div class="alert alert-danger small mb-3">@errorMessage</div>
+                        <div class="alert alert-danger d-flex align-items-center small mb-3">
+                            <i class="bi bi-exclamation-circle-fill me-2"></i>
+                            @errorMessage
+                        </div>
                     }
 
                     <EditForm Model="withdrawRequest" OnValidSubmit="HandleWithdraw">
                         <DataAnnotationsValidator />
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-muted">Số tiền muốn rút (VNĐ)</label>
-                            <div class="input-group">
-                                <input type="number" class="form-control fw-bold text-primary fs-5"
-                                    @bind="withdrawRequest.Amount" min="100000" step="50000" />
-                                <span class="input-group-text bg-white fw-bold">₫</span>
+                            <label class="form-label small fw-bold text-muted text-uppercase">Số tiền rút</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-light border-end-0 fw-bold text-muted">₫</span>
+                                <input type="number" class="form-control border-start-0 fw-bold text-primary fs-4"
+                                    @bind="withdrawRequest.Amount" min="50000" step="10000" />
                             </div>
-                            <div class="form-text">Số dư khả dụng: <span
-                                    class="fw-bold text-success">@wallet.Balance.ToString("N0") ₫</span></div>
+                            <div class="d-flex justify-content-between mt-1">
+                                <small class="text-muted">Tối thiểu: 50.000 ₫</small>
+                                <small class="text-primary fw-bold cursor-pointer" @onclick="() => withdrawRequest.Amount = wallet.Balance">Rút tất cả</small>
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold text-muted">Ngân hàng thụ hưởng</label>
-                            <InputText class="form-control" placeholder="VD: MB Bank, Vietcombank..."
-                                @bind-Value="withdrawRequest.BankName" />
-                        </div>
-
-                        <div class="row g-2 mb-4">
-                            <div class="col-6">
+                        <div class="bg-light p-3 rounded-3 mb-3">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">Ngân hàng thụ hưởng</label>
+                                <InputText class="form-control" placeholder="VD: MB Bank, Vietcombank..."
+                                    @bind-Value="withdrawRequest.BankName" />
+                            </div>
+                            <div class="mb-2">
                                 <label class="form-label small fw-bold text-muted">Số tài khoản</label>
-                                <InputText class="form-control" placeholder="0123..."
+                                <InputText class="form-control font-monospace" placeholder="0123456789"
                                     @bind-Value="withdrawRequest.BankAccountNumber" />
                             </div>
-                            <div class="col-6">
-                                <label class="form-label small fw-bold text-muted">Tên chủ tài khoản</label>
-                                <InputText class="form-control" placeholder="NGUYEN VAN A"
+                            <div class="mb-0">
+                                <label class="form-label small fw-bold text-muted">Tên chủ thẻ (Không dấu)</label>
+                                <InputText class="form-control text-uppercase" placeholder="NGUYEN VAN A"
                                     @bind-Value="withdrawRequest.BankAccountName" />
                             </div>
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold"
-                            disabled="@isSubmitting">
+                        <button type="submit" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-sm"
+                            disabled="@(isSubmitting || wallet.Balance <= 0)">
                             @if (isSubmitting)
                             {
                                 <span class="spinner-border spinner-border-sm me-2"></span>
                             }
-                            Xác nhận rút tiền
+                            XÁC NHẬN RÚT TIỀN
                         </button>
                     </EditForm>
                 </div>
@@ -209,47 +226,20 @@
 }
 
 <style>
-    /* Styling "Chill" */
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #0d6efd 0%, #0dcaf0 100%);
-    }
-
-    .wallet-card {
-        min-height: 220px;
-    }
-
+    .bg-gradient-primary { background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%); }
+    .wallet-card { min-height: 240px; }
     .bg-pattern-circle {
-        position: absolute;
-        top: -50px;
-        right: -50px;
-        width: 200px;
-        height: 200px;
-        background: rgba(255, 255, 255, 0.1);
+        position: absolute; top: -60px; right: -60px; width: 220px; height: 220px;
+        background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
         border-radius: 50%;
     }
-
-    .hover-scale {
-        transition: transform 0.2s;
-    }
-
-    .hover-scale:hover {
-        transform: translateY(-2px);
-    }
-
-    .custom-table th {
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        color: #6c757d;
-        font-weight: 600;
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-    }
-
-    .custom-table td {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-        border-bottom-color: #f1f3f5;
-    }
+    .hover-scale { transition: all 0.2s ease; }
+    .hover-scale:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+    .custom-table th { font-size: 0.8rem; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; padding-top: 1rem; padding-bottom: 1rem; }
+    .custom-table td { padding-top: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #f1f5f9; }
+    .spin-icon { animation: spin 1s linear infinite; }
+    @@keyframes spin { 100% { transform: rotate(360deg); } }
+    .cursor-pointer { cursor: pointer; }
 </style>
 
 @code {
@@ -260,6 +250,7 @@
 
     private OwnerWalletVM wallet = new();
     private WithdrawRequestVM withdrawRequest = new();
+
     protected override async Task OnInitializedAsync()
     {
         await LoadWalletData();
@@ -271,47 +262,28 @@
         try
         {
             var token = await _localStorage.GetItemAsync<string>("accessToken");
-            if (string.IsNullOrEmpty(token))
-            {
-                // Chưa login -> Redirect hoặc báo lỗi
-                _nav.NavigateTo("/customer-login");
-                return;
-            }
+            if (string.IsNullOrEmpty(token)) { _nav.NavigateTo("/customer-login"); return; }
 
-            // 2. Tạo Client từ Factory
             var client = _httpClientFactory.CreateClient("HotelBookingAPI");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-            // 3. [QUAN TRỌNG] Gắn Token vào Header
-            client.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-            // 4. Gọi API
-            var res = await client.GetFromJsonAsync<ApiResponse<OwnerWalletVM>>("wallet");
-
+            var res = await client.GetFromJsonAsync<ApiResponse<OwnerWalletVM>>("wallet"); // Đảm bảo đúng route API
+            
             if (res != null && res.StatusCode == StatusCodeResponse.Success)
             {
                 wallet = res.Content;
             }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.Message);
-        }
-        finally
-        {
-            isLoading = false;
-        }
+        catch (Exception ex) { Console.WriteLine(ex.Message); }
+        finally { isLoading = false; }
     }
 
     private async Task HandleWithdraw()
     {
         errorMessage = "";
-
-        // Validate Client-side cơ bản
         if (withdrawRequest.Amount <= 0) { errorMessage = "Số tiền phải lớn hơn 0"; return; }
-        if (withdrawRequest.Amount > wallet.Balance) { errorMessage = "Số dư không đủ để thực hiện giao dịch."; return; }
-        if (string.IsNullOrWhiteSpace(withdrawRequest.BankName) ||
-        string.IsNullOrWhiteSpace(withdrawRequest.BankAccountNumber))
+        if (withdrawRequest.Amount > wallet.Balance) { errorMessage = "Số dư không đủ."; return; }
+        if (string.IsNullOrWhiteSpace(withdrawRequest.BankName) || string.IsNullOrWhiteSpace(withdrawRequest.BankAccountNumber))
         {
             errorMessage = "Vui lòng nhập đầy đủ thông tin ngân hàng."; return;
         }
@@ -321,73 +293,68 @@
         {
             var token = await _localStorage.GetItemAsync<string>("accessToken");
             var client = _httpClientFactory.CreateClient("HotelBookingAPI");
-            
-            // [QUAN TRỌNG] Gắn Token vào Header cho request POST này
-            client.DefaultRequestHeaders.Authorization = 
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-            var res = await client.PostAsJsonAsync("wallet/withdraw", withdrawRequest);
+            var res = await client.PostAsJsonAsync("wallet/withdraw", withdrawRequest); // Đảm bảo đúng route API
             
             if (res.IsSuccessStatusCode)
             {
                 showWithdrawModal = false;
-                withdrawRequest = new WithdrawRequestVM(); // Reset form
-                Snackbar.Add("Yêu cầu rút tiền đã được gửi!", Severity.Success);
-                await LoadWalletData(); // Load lại ví để thấy tiền bị trừ
+                withdrawRequest = new WithdrawRequestVM(); // Reset form sau khi rút
+                Snackbar.Add("Yêu cầu rút tiền thành công!", Severity.Success);
+                await LoadWalletData();
             }
             else
             {
-                // Đọc lỗi từ API trả về
                 var errorContent = await res.Content.ReadFromJsonAsync<ApiResponse<bool>>();
                 errorMessage = errorContent?.Message ?? "Có lỗi xảy ra.";
             }
         }
-        catch
-        {
-            errorMessage = "Lỗi kết nối đến máy chủ.";
-        }
-        finally
-        {
-            isSubmitting = false;
-        }
+        catch { errorMessage = "Lỗi kết nối máy chủ."; }
+        finally { isSubmitting = false; }
     }
 
+    // Hàm render Label đẹp hơn, dễ nhìn hơn
     private RenderFragment RenderTransactionType(string type)
     {
         return builder =>
         {
-            string badgeClass = "bg-secondary";
+            string badgeClass = "bg-light text-dark";
             string text = type;
-            string icon = "";
+            string icon = "bi-circle";
 
             switch (type)
             {
-                case "BookingRevenue":
+                case "BookingRevenue": // Cộng tiền
                     badgeClass = "bg-success bg-opacity-10 text-success border border-success border-opacity-25";
                     text = "Doanh thu phòng";
-                    icon = "bi-house-check";
+                    icon = "bi-arrow-down-left"; // Mũi tên đi vào
                     break;
-                case "CommissionFee":
-                    badgeClass = "bg-warning bg-opacity-10 text-dark border border-warning border-opacity-25";
+                case "CommissionFee": // Trừ tiền
+                    badgeClass = "bg-warning bg-opacity-10 text-warning-emphasis border border-warning border-opacity-25";
                     text = "Phí dịch vụ sàn";
                     icon = "bi-percent";
                     break;
-                case "Withdrawal":
+                case "Withdrawal": // Trừ tiền
                     badgeClass = "bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25";
                     text = "Rút tiền về ví";
                     icon = "bi-bank";
                     break;
-                case "RefundDeduction":
-                case "CommissionReversal":
+                case "RefundDeduction": // Trừ tiền
                     badgeClass = "bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25";
-                    text = "Hoàn tiền/Hủy";
-                    icon = "bi-arrow-return-left";
+                    text = "Trừ tiền hoàn trả";
+                    icon = "bi-arrow-up-right"; // Mũi tên đi ra
+                    break;
+                case "WithdrawalRefund": // Cộng tiền (Admin từ chối rút -> hoàn lại)
+                    badgeClass = "bg-info bg-opacity-10 text-info-emphasis border border-info border-opacity-25";
+                    text = "Hoàn tiền rút lỗi";
+                    icon = "bi-arrow-counterclockwise";
                     break;
             }
 
             builder.OpenElement(0, "span");
-            builder.AddAttribute(1, "class", $"badge rounded-pill fw-normal px-3 py-2 {badgeClass}");
-            builder.AddMarkupContent(2, $"<i class='bi {icon} me-2'></i>{text}");
+            builder.AddAttribute(1, "class", $"badge rounded-pill fw-normal px-2 py-1 {badgeClass}");
+            builder.AddMarkupContent(2, $"<i class='bi {icon} me-1'></i>{text}");
             builder.CloseElement();
         };
     }

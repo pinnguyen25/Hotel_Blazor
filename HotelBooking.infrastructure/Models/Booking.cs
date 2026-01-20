@@ -45,6 +45,8 @@ public partial class Booking
 
     public decimal? OriginalPrice { get; set; }
 
+    public decimal? DepositRequired { get; set; }
+
     public virtual ICollection<BookingRoom> BookingRooms { get; set; } = new List<BookingRoom>();
 
     public virtual ICollection<BookingService> BookingServices { get; set; } = new List<BookingService>();

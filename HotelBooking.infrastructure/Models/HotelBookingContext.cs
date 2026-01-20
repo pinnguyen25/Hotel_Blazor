@@ -235,6 +235,9 @@ public partial class HotelBookingContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
                 .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.DepositRequired)
+                .HasDefaultValue(0m)
+                .HasColumnType("decimal(18, 2)");
             entity.Property(e => e.DiscountAmount)
                 .HasDefaultValue(0m)
                 .HasColumnType("decimal(18, 2)");
@@ -736,6 +739,9 @@ public partial class HotelBookingContext : DbContext
                 .HasMaxLength(50)
                 .HasDefaultValue("Pending");
             entity.Property(e => e.TransactionId).HasMaxLength(100);
+            entity.Property(e => e.Type)
+                .HasMaxLength(50)
+                .HasDefaultValue("Payment");
             entity.Property(e => e.UpdatedAt).HasPrecision(0);
 
             entity.HasOne(d => d.Booking).WithMany(p => p.Payments)

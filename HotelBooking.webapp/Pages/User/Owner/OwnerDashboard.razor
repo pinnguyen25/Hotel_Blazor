@@ -64,7 +64,7 @@
                         <MudIcon Icon="@Icons.Material.Filled.DateRange" Color="Color.Success" />
                     </div>
                     <MudText Typo="Typo.h4" Class="fw-bold text-success">@FormatCurrency(stats.RevenueThisMonth)</MudText>
-                    <MudProgressLinear Color="Color.Success" Value="75" Class="mt-3"
+                    <MudProgressLinear Color="Color.Success" Class="mt-3"
                         Style="height: 6px; border-radius: 4px;" />
                 </MudPaper>
             </MudItem>
@@ -180,7 +180,7 @@
                 </MudPaper>
             </MudItem>
         </MudGrid>
-
+        
         <MudGrid Class="mt-1">
             <MudItem xs="12">
                 <MudPaper Elevation="0" Class="rounded-4 border pa-2">
@@ -188,20 +188,21 @@
                         Color="Color.Transparent" SliderColor="Color.Primary">
 
                         <MudTabPanel Text="Đơn đặt gần đây" Icon="@Icons.Material.Filled.FiberNew">
-                            <BookingTable Items="@stats?.RecentBookings" EmptyText="Chưa có đơn nào mới đặt gần đây." />
+                            <BookingTable Items="@stats?.RecentBookings" OnViewClick="OpenBookingDetail" EmptyText="Chưa có đơn nào mới đặt gần đây." />
                         </MudTabPanel>
 
                         <MudTabPanel Text="Khách đến hôm nay" Icon="@Icons.Material.Filled.Login">
-                            <BookingTable Items="@stats?.TodayCheckIns" EmptyText="Hôm nay không có khách đến." />
+                            <BookingTable Items="@stats?.TodayCheckIns" OnViewClick="OpenBookingDetail" EmptyText="Hôm nay không có khách đến." />
                         </MudTabPanel>
 
                         <MudTabPanel Text="Khách đi hôm nay" Icon="@Icons.Material.Filled.Logout">
-                            <BookingTable Items="@stats?.TodayCheckOuts" EmptyText="Hôm nay không có khách đi." />
+                            <BookingTable Items="@stats?.TodayCheckOuts" OnViewClick="OpenBookingDetail" EmptyText="Hôm nay không có khách đi." />
                         </MudTabPanel>
 
                     </MudTabs>
                 </MudPaper>
             </MudItem>
+            <OwnerBookingDetailModal @ref="bookingModal" />
         </MudGrid>
     }
     else
@@ -275,7 +276,8 @@
         YAxisFormat = "N0", // Số nguyên (bỏ số thập phân)
         ChartPalette = new[] { "#594ae2" } // Màu tím
     };
-
+    // booking detail modal
+    private OwnerBookingDetailModal bookingModal;
     // controll tab
     private int activeTabIndex = 0;
 
@@ -328,6 +330,7 @@
         }
     }
 
+
     private async Task LoadRevenueChart(string mode)
     {
         chartMode = mode;
@@ -354,13 +357,13 @@
                 }).ToArray();
 
                 Series = new List<ChartSeries>()
-{
-new ChartSeries()
-{
-Name = "Doanh thu (VNĐ)",
-Data = dataList.Select(x => (double)x.Value).ToArray()
-}
-};
+                {
+                    new ChartSeries()
+                    {
+                    Name = "Doanh thu (VNĐ)",
+                    Data = dataList.Select(x => (double)x.Value).ToArray()
+                    }
+                };
             }
         }
         catch (Exception ex)
@@ -371,6 +374,12 @@ Data = dataList.Select(x => (double)x.Value).ToArray()
         {
             isChartLoading = false;
         }
+    }
+
+    private async Task OpenBookingDetail(int bookingId)
+    {
+        // Gọi hàm ShowAsync trong Component OwnerBookingDetailModal
+        await bookingModal.ShowAsync(bookingId);
     }
 
     private void UpdateChart()

@@ -8,6 +8,7 @@ public class BookingCartVM
     public int Adults { get; set; }
     public int Children { get; set; }
     public List<CartItemVM>? SelectedRooms { get; set; }
+    public DateTime? SessionStartTime { get; set; }
     public DateTime Timestamp { get; set; }
 }
 public class CartItemVM 

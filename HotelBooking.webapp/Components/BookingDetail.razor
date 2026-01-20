@@ -12,7 +12,7 @@
     <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
             <div class="modal-content rounded-4 shadow border-0">
-                
+
                 <div class="modal-header border-bottom-0 pb-0">
                     <h5 class="handwriting modal-title" style="color: #54a9ffff;">Chi tiết đơn đặt phòng</h5>
                     <button type="button" class="btn-close" @onclick="Close"></button>
@@ -36,9 +36,9 @@
                     else
                     {
                         <div class="d-flex align-items-start mb-4">
-                            <img src="@(BookingDetails.HotelImage ?? "/images/default-hotel.jpg")" 
-                                 class="rounded-3 me-3 border shadow-sm" 
-                                 style="width: 100px; height: 75px; object-fit: cover;" />
+                            <img src="@(BookingDetails.HotelImage ?? "/images/default-hotel.jpg")"
+                                class="rounded-3 me-3 border shadow-sm"
+                                style="width: 100px; height: 75px; object-fit: cover;" />
                             <div class="flex-grow-1">
                                 <h5 class="fw-bold text-primary mb-1">@BookingDetails.HotelName</h5>
                                 <p class="text-muted small mb-1">
@@ -88,7 +88,7 @@
                                                     <i class="bi bi-hdd-network me-2 text-primary"></i>
                                                     @(room.RoomNumber ?? "Tiêu chuẩn")
                                                 </span>
-                                                
+
                                                 @if (!string.IsNullOrEmpty(room.RoomNumber))
                                                 {
                                                     <span class="text-success fw-bold">
@@ -104,7 +104,8 @@
 
                                                 <span>
                                                     <i class="bi bi-person me-2 text-primary"></i>
-                                                    Khách: <span class="fw-medium text-dark">@(room.GuestName ?? BookingDetails.ContactName)</span>
+                                                    Khách: <span class="fw-medium text-dark">@(room.GuestName ??
+                                                                                                    BookingDetails.ContactName)</span>
                                                 </span>
                                             </div>
                                         </div>
@@ -133,13 +134,23 @@
                                     <ul class="list-group list-group-flush bg-transparent">
                                         @foreach (var sv in BookingDetails.Services)
                                         {
-                                            <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0 py-2 border-bottom-dashed">
+                                            <li
+                                                class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0 py-2 border-bottom-dashed">
                                                 <div>
                                                     <span class="fw-medium">@sv.ServiceName</span>
                                                     <span class="badge bg-secondary rounded-pill ms-1">x@(sv.Quantity)</span>
                                                     <div class="small">
-                                                        @if (sv.IsPaid) { <span class="text-success"><i class="bi bi-check-all"></i> Đã thanh toán</span> }
-                                                        else { <span class="text-warning-dark"><i class="bi bi-clock"></i> Chưa thanh toán</span> }
+                                                        @if (sv.IsPaid)
+                                                        {
+                                                            <span class="text-success"><i class="bi bi-check-all"></i> Đã
+                                                                thanh toán</span>
+                                                        }
+                                                        else
+                                                        {
+
+                                                                <span class="text-warning-dark"><i class="bi bi-clock"></i> Chưa thanh
+                                                                toán</span>
+                                                            }
                                                     </div>
                                                 </div>
                                                 <span class="fw-bold">@((sv.Price * sv.Quantity).ToString("N0")) ₫</span>
@@ -158,26 +169,33 @@
                         {
                             <div class="border border-primary bg-primary bg-opacity-10 rounded-3 p-3 animate-fade-in">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h6 class="fw-bold text-primary m-0"><i class="bi bi-plus-circle-fill me-2"></i>Chọn thêm dịch vụ</h6>
-                                    <button class="btn btn-sm btn-link text-decoration-none" @onclick="() => IsAddingMode = false">Hủy</button>
+                                    <h6 class="fw-bold text-primary m-0"><i class="bi bi-plus-circle-fill me-2"></i>Chọn thêm dịch
+                                        vụ</h6>
+                                    <button class="btn btn-sm btn-link text-decoration-none"
+                                        @onclick="() => IsAddingMode = false">Hủy</button>
                                 </div>
 
-                                <div class="d-flex flex-column gap-2 overflow-auto custom-scrollbar pe-1" style="max-height: 300px;">
+                                <div class="d-flex flex-column gap-2 overflow-auto custom-scrollbar pe-1"
+                                    style="max-height: 300px;">
                                     @if (AvailableServices.Any())
                                     {
                                         @foreach (var item in AvailableServices)
                                         {
-                                            <div class="bg-white p-2 rounded border d-flex justify-content-between align-items-center shadow-sm">
+                                            <div
+                                                class="bg-white p-2 rounded border d-flex justify-content-between align-items-center shadow-sm">
                                                 <div>
                                                     <div class="fw-bold text-dark">@item.Name</div>
-                                                    <small class="text-primary fw-bold">@item.Price.ToString("N0") ₫ <span class="text-muted fw-normal">/@item.Unit</span></small>
+                                                    <small class="text-primary fw-bold">@item.Price.ToString("N0") ₫ <span
+                                                            class="text-muted fw-normal">/@item.Unit</span></small>
                                                 </div>
-                                                
+
                                                 <div class="d-flex align-items-center bg-light rounded-pill border px-2 py-1">
-                                                    <button class="btn btn-sm p-0 text-secondary" @onclick="() => UpdateNewQty(item, -1)" disabled="@(item.Quantity <= 0)">
+                                                    <button class="btn btn-sm p-0 text-secondary" @onclick="() => UpdateNewQty(item, -1)"
+                                                        disabled="@(item.Quantity <= 0)">
                                                         <i class="bi bi-dash-lg"></i>
                                                     </button>
-                                                    <span class="mx-3 fw-bold small" style="width: 20px; text-align: center;">@item.Quantity</span>
+                                                    <span class="mx-3 fw-bold small"
+                                                        style="width: 20px; text-align: center;">@item.Quantity</span>
                                                     <button class="btn btn-sm p-0 text-primary" @onclick="() => UpdateNewQty(item, 1)">
                                                         <i class="bi bi-plus-lg"></i>
                                                     </button>
@@ -196,11 +214,18 @@
                                         <span class="fw-bold text-dark">Tổng phát sinh:</span>
                                         <span class="fw-bold text-danger fs-5">+@NewTotalAmount.ToString("N0") ₫</span>
                                     </div>
-                                    <button class="btn btn-primary w-100 fw-bold shadow-sm" 
-                                            @onclick="SubmitNewServices" 
-                                            disabled="@(NewTotalAmount <= 0 || IsSubmitting)">
-                                        @if (IsSubmitting) { <span class="spinner-border spinner-border-sm me-2"></span><span>Đang xử lý...</span> }
-                                        else { <span><i class="bi bi-cart-check me-2"></i>Xác nhận thêm</span> }
+                                    <button class="btn btn-primary w-100 fw-bold shadow-sm" @onclick="SubmitNewServices"
+                                        disabled="@(NewTotalAmount <= 0 || IsSubmitting)">
+                                        @if (IsSubmitting)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2"></span>
+                                            <span>Đang
+                                                xử lý...</span>
+             }
+                                        else
+                                        {
+                                                <span><i class="bi bi-cart-check me-2"></i>Xác nhận thêm</span>
+                                            }
                                     </button>
                                 </div>
                             </div>
@@ -215,13 +240,60 @@
                             }
                         }
 
-                        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
-                            <span class="fs-5 fw-bold text-dark">TỔNG CỘNG</span>
-                            <span class="fs-4 fw-bold text-danger">@BookingDetails.TotalPrice.ToString("N0") ₫</span>
+                        <div class="pt-3 border-top bg-light rounded-3 p-3 mt-2">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-secondary fw-medium">Tổng giá trị đơn hàng:</span>
+                                <span class="fw-bold text-dark">@BookingDetails.TotalPrice.ToString("N0") ₫</span>
+                            </div>
+
+                            @if (BookingDetails.PaidAmount > 0)
+                            {
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="text-success">
+                                        <i class="bi bi-check-circle-fill me-1"></i>Đã trả (Đặt cọc):
+                                    </span>
+                                    <span class="fw-bold text-success">-@BookingDetails.PaidAmount.ToString("N0") ₫</span>
+                                </div>
+
+                                <div class="border-top border-secondary border-opacity-25 my-2"></div>
+
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fs-6 fw-bold text-danger text-uppercase">Số tiền cần trả:</span>
+                                    <span class="fs-4 fw-bold text-danger">
+                                        @((BookingDetails.TotalPrice - BookingDetails.PaidAmount).ToString("N0")) ₫
+                                    </span>
+                                </div>
+
+                                @if (BookingDetails.Status == "Confirmed" || BookingDetails.Status == "CheckedIn")
+                                {
+                                    <div class="text-end mt-1">
+                                        <small class="text-muted fst-italic icon-link icon-link-hover">
+                                            <i class="bi bi-info-circle me-1"></i>Thanh toán phần còn lại tại quầy lễ tân
+                                        </small>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="border-top border-secondary border-opacity-25 my-2"></div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fs-5 fw-bold text-dark">TỔNG CỘNG:</span>
+                                    <span class="fs-4 fw-bold text-danger">@BookingDetails.TotalPrice.ToString("N0") ₫</span>
+                                </div>
+
+                                @if (BookingDetails.DepositRequired > 0 && BookingDetails.Status == "PendingPayment")
+                                {
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <span class="text-warning-dark fw-medium small">Yêu cầu đặt cọc:</span>
+                                        <span class="fw-bold text-warning-dark">@BookingDetails.DepositRequired.ToString("N0") ₫</span>
+                                    </div>
+                                }
+                            }
                         </div>
 
                         <div class="mt-4 p-3 bg-light-subtle border rounded-3 small">
-                            <div class="fw-bold text-uppercase text-secondary mb-2" style="font-size: 0.75rem;">Người đặt phòng</div>
+                            <div class="fw-bold text-uppercase text-secondary mb-2" style="font-size: 0.75rem;">Người đặt phòng
+                            </div>
                             <div class="mb-1"><i class="bi bi-person-circle me-2"></i> @BookingDetails.ContactName</div>
                             <div class="mb-1"><i class="bi bi-telephone-fill me-2"></i> @BookingDetails.ContactPhone</div>
                             <div class="mb-1"><i class="bi bi-envelope-fill me-2"></i> @BookingDetails.ContactEmail</div>
@@ -250,11 +322,33 @@
 }
 
 <style>
-    .border-bottom-dashed { border-bottom: 1px dashed #dee2e6; }
-    .border-dashed { border-style: dashed !important; }
-    .text-warning-dark { color: #d35400; }
-    .animate-fade-in { animation: fadeIn 0.3s; }
-    @@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    .border-bottom-dashed {
+        border-bottom: 1px dashed #dee2e6;
+    }
+
+    .border-dashed {
+        border-style: dashed !important;
+    }
+
+    .text-warning-dark {
+        color: #d35400;
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.3s;
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 </style>
 
 @code {
@@ -284,7 +378,7 @@
         IsLoading = false;
         StateHasChanged(); // Cập nhật UI để hiện Data
     }
-    
+
     // 3. Hàm Đóng
     public void Close()
     {
@@ -305,7 +399,7 @@
         _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
         try
         {
-           
+
             await SetAuthHeader();
 
             var response = await _httpClient.GetFromJsonAsync<ApiResponse<BookingDetailVM>>($"hotel/booking/detail/{bookingId}");
@@ -332,21 +426,22 @@
         // Gọi API lấy list dịch vụ của khách sạn này (nếu chưa có)
         if (!AvailableServices.Any() && BookingDetails != null)
         {
-            try 
+            try
             {
-                var res = await _httpClient!.GetFromJsonAsync<ApiResponse<List<ServiceAddOnVM>>>($"hotel/services-add/{BookingDetails.HotelId}");
+                var res = await
+                _httpClient!.GetFromJsonAsync<ApiResponse<List<ServiceAddOnVM>>>($"hotel/services-add/{BookingDetails.HotelId}");
                 if (res?.Content != null)
                 {
                     // Reset số lượng về 0 (QUAN TRỌNG: Để tách biệt với cái đã mua)
                     AvailableServices = res.Content.Select(s => { s.Quantity = 0; return s; }).ToList();
                 }
             }
-            catch {}
+            catch { }
         }
-        else 
+        else
         {
             // Reset lại số lượng nếu mở lại
-            foreach(var item in AvailableServices) item.Quantity = 0;
+            foreach (var item in AvailableServices) item.Quantity = 0;
         }
     }
 
@@ -365,17 +460,17 @@
         try
         {
             // Gọi API Bulk Insert (Backend bạn vừa sửa)
-            var payload = new 
-            { 
+            var payload = new
+            {
                 BookingId = BookingDetails!.Id,
                 Services = itemsToAdd.Select(s => new { ServiceId = s.ServiceId, Quantity = s.Quantity }).ToList()
             };
 
             var res = await _httpClient!.PostAsJsonAsync("hotel/booking/service/add", payload);
-            
+
             if (res.IsSuccessStatusCode)
             {
-                Snackbar.Add("Thêm dịch vụ thành công!", Severity.Success);
+                Snackbar.Add("Thêm dịch vụ thành công! Đã gửi email xác nhận cho bạn.", Severity.Success);
                 IsAddingMode = false; // Tắt khung mua thêm
                 await LoadBookingData(BookingDetails.Id); // Reload lại data chính để cập nhật list History
             }

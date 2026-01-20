@@ -1,0 +1,455 @@
+@using Blazored.LocalStorage
+@using HotelBooking.webapp.ViewModels.Hotel
+@using System.Net.Http.Headers
+@inject IHttpClientFactory _httpClientFactory
+@inject ILocalStorageService _localStorage
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager _nav
+
+@if (IsVisible)
+{
+    <div class="modal-backdrop fade show" style="background-color: rgba(0,0,0,0.5); z-index: 1050;"></div>
+    <div class="modal fade show d-block" tabindex="-1" style="z-index: 1055;">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+
+                <div class="modal-header bg-light border-bottom-0 pb-0">
+                    <div>
+                        <h5 class="fw-bold text-primary mb-1">
+                            <i class="bi bi-receipt me-2"></i>Đơn hàng #@BookingDetails?.Id
+                        </h5>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge @GetStatusBadgeClass(BookingDetails?.Status) rounded-pill px-3">
+                                @GetStatusTextVietnamese(BookingDetails?.Status)
+                            </span>
+                            <span class="text-muted small">@BookingDetails?.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="Close"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    @if (IsLoading)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary"></div>
+                            <p class="mt-2 text-muted">Đang tải thông tin...</p>
+                        </div>
+                    }
+                    else if (BookingDetails != null)
+                    {
+                        @if ((BookingDetails.Status == "Cancelled" || BookingDetails.Status == "PendingRefund")
+                                        && BookingDetails.PaidAmount > 0)
+                        {
+                            <div class="alert alert-warning border-warning shadow-sm mb-4">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-exclamation-triangle-fill fs-3 me-3 text-warning-emphasis"></i>
+                                        <div>
+                                            <div class="fw-bold text-dark">YÊU CẦU HOÀN TIỀN</div>
+                                            <div class="small text-dark">Khách đã trả: <b>@BookingDetails.PaidAmount.ToString("N0")
+                                                    ₫</b>.</div>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm btn-warning fw-bold shadow-sm" @onclick="ProcessRefund">
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i> Hoàn tiền ngay
+                                    </button>
+                                </div>
+                            </div>
+                        }
+
+                        @if (BookingDetails.Status == "Refunded")
+                        {
+                            <div
+                                class="alert alert-dark bg-secondary bg-opacity-10 border-secondary d-flex align-items-center shadow-sm mb-4">
+                                <i class="bi bi-check-circle-fill fs-3 me-3 text-secondary"></i>
+                                <div>
+                                    <div class="fw-bold text-dark">ĐÃ HOÀN TIỀN</div>
+                                    <div class="small text-muted">
+                                        Giao dịch này đã được hoàn lại <b>@BookingDetails.PaidAmount.ToString("N0") ₫</b> cho khách.
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (BookingDetails.Status == "NoShow")
+                        {
+                            <div class="alert alert-dark bg-dark bg-opacity-10 border-0 p-2 mb-2 text-center">
+                                <span class="small fw-bold text-dark">
+                                    <i class="bi bi-x-circle"></i> Đơn đã hủy (Vắng mặt)
+                                </span>
+                                <div class="extra-small text-muted mt-1">
+                                    Không thu khoản còn lại: @BookingDetails.RemainingAmount.ToString("N0") ₫
+                                </div>
+                            </div>
+                        }
+
+
+                        <div class="row g-4">
+                            <div class="col-md-7">
+                                <div class="card border-0 bg-light-subtle mb-3">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-white rounded-circle p-2 me-3 shadow-sm text-primary">
+                                                <i class="bi bi-person-fill fs-5"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold text-dark">@BookingDetails.ContactName</div>
+                                                <div class="small text-muted">@BookingDetails.ContactPhone |
+                                                    @BookingDetails.ContactEmail</div>
+                                            </div>
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(BookingDetails.Note))
+                                        {
+                                            <div
+                                                class="mt-2 pt-2 border-top border-secondary border-opacity-10 fst-italic text-danger small">
+                                                Note: "@BookingDetails.Note"
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <h6 class="fw-bold text-dark mb-2">Phòng đã đặt</h6>
+                                <div class="d-flex flex-column gap-2 mb-3">
+                                    @foreach (var room in BookingDetails.Rooms)
+                                    {
+                                        <div
+                                            class="border rounded p-2 d-flex justify-content-between align-items-center bg-white @(BookingDetails.Status == "Refunded" || BookingDetails.Status == "Cancelled" ? "opacity-50" : "")">
+                                            <div>
+                                                <div class="fw-bold small">
+                                                    @room.RoomTypeName
+                                                    <span class="badge bg-secondary ms-1">x@(room.Quantity > 0 ? room.Quantity :
+                                                                                                    1)</span>
+                                                </div>
+                                                <div class="small text-muted">
+                                                    @if (!string.IsNullOrEmpty(room.RoomNumber))
+                                                    {
+                                                        <span>Phòng:
+                                                            <b>@room.RoomNumber</b></span>
+                                                    }
+                                                    else
+                                                    {
+
+                                                        <span class="fst-italic">Chưa xếp phòng</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                            <div class="fw-bold small">@room.Price.ToString("N0") ₫</div>
+                                        </div>
+                                    }
+                                </div>
+
+                                @if (ShouldShowAssignButton())
+                                {
+                                    <button class="btn btn-outline-primary w-100 border-dashed fw-bold py-2 mb-3"
+                                        @onclick="GoToRoomMap">
+                                        <i class="bi bi-grid-3x3-gap-fill me-2"></i>Đi tới Sơ đồ để Gán phòng
+                                    </button>
+                                }
+                            </div>
+
+                            <div class="col-md-5">
+                                <div class="card border border-primary border-opacity-25 shadow-sm mb-3">
+                                    <div class="card-header bg-primary bg-opacity-10 border-bottom-0">
+                                        <h6 class="fw-bold text-primary m-0"><i class="bi bi-currency-dollar me-2"></i>Chi tiết
+                                            thanh toán</h6>
+                                    </div>
+                                    <div class="card-body">
+
+                                        @if (BookingDetails.Status == "Refunded")
+                                        {
+                                            <div
+                                                class="d-flex justify-content-between mb-2 text-muted text-decoration-line-through">
+                                                <span>Tổng đơn:</span>
+                                                <span>@BookingDetails.TotalPrice.ToString("N0") ₫</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-2 text-success">
+                                                <span>Khách đã trả:</span>
+                                                <span>+@BookingDetails.PaidAmount.ToString("N0") ₫</span>
+                                            </div>
+                                            <div class="border-top my-2"></div>
+                                            <div class="d-flex justify-content-between mb-2 text-danger fw-bold">
+                                                <span>Đã hoàn lại:</span>
+                                                <span>-@BookingDetails.PaidAmount.ToString("N0") ₫</span>
+                                            </div>
+                                            <div
+                                                class="alert alert-secondary bg-secondary bg-opacity-10 border-0 p-2 mb-0 text-center">
+                                                <span class="small fw-bold text-dark">Thực thu: 0 ₫</span>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span class="text-muted small">Tiền phòng:</span>
+                                                @{
+                                                    decimal sTotal = BookingDetails.Services?.Sum(s => s.Price * s.Quantity) ?? 0;
+                                                }
+                                                <span class="fw-bold">@((BookingDetails.TotalPrice - sTotal).ToString("N0"))
+                                                    ₫</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span class="text-muted small">Dịch vụ:</span>
+                                                <span class="fw-bold">@sTotal.ToString("N0") ₫</span>
+                                            </div>
+                                            <div class="border-top my-2"></div>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span class="fw-bold text-dark">TỔNG CỘNG:</span>
+                                                <span class="fw-bold fs-5 text-primary">@BookingDetails.TotalPrice.ToString("N0")
+                                                    ₫</span>
+                                            </div>
+
+                                            <div class="d-flex justify-content-between mb-2 text-success">
+                                                <span>Đã trả:</span>
+                                                <span class="fw-bold">-@BookingDetails.PaidAmount.ToString("N0") ₫</span>
+                                            </div>
+
+                                            @if (BookingDetails.Status == "NoShow")
+                                            {
+                                                <div class="alert alert-dark bg-dark bg-opacity-10 border-0 p-2 mb-0 text-center">
+                                                    <span class="small fw-bold text-dark">
+                                                        <i class="bi bi-x-circle"></i> Đã hủy phần còn lại
+                                                    </span>
+                                                    
+                                                </div>
+                                            }
+                                            else if (BookingDetails.RemainingAmount > 0)
+                                            {
+                                                <div
+                                                    class="alert alert-danger bg-danger bg-opacity-10 border-0 p-2 mb-0 d-flex justify-content-between align-items-center">
+                                                    <span class="text-danger small fw-bold">Cần thu:</span>
+                                                    <span
+                                                        class="fw-bold text-danger fs-5">@BookingDetails.RemainingAmount.ToString("N0")
+                                                        ₫</span>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="alert alert-success bg-success bg-opacity-10 border-0 p-2 mb-0 text-center">
+                                                    <span class="small fw-bold text-success"><i class="bi bi-check-all"></i> Đã thanh
+                                                        toán đủ</span>
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="row g-2 text-center small">
+                                    <div class="col-6">
+                                        <div class="border rounded p-2 bg-light">Check-in<br /><b
+                                                class="text-success">@BookingDetails.CheckIn.ToString("dd/MM")</b></div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="border rounded p-2 bg-light">Check-out<br /><b
+                                                class="text-danger">@BookingDetails.CheckOut.ToString("dd/MM")</b></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="modal-footer bg-light d-flex justify-content-between">
+                    @if (IsActiveBooking())
+                    {
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-danger" @onclick="ConfirmCancel">
+                                <i class="bi bi-x-circle me-1"></i> Hủy đơn
+                            </button>
+
+                            @if (CanMarkNoShow())
+                            {
+                                <button type="button" class="btn btn-dark" @onclick="ConfirmNoShow">
+                                    <i class="bi bi-person-x-fill me-1"></i> Khách vắng mặt
+                                </button>
+                            }
+                        </div>
+                    }
+
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    public bool IsVisible { get; private set; } = false;
+    public bool IsLoading { get; private set; } = false;
+    public BookingDetailVM? BookingDetails { get; set; }
+    private HttpClient? _httpClient;
+
+    public async Task ShowAsync(int bookingId)
+    {
+        IsVisible = true;
+        await LoadBookingData(bookingId);
+    }
+
+    public void Close()
+    {
+        IsVisible = false;
+        StateHasChanged();
+    }
+
+    private bool CanMarkNoShow()
+    {
+        if (BookingDetails == null) return false;
+        // Chỉ cho phép nếu đơn Confirmed VÀ Đã qua ngày Check-in
+        // (Logic lỏng: Cho phép báo ngay trong ngày check-in nếu đã muộn)
+        return BookingDetails.Status == "Confirmed"
+                        && DateTime.Now.Date >= BookingDetails.CheckIn.Date;
+    }
+
+    private async Task ConfirmNoShow()
+    {
+        bool confirmed = await DialogService.ShowMessageBox(
+        "Xác nhận vắng mặt",
+        "Bạn xác nhận khách hàng KHÔNG ĐẾN nhận phòng?\n\nTrạng thái đơn sẽ chuyển thành 'NoShow'. Nếu có tiền cọc, bạn sẽ được giữ lại toàn bộ.",
+        yesText: "Xác nhận",
+        cancelText: "Bỏ qua") ?? false;
+
+        if (confirmed)
+        {
+            try
+            {
+                // Gọi API Backend (Cần tạo thêm API này nếu chưa có)
+                var res = await _httpClient!.PostAsync($"hotel/owner/booking/{BookingDetails!.Id}/mark-noshow", null);
+                if (res.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Đã cập nhật trạng thái No-Show.", Severity.Success);
+                    await LoadBookingData(BookingDetails.Id);
+                }
+                else
+                {
+                    Snackbar.Add("Lỗi cập nhật.", Severity.Error);
+                }
+            }
+            catch { Snackbar.Add("Lỗi kết nối", Severity.Error); }
+        }
+    }
+    private async Task LoadBookingData(int bookingId)
+    {
+        IsLoading = true;
+        StateHasChanged();
+        try
+        {
+            var token = await _localStorage.GetItemAsync<string>("accessToken");
+            _httpClient = _httpClientFactory.CreateClient("HotelBookingAPI");
+            if (!string.IsNullOrEmpty(token))
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _httpClient.GetFromJsonAsync<ApiResponse<BookingDetailVM>>($"hotel/owner/booking/{bookingId}");
+
+            if (response != null && response.Content != null)
+            {
+                BookingDetails = response.Content;
+            }
+            else
+            {
+                Snackbar.Add("Lỗi tải dữ liệu", Severity.Error);
+                Close();
+            }
+        }
+        catch { Snackbar.Add("Lỗi kết nối", Severity.Error); Close(); }
+        finally { IsLoading = false; StateHasChanged(); }
+    }
+
+    // Helper kiểm tra booking đang hoạt động
+    private bool IsActiveBooking()
+    {
+        if (BookingDetails == null) return false;
+        // Các trạng thái được coi là "Active" có thể hủy
+        return BookingDetails.Status == "Confirmed" || BookingDetails.Status == "PendingPayment";
+    }
+
+    private bool ShouldShowAssignButton()
+    {
+        if (!IsActiveBooking()) return false;
+        return BookingDetails!.Rooms.Any(r => string.IsNullOrEmpty(r.RoomNumber));
+    }
+
+    private void GoToRoomMap()
+    {
+        if (BookingDetails == null) return;
+        _nav.NavigateTo($"/owner/hotels/{BookingDetails.HotelId}/room-map");
+    }
+
+    private async Task ConfirmCancel()
+    {
+        bool confirmed = await DialogService.ShowMessageBox(
+        "Xác nhận hủy",
+        "Bạn có chắc muốn hủy đơn này? Hành động này không thể hoàn tác.",
+        yesText: "Hủy đơn", cancelText: "Bỏ qua") ?? false;
+
+        if (confirmed)
+        {
+            try
+            {
+                var res = await _httpClient!.PostAsync($"hotel/owner/booking/{BookingDetails!.Id}/cancel", null);
+                if (res.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Đã hủy đơn thành công.", Severity.Success);
+                    await LoadBookingData(BookingDetails.Id);
+                }
+                else
+                {
+                    var err = await res.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+                    Snackbar.Add(err?.Message ?? "Lỗi hủy đơn", Severity.Error);
+                }
+            }
+            catch { Snackbar.Add("Lỗi kết nối", Severity.Error); }
+        }
+    }
+
+    private async Task ProcessRefund()
+    {
+        bool confirmed = await DialogService.ShowMessageBox(
+        "Xác nhận hoàn tiền",
+        $"Hệ thống sẽ trừ {BookingDetails!.PaidAmount:N0}đ từ Ví của bạn để hoàn lại cho khách.\n\nBạn có chắc chắn không?",
+        yesText: "Đồng ý",
+        cancelText: "Bỏ qua") ?? false;
+
+        if (confirmed)
+        {
+            try
+            {
+                var res = await _httpClient!.PostAsync($"hotel/owner/booking/{BookingDetails.Id}/refund-confirm", null);
+                if (res.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Đã hoàn tiền thành công!", Severity.Success);
+                    await LoadBookingData(BookingDetails.Id);
+                }
+                else
+                {
+                    var errorRes = await res.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+                    Snackbar.Add(errorRes?.Message ?? "Lỗi hoàn tiền", Severity.Error);
+                }
+            }
+            catch { Snackbar.Add("Lỗi kết nối.", Severity.Error); }
+        }
+    }
+
+    private string GetStatusBadgeClass(string? status) => status switch
+    {
+        "Confirmed" => "bg-success",
+        "CheckedIn" => "bg-primary",
+        "Cancelled" => "bg-danger",
+        "PendingPayment" => "bg-warning text-dark",
+        "PendingRefund" => "bg-warning text-dark", // Màu vàng cảnh báo
+        "Refunded" => "bg-secondary text-white", // Màu xám
+        "NoShow" => "bg-dark text-white",
+        _ => "bg-secondary"
+    };
+
+    private string GetStatusTextVietnamese(string? status) => status switch
+    {
+        "Confirmed" => "Đã xác nhận",
+        "CheckedIn" => "Đã nhận phòng",
+        "PendingPayment" => "Chờ thanh toán",
+        "Completed" => "Hoàn tất",
+        "Cancelled" => "Đã hủy",
+        "PendingRefund" => "Chờ hoàn tiền",
+        "Refunded" => "Đã hoàn tiền",
+        "NoShow" => "Vắng mặt",
+        _ => status ?? "K.Xác định"
+    };
+}

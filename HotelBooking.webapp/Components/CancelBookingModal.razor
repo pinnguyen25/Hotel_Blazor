@@ -1,0 +1,92 @@
+@* File: Components/CancelBookingModal.razor *@
+
+@if (IsVisible)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5); z-index: 1050;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận hủy phòng
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="Close"></button>
+                </div>
+                
+                <div class="modal-body py-4">
+                    <p class="mb-0 fs-6">
+                        Bạn có chắc chắn muốn hủy đơn đặt phòng <b>#@BookingId</b> không?
+                    </p>
+                    <div class="alert alert-warning mt-3 mb-0 small border-0 bg-opacity-10 bg-warning text-warning-emphasis">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Lưu ý: Nếu bạn đã thanh toán, tiền sẽ được hoàn lại theo chính sách của khách sạn và có thể mất vài ngày làm việc.
+                    </div>
+                </div>
+
+                <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center gap-2">
+                    <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" 
+                            @onclick="Close" disabled="@IsProcessing">
+                        Quay lại
+                    </button>
+                    
+                    <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold" 
+                            @onclick="ConfirmCancel" disabled="@IsProcessing">
+                        @if (IsProcessing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            <span>Đang xử lý...</span>
+                        }
+                        else
+                        {
+                            <span>Đồng ý hủy</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool IsVisible { get; set; } = false;
+    private int BookingId { get; set; }
+    private bool IsProcessing { get; set; } = false;
+
+    // Sự kiện trả về cho cha (Profile.razor) khi user bấm Đồng ý
+    [Parameter] public EventCallback<int> OnConfirm { get; set; }
+
+    public void Show(int bookingId)
+    {
+        BookingId = bookingId;
+        IsVisible = true;
+        IsProcessing = false;
+        StateHasChanged();
+    }
+
+    public void Close()
+    {
+        if (!IsProcessing)
+        {
+            IsVisible = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ConfirmCancel()
+    {
+        IsProcessing = true;
+        // Gọi Event ra ngoài cho Profile xử lý API
+        if (OnConfirm.HasDelegate)
+        {
+            await OnConfirm.InvokeAsync(BookingId);
+        }
+        // Lưu ý: Không đóng modal ngay ở đây, để Profile xử lý xong rồi tự đóng hoặc gọi hàm Close()
+    }
+    
+    // Hàm public để cha gọi khi xử lý xong (tắt loading và đóng)
+    public void Finish()
+    {
+        IsProcessing = false;
+        IsVisible = false;
+        StateHasChanged();
+    }
+}

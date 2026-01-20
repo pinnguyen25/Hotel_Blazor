@@ -206,13 +206,19 @@
                 <MudPaper Class="p-4 rounded-4 border-0 mud-theme-primary shadow-sm h-100">
                     <div class="d-flex justify-content-between align-start">
                         <div>
-                            <MudText Typo="Typo.caption" Class="text-white-50 text-uppercase fw-bold">Tổng hoa hồng</MudText>
-                            <MudText Typo="Typo.h5" Class="fw-bold text-white mt-1">@stats.PlatformTotalCommission.ToString("N0") ₫</MudText>
+                            <MudText Typo="Typo.caption" Class="text-white-50 text-uppercase fw-bold">Tổng doanh thu sàn</MudText>
+                            
+                            <MudText Typo="Typo.h5" Class="fw-bold text-white mt-1">
+                                @stats.PlatformTotalCommission.ToString("N0") ₫
+                            </MudText>
                         </div>
                         <MudIcon Icon="@Icons.Material.Filled.MonetizationOn" Color="Color.Surface" />
                     </div>
                     <MudDivider Class="my-2" Light="true"/>
-                    <MudText Typo="Typo.caption" Class="text-white">Tháng này: @stats.RevenueThisMonth.ToString("N0") ₫</MudText>
+                    
+                    <MudText Typo="Typo.caption" Class="text-white">
+                        Tháng này: @((stats.RevenueThisMonth * 0.1m).ToString("N0")) ₫
+                    </MudText>
                 </MudPaper>
             </MudItem>
 
@@ -220,12 +226,14 @@
                 <MudPaper Class="p-4 rounded-4 border-0 bg-white shadow-sm h-100">
                     <div class="d-flex justify-content-between align-start">
                         <div>
-                            <MudText Typo="Typo.caption" Class="text-muted text-uppercase fw-bold">Công nợ rút tiền</MudText>
+                            <MudText Typo="Typo.caption" Class="text-muted text-uppercase fw-bold">Yêu cầu rút tiền</MudText>
                             <MudText Typo="Typo.h5" Class="fw-bold text-danger mt-1">@stats.CurrentWithdrawalDebt.ToString("N0") ₫</MudText>
                         </div>
                         <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" Color="Color.Error" />
                     </div>
-                    <MudText Typo="Typo.caption" Class="text-muted mt-2 d-block">Cần thanh toán ngay</MudText>
+                    <MudText Typo="Typo.caption" Class="text-muted mt-2 d-block">
+                        @stats.PendingWithdrawals yêu cầu đang chờ
+                    </MudText>
                 </MudPaper>
             </MudItem>
 
@@ -233,15 +241,13 @@
                 <MudPaper Class="p-4 rounded-4 border-0 bg-white shadow-sm h-100">
                     <div class="d-flex justify-content-between align-start">
                         <div>
-                            <MudText Typo="Typo.caption" Class="text-muted text-uppercase fw-bold">Chất lượng sàn</MudText>
-                            <div class="d-flex align-center gap-1 mt-1">
-                                <MudText Typo="Typo.h5" Class="fw-bold text-warning">@(stats.SystemAvgRating / 2)</MudText>
-                                <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Color="Color.Warning"/>
-                            </div>
+                            <MudText Typo="Typo.caption" Class="text-muted text-uppercase fw-bold">Tổng GMV Hệ thống</MudText>
+                            
+                            <MudText Typo="Typo.h5" Class="fw-bold text-info mt-1">@stats.TotalSystemRevenue.ToString("N0") ₫</MudText>
                         </div>
-                        <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Warning" />
+                        <MudIcon Icon="@Icons.Material.Filled.ShowChart" Color="Color.Info" />
                     </div>
-                    <MudText Typo="Typo.caption" Class="text-muted mt-2 d-block">Trên @stats.TotalReviews đánh giá</MudText>
+                    <MudText Typo="Typo.caption" Class="text-muted mt-2 d-block">Tổng giá trị các đơn thành công</MudText>
                 </MudPaper>
             </MudItem>
 
@@ -250,13 +256,13 @@
                     <div class="d-flex justify-content-between align-start">
                         <div>
                             <MudText Typo="Typo.caption" Class="text-muted text-uppercase fw-bold">Quy mô hệ thống</MudText>
-                            <MudText Typo="Typo.h5" Class="fw-bold text-dark mt-1">@stats.TotalUsers.ToString("N0") Người dùng</MudText>
+                            <MudText Typo="Typo.h5" Class="fw-bold text-dark mt-1">@stats.TotalUsers.ToString("N0") Users</MudText>
                         </div>
-                        <MudIcon Icon="@Icons.Material.Filled.Groups" Color="Color.Info" />
+                        <MudIcon Icon="@Icons.Material.Filled.Groups" Color="Color.Success" />
                     </div>
                     <div class="d-flex gap-2 mt-2">
                         <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="MudBlazor.Variant.Text" Class="ma-0">@stats.ActiveHotels Hotel</MudChip>
-                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="MudBlazor.Variant.Text" Class="ma-0">@stats.TotalBookings Đơn</MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="MudBlazor.Variant.Text" Class="ma-0">@stats.TotalBookings Booking</MudChip>
                     </div>
                 </MudPaper>
             </MudItem>

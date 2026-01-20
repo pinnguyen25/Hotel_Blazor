@@ -7,6 +7,7 @@ public class BookingCleanupService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<BookingCleanupService> _logger;
+    private DateTime _lastNoShowCheck = DateTime.MinValue;
     public BookingCleanupService(IServiceProvider serviceProvider, ILogger<BookingCleanupService> logger)
     {
         _serviceProvider = serviceProvider;
@@ -17,7 +18,7 @@ public class BookingCleanupService : BackgroundService
     {
         _logger.LogInformation("Booking Cleanup Service started.");
         while (!stoppingToken.IsCancellationRequested)
-        {   
+        {
             try
             {
                 using (var scope = _serviceProvider.CreateScope())
@@ -29,7 +30,7 @@ public class BookingCleanupService : BackgroundService
                     {
                         timeoutMinutes = val;
                     }
-                    
+
                     // Tìm các đơn chờ quá 15 phút
                     var threshold = DateTime.Now.AddMinutes(-timeoutMinutes);
 
@@ -45,6 +46,33 @@ public class BookingCleanupService : BackgroundService
                     if (affectedRows > 0)
                     {
                         _logger.LogInformation($"[AutoCleanup] Đã hủy {affectedRows} đơn hết hạn.");
+                    }
+
+                    // Kiểm tra No-Show mỗi giờ
+                    if ((DateTime.Now - _lastNoShowCheck).TotalHours >= 1)
+                    {
+                        var yesterday = DateTime.Now.Date.AddDays(-1);
+                        
+                        var noShowBookings = await context.Bookings
+                            .Where(b => b.Status == "Confirmed" 
+                                     && b.CheckInDate <= DateOnly.FromDateTime(yesterday)) // Quá ngày check-in 1 ngày
+                            .ToListAsync(stoppingToken);
+
+                        foreach (var booking in noShowBookings)
+                        {
+                            booking.Status = "NoShow";
+                            booking.UpdatedAt = DateTime.Now;
+                            booking.Note += " [Hệ thống: Khách hàng vắng mặt]";
+                        }
+                        
+                        if (noShowBookings.Any()) 
+                        {
+                            await context.SaveChangesAsync(stoppingToken);
+                            _logger.LogInformation($"[NoShowCleanup] Đã đánh dấu {noShowBookings.Count} đơn vắng mặt.");
+                        }
+
+                        // Cập nhật lại mốc thời gian
+                        _lastNoShowCheck = DateTime.Now;
                     }
                 }
             }

@@ -21,7 +21,7 @@ public sealed class BookingState
 
     public int Adults { get; private set; } = 1;
     public int Children { get; private set; } = 0;
-
+    public DateTime? SessionStartTime { get; private set; }
     public List<CartItemVM> SelectedRooms { get; private set; } = new();
     public BookingState(ILocalStorageService localStorage, ISnackbar snackbar)
     {
@@ -56,7 +56,7 @@ public sealed class BookingState
                 Adults = savedState.Adults;
                 Children = savedState.Children;
                 SelectedRooms = savedState.SelectedRooms ?? new();
-
+                SessionStartTime = savedState.SessionStartTime;
                 NotifyStateChanged();
             }
         }
@@ -67,6 +67,20 @@ public sealed class BookingState
         }
     }
 
+    public async Task StartSessionAsync()
+    {
+        if (SessionStartTime == null)
+        {
+            SessionStartTime = DateTime.Now;
+            await PersistAsync(); // Lưu ngay vào Storage
+        }
+    }
+
+    public async Task ResetSessionAsync()
+    {
+        SessionStartTime = null;
+        await PersistAsync();
+    }
     // --- 2. CÁC HÀM THAO TÁC DỮ LIỆU ---
 
     // Cập nhật thông tin tìm kiếm (Ngày, Số người)
@@ -89,7 +103,7 @@ public sealed class BookingState
         CheckOut = outDate;
         Adults = adults;
         Children = children;
-
+        SessionStartTime = null;
         await PersistAsync(); // Lưu ngay
         NotifyStateChanged();
     }
@@ -119,7 +133,7 @@ public sealed class BookingState
                 SelectedRooms.Add(roomItem);
             }
         }
-
+        SessionStartTime = null;
         await PersistAsync(); // Lưu ngay
         NotifyStateChanged();
     }
@@ -149,6 +163,7 @@ public sealed class BookingState
             Adults = Adults,
             Children = Children,
             SelectedRooms = SelectedRooms,
+            SessionStartTime = SessionStartTime,
             Timestamp = DateTime.UtcNow
         };
 
@@ -166,6 +181,21 @@ public sealed class BookingState
         {
             int nights = Math.Max(1, (CheckOut - CheckIn).Days);
             return SelectedRooms.Sum(r => r.PricePerNight * r.Quantity * nights);
+        }
+    }
+
+    public async Task RemoveRoomAsync(int roomTypeId)
+    {
+        var existing = SelectedRooms.FirstOrDefault(r => r.RoomTypeId == roomTypeId);
+        if (existing != null)
+        {
+            SelectedRooms.Remove(existing);
+            
+            // [MỚI] Xóa bớt phòng cũng tính là đổi đơn hàng -> Reset
+            SessionStartTime = null; 
+
+            await PersistAsync();
+            NotifyStateChanged();
         }
     }
 }
