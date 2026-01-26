@@ -1,0 +1,50 @@
+
+services:
+  # 1. Database
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: hotel_sql
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=db@HotelBooking03
+    ports:
+      - "1434:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+
+  # 2. Backend API
+  hotel_api:
+    image: hotel_api_img
+    container_name: hotel_api
+    build:
+      context: .
+      dockerfile: Dockerfile.api  
+    ports:
+      - "5083:8080" 
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__connectionStringHotelBooking=Server=db;Database=ManageHotel;User Id=sa;Password=db@HotelBooking03;TrustServerCertificate=True;MultipleActiveResultSets=true
+      - CloudinarySettings__CloudName=dmvsguisc
+      - CloudinarySettings__ApiKey=988381248537832
+      - CloudinarySettings__ApiSecret=ACrryQAJOie5-Ledb-h08wFspJc
+    depends_on:
+      - db
+
+  # 2. Web App
+  hotelbookingwebapp:
+    image: hotelbookingwebapp
+    container_name: hotel_webapp
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ApiBaseUrl=http://hotel_api:8080/api/
+      # - ConnectionStrings__connectionStringHotelBooking=Server=db;Database=ManageHotel;User Id=sa;Password=db@HotelBooking03;TrustServerCertificate=True;MultipleActiveResultSets=true
+    depends_on:
+      - hotel_api
+
+volumes:
+  sql_data:

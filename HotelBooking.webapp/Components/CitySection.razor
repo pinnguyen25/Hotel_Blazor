@@ -42,9 +42,32 @@
     // Khởi tạo Swiper sau khi được render lần đầu
     if (cities.Any() && !swiperInit)
     {
-      await Task.Delay(100); // Đảm bảo phần tử đã được render
-      await JS.InvokeVoidAsync("initSwiper");
-      swiperInit = true;
+        try
+        {
+            // Delay nhẹ để DOM render xong hoàn toàn
+            await Task.Delay(100); 
+            
+            // Gọi JS Interop
+            await JS.InvokeVoidAsync("initSwiper");
+            
+            // Đánh dấu đã init thành công
+            swiperInit = true;
+        }
+        catch (JSDisconnectedException)
+        {
+            // QUAN TRỌNG: Bắt lỗi này.
+            // Lỗi này xảy ra khi user chuyển trang (Navigate) trước khi dòng InvokeVoidAsync chạy xong.
+            // Ta chỉ cần "nuốt" lỗi này đi vì nó không ảnh hưởng gì cả.
+        }
+        catch (TaskCanceledException)
+        {
+            // Bắt lỗi khi Task bị hủy
+        }
+        catch (Exception ex)
+        {
+            // Log các lỗi khác (nếu có) để debug
+            Console.WriteLine($"Swiper Init Error: {ex.Message}");
+        }
     }
   }
 

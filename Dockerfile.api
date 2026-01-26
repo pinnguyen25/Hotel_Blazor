@@ -1,0 +1,28 @@
+# Dockerfile.api
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+WORKDIR /app
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# Copy hết các file csproj
+COPY ["HotelBooking.api/HotelBooking.api.csproj", "HotelBooking.api/"]
+COPY ["HotelBooking.application/HotelBooking.application.csproj", "HotelBooking.application/"]
+COPY ["HotelBooking.infrastructure/HotelBooking.infrastructure.csproj", "HotelBooking.infrastructure/"]
+COPY ["HotelBooking.webapp/HotelBooking.webapp.csproj", "HotelBooking.webapp/"]
+
+RUN dotnet restore "HotelBooking.api/HotelBooking.api.csproj"
+
+COPY . .
+WORKDIR "/src/HotelBooking.api"
+RUN dotnet build "HotelBooking.api.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "HotelBooking.api.csproj" -c Release -o /app/publish /p:UseAppHost=false /p:ErrorOnDuplicatePublishOutputFiles=false
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "HotelBooking.api.dll"]

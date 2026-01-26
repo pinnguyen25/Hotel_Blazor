@@ -44,7 +44,9 @@ builder.Services.AddSignalR(e =>
 // add service http client
 builder.Services.AddHttpClient("HotelBookingAPI", client =>
 {
-    client.BaseAddress = new Uri("http://localhost:5083/api/");
+    // client.BaseAddress = new Uri("http://localhost:5083/api/");
+    var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5083/api/";
+    client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromMinutes(10);
 });
 
@@ -81,7 +83,7 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
-// app.UseHttpsRedirection(); // kích hoạt https
+
 app.UseRouting(); // chia các components thành page
 app.UseStaticFiles(); // wwwroot thư mục tài nguyên
 

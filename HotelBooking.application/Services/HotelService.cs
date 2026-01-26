@@ -6705,7 +6705,8 @@ public class HotelService : IHotelService
                 var occupiedCount = await _context.BookingRooms
                     .Where(br => br.RoomTypeId == item.RoomTypeId)
                     .Where(br => br.Booking.Status != "Cancelled"
-                                 && br.Booking.Status != "Refunded"
+                                 && br.Booking.Status != "Refunded" // Đã hoàn tiền
+                                 && br.Booking.Status != "NoShow" // Đã báo vắng mặt
                                  && br.Booking.IsDeleted == false)
                     .Where(br => br.Booking.CheckInDate < request.CheckOut
                                  && br.Booking.CheckOutDate > request.CheckIn)

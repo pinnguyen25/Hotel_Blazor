@@ -1,0 +1,412 @@
+is_global = true
+build_property.MudDebugAnalyzer = 
+build_property.MudAllowedAttributePattern = 
+build_property.MudAllowedAttributeList = 
+build_property.TargetFramework = net9.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = true
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = 
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = Linux,macOS,Windows
+build_property.RootNamespace = HotelBooking.webapp
+build_property.RootNamespace = HotelBooking.webapp
+build_property.ProjectDir = D:\DA_Dotnet\HotelBooking\HotelBooking.webapp\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.RazorLangVersion = 9.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = D:\DA_Dotnet\HotelBooking\HotelBooking.webapp
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 9.0
+build_property.EnableCodeStyleSeverity = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/App.razor]
+build_metadata.AdditionalFiles.TargetPath = QXBwLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/AccommodationForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvbW1vZGF0aW9uRm9ybS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/AccommodationType.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvbW1vZGF0aW9uVHlwZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/AddServiceToBooking.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBZGRTZXJ2aWNlVG9Cb29raW5nLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/AdminHeader.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBZG1pbkhlYWRlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/AdminSidebar.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBZG1pblNpZGViYXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/BookingDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xCb29raW5nRGV0YWlsLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/BookingTable.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xCb29raW5nVGFibGUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/BookingTimer.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xCb29raW5nVGltZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/CancelBookingModal.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xDYW5jZWxCb29raW5nTW9kYWwucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/CitySection.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xDaXR5U2VjdGlvbi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/FeaturedService.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xGZWF0dXJlZFNlcnZpY2UucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/Footer.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xGb290ZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/Header.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xIZWFkZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/HeroCarousel.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xIZXJvQ2Fyb3VzZWwucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/HotelCard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xIb3RlbENhcmQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/HotelEditForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xIb3RlbEVkaXRGb3JtLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/HotelHighlyRate.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xIb3RlbEhpZ2hseVJhdGUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/HotelListCard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xIb3RlbExpc3RDYXJkLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/HotelReviews.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xIb3RlbFJldmlld3MucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/HotelsFilter.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xIb3RlbHNGaWx0ZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/Manage/AmenityForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYW5hZ2VcQW1lbml0eUZvcm0ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/Manage/BannerCreate.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYW5hZ2VcQmFubmVyQ3JlYXRlLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/Manage/BannerEdit.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYW5hZ2VcQmFubmVyRWRpdC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/Manage/PromotionForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYW5hZ2VcUHJvbW90aW9uRm9ybS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/Manage/RoomForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYW5hZ2VcUm9vbUZvcm0ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/Manage/ServiceForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYW5hZ2VcU2VydmljZUZvcm0ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/Manage/ServiceUsage.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYW5hZ2VcU2VydmljZVVzYWdlLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/MultiImageUpload.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNdWx0aUltYWdlVXBsb2FkLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/OwnerBookingDetailModal.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xPd25lckJvb2tpbmdEZXRhaWxNb2RhbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/OwnerHeader.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xPd25lckhlYWRlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/OwnerServiceForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xPd25lclNlcnZpY2VGb3JtLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/OwnerSidebar.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xPd25lclNpZGViYXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/PartnerPolicy.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYXJ0bmVyUG9saWN5LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/PartnerRegister.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYXJ0bmVyUmVnaXN0ZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/Policy/PolicyForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQb2xpY3lcUG9saWN5Rm9ybS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/Policy/PolicyTypeForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQb2xpY3lcUG9saWN5VHlwZUZvcm0ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/ReportIssueModal.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSZXBvcnRJc3N1ZU1vZGFsLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/ReviewModal.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSZXZpZXdNb2RhbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/RoomDetailForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSb29tRGV0YWlsRm9ybS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/RoomList.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSb29tTGlzdC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/RoomTypeDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSb29tVHlwZURldGFpbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/RoomTypeEditor.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSb29tVHlwZUVkaXRvci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/SearchForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTZWFyY2hGb3JtLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Components/TravelGuide.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUcmF2ZWxHdWlkZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/About.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWJvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Admin/AdminHomeDashboard.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5cQWRtaW5Ib21lRGFzaGJvYXJkLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Admin/Manage/ManageAccommodation.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5cTWFuYWdlXE1hbmFnZUFjY29tbW9kYXRpb24ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Admin/Manage/ManageAmenities.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5cTWFuYWdlXE1hbmFnZUFtZW5pdGllcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Admin/Manage/ManageBanners.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5cTWFuYWdlXE1hbmFnZUJhbm5lcnMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Admin/Manage/ManagePolicies.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5cTWFuYWdlXE1hbmFnZVBvbGljaWVzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Admin/Manage/ManagePromotions.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5cTWFuYWdlXE1hbmFnZVByb21vdGlvbnMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Admin/Manage/ManageRooms.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5cTWFuYWdlXE1hbmFnZVJvb21zLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Admin/Manage/ManageServices.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5cTWFuYWdlXE1hbmFnZVNlcnZpY2VzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Admin/Manage/Revenue.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5cTWFuYWdlXFJldmVudWUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Admin/Manage/SystemConfig.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5cTWFuYWdlXFN5c3RlbUNvbmZpZy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Admin/Manage/UserManagement.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5cTWFuYWdlXFVzZXJNYW5hZ2VtZW50LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Admin/Manage/WithdrawalManagement.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5cTWFuYWdlXFdpdGhkcmF3YWxNYW5hZ2VtZW50LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Admin/Request/HotelReviewDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5cUmVxdWVzdFxIb3RlbFJldmlld0RldGFpbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Admin/Request/RequestOverview.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5cUmVxdWVzdFxSZXF1ZXN0T3ZlcnZpZXcucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Admin/Request/UserRequestDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtaW5cUmVxdWVzdFxVc2VyUmVxdWVzdERldGFpbHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Contact.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ29udGFjdC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Hotel/HotelDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcSG90ZWxcSG90ZWxEZXRhaWwucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Hotel/Hotels.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcSG90ZWxcSG90ZWxzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcSW5kZXgucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/Payment/PaymentCallback.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcUGF5bWVudFxQYXltZW50Q2FsbGJhY2sucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/TravelGuideDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVHJhdmVsR3VpZGVEZXRhaWwucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/CustomerLogin.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxDdXN0b21lckxvZ2luLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/CustomerRegister.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxDdXN0b21lclJlZ2lzdGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Customer/BookingHotel.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxDdXN0b21lclxCb29raW5nSG90ZWwucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Customer/BookingSuccess.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxDdXN0b21lclxCb29raW5nU3VjY2Vzcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Customer/UpgradeOwnerForm.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxDdXN0b21lclxVcGdyYWRlT3duZXJGb3JtLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Customer/UserProfile.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxDdXN0b21lclxVc2VyUHJvZmlsZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/BookingCalendar.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxCb29raW5nQ2FsZW5kYXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/Finances.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxGaW5hbmNlcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/ManageHotel.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxNYW5hZ2VIb3RlbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/ManageHotelPolicies.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxNYW5hZ2VIb3RlbFBvbGljaWVzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/ManageHotelServices.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxNYW5hZ2VIb3RlbFNlcnZpY2VzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/ManageHousekeeping.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxNYW5hZ2VIb3VzZWtlZXBpbmcucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/ManageReview.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxNYW5hZ2VSZXZpZXcucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/ManageRoomTypes.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxNYW5hZ2VSb29tVHlwZXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/ManageStaff.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxNYW5hZ2VTdGFmZi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/OwnerDashboard.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxPd25lckRhc2hib2FyZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/RoomMap.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxSb29tTWFwLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/Steps/HotelWizard.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxTdGVwc1xIb3RlbFdpemFyZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/Steps/StepAmenities.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxTdGVwc1xTdGVwQW1lbml0aWVzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/Steps/StepBasicInfo.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxTdGVwc1xTdGVwQmFzaWNJbmZvLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/Steps/StepFinalSubmit.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxTdGVwc1xTdGVwRmluYWxTdWJtaXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/Steps/StepImages.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxTdGVwc1xTdGVwSW1hZ2VzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/Steps/StepPolicies.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxTdGVwc1xTdGVwUG9saWNpZXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/Steps/StepRoomTypes.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxTdGVwc1xTdGVwUm9vbVR5cGVzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/User/Owner/Steps/StepServices.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXNlclxPd25lclxTdGVwc1xTdGVwU2VydmljZXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Shared/AdminLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = U2hhcmVkXEFkbWluTGF5b3V0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Shared/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = U2hhcmVkXE1haW5MYXlvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Shared/OwnerLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = U2hhcmVkXE93bmVyTGF5b3V0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = X0ltcG9ydHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/DA_Dotnet/HotelBooking/HotelBooking.webapp/Pages/_Host.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0hvc3QuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
